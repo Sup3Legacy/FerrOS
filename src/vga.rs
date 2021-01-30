@@ -99,6 +99,12 @@ impl SCREEN {
 
         }
     }
+    pub fn write_string_color(&mut self, s : &str, col : ColorCode) -> () {
+        let old_color = self.color;
+        self.set_color(col);
+        self.write_string(s);
+        self.set_color(old_color);
+    }
     pub fn new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
         SCREEN {col_pos : 0, row_pos : 0, color : color, buffer : buffer}
     }

@@ -10,8 +10,6 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-static HELLO: &[u8] = b"Hello World!";
-
 #[no_mangle] // start function
 pub extern "C" fn _start() -> ! {
     use core::fmt::Write;
@@ -22,7 +20,6 @@ pub extern "C" fn _start() -> ! {
 
     screen.write_byte(b'H');
     screen.write_string("ello \n");
-    screen.set_color(vga::ColorCode::new(vga::Color::Blue, vga::Color::Black));
     screen.write_string("Wörld! \n");
     write!(screen, "Test : {}", 42).unwrap();
 
