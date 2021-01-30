@@ -10,7 +10,8 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[no_mangle] // start function
+/// This is the starting function. Its name must not be changeed by the compiler, hence the `#![no_mangle]`
+#[no_mangle]
 pub extern "C" fn _start() -> ! {
     use core::fmt::Write;
     let mut screen = vga::SCREEN::new(
@@ -23,7 +24,7 @@ pub extern "C" fn _start() -> ! {
     screen.write_string("Wörld! \n");
     write!(screen, "Test : {}", 42).unwrap();
 
-    for i in 0..30 {
+    for i in 0..10 {
         writeln!(screen, "{}", i);
     }
 

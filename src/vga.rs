@@ -3,6 +3,8 @@ use core::fmt;
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
+
+/// The 16 colors available in VGA mode
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -25,15 +27,39 @@ pub enum Color {
     White = 15,
 }
 
-
+/// A ColorCode is the data of a foreground color and a background one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ColorCode(u8);
 
 impl ColorCode {
+    /// This creates a ColorCode given a foreground color and a background color
+    /// 
+    /// # Arguments
+    /// * `foreground` - A color for the foreground
+    /// * `background` - A color for the background
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// assert_eq!(ColorCode::new(Color::Blue, Color::Black), 1);
+    /// ```
+    /// 
     pub fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }
+}
+
+/// This is the base element, stored in the screen buffer.
+///  
+/// # Fields
+/// * `code` - ASCII code of the character
+/// * `color` - color code of the character, 8-bit integer
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C)]
+pub struct CHAR {
+    code : u8,
+    color : ColorCode
 }
 
 #[repr(transparent)]
@@ -48,12 +74,7 @@ pub struct SCREEN {
     buffer : &'static mut BUFFER
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
-pub struct CHAR {
-    code : u8,
-    color : ColorCode
-}
+
 
 impl SCREEN {
     pub fn write_byte(&mut self, byte : u8) {
