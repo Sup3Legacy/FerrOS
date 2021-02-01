@@ -2,38 +2,40 @@
 #![no_main] // disable all Rust-level entry points
 
 use core::panic::PanicInfo;
+use core::fmt::Write;
+use lazy_static::lazy_static;
+use spin::Mutex;
+
 mod vga;
+
+lazy_static! { 
+    pub static ref SCREEN : Mutex<vga::Screen> = Mutex::new(vga::Screen{
+        col_pos : 0,
+        row_pos : 0,
+        color : vga::ColorCode::new(vga::Color::Yellow, vga::Color::Black),
+        buffer : unsafe { &mut *(0xb8000 as *mut vga::BUFFER) },
+    });
+}
 
 /// This function is called on panic.
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    use core::fmt::Write;
-    let mut screen = vga::SCREEN::new(
-        vga::ColorCode::new(vga::Color::Yellow, vga::Color::Black),
-        unsafe { &mut *(0xb8000 as *mut vga::BUFFER) },
-    );
-    writeln!(screen, "{}", _info).unwrap();
+    writeln!(SCREEN.lock(), "{}", _info).unwrap();
     loop {}
 }
 
 /// This is the starting function. Its name must not be changeed by the compiler, hence the `#![no_mangle]`
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    use core::fmt::Write;
-    let mut screen = vga::SCREEN::new(
-        vga::ColorCode::new(vga::Color::Yellow, vga::Color::Black),
-        unsafe { &mut *(0xb8000 as *mut vga::BUFFER) },
-    );
+    SCREEN.lock().clear().unwrap();
 
-    screen.clear().unwrap();
-
-    screen.write_byte(b'H');
-    screen.write_string("ello \n");
-    screen.write_string("Wörld! \n");
-    write!(screen, "Test : {}", 42).unwrap();
+    SCREEN.lock().write_byte(b'H');
+    SCREEN.lock().write_string("ello \n");
+    SCREEN.lock().write_string("Wörld! \n");
+    write!(SCREEN.lock(), "Test : {}", 42).unwrap();
 
     for i in 0..10 {
-        writeln!(screen, "{}", i).unwrap();
+        writeln!(SCREEN.lock(), "{}", i).unwrap();
     }
 
     loop{}

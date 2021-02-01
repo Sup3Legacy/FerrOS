@@ -70,16 +70,16 @@ pub struct BUFFER {
     characters : [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT]
 }
 
-pub struct SCREEN {
-    col_pos : usize,
-    row_pos : usize,
-    color : ColorCode,
-    buffer : &'static mut BUFFER
+pub struct Screen {
+    pub col_pos : usize,
+    pub row_pos : usize,
+    pub color : ColorCode,
+    pub buffer : &'static mut BUFFER
 }
 
 
 
-impl SCREEN {
+impl Screen {
     pub fn write_byte(&mut self, byte : u8) {
         match byte {
             b'\n' => self.new_line(),
@@ -135,8 +135,8 @@ impl SCREEN {
         self.write_string(s);
         self.set_color(old_color);
     }
-    pub fn new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
-        SCREEN {col_pos : 0, row_pos : 0, color : color, buffer : buffer}
+    fn new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
+        Screen {col_pos : 0, row_pos : 0, color : color, buffer : buffer}
     }
     pub fn set_color(&mut self, color : ColorCode) -> () {
         self.color = color;
@@ -157,9 +157,17 @@ impl SCREEN {
     }
 }
 
-impl fmt::Write for SCREEN {
+impl fmt::Write for Screen {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
         Ok(())
     }
+}
+
+pub fn new_screen<'a>() -> Result<Screen, VgaError<'a>> {
+    let res = Screen::new(
+        ColorCode::new(Color::Yellow, Color::Black),
+        unsafe { &mut *(0xb8000 as *mut BUFFER) },
+    );
+    Ok(res)
 }
