@@ -32,6 +32,9 @@ pub enum Color {
 #[repr(transparent)]
 pub struct ColorCode(u8);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VgaError<'a>(&'a str);
+
 impl ColorCode {
     /// This creates a ColorCode given a foreground color and a background color
     /// 
@@ -89,17 +92,23 @@ impl SCREEN {
             }
         };
     }
+    /// This functions positions the character pointer to the following line.
+    /// If the screens overflows, it get scrolled up.
     fn new_line(&mut self) -> () {
         self.col_pos = 0;
         self.row_pos += 1;
         if self.row_pos >= BUFFER_HEIGHT {
-            for row in 1..BUFFER_HEIGHT {
-                for col in 0..BUFFER_WIDTH {
-                    self.buffer.characters[row - 1][col] = self.buffer.characters[row][col];
-                }
-            }
+            self.scroll_up();
             self.clear_bottom();
             self.row_pos = BUFFER_HEIGHT - 1;
+        }
+    }
+    /// This function scrolls the entire screen by one row upwards.
+    fn scroll_up(&mut self) -> () {
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                self.buffer.characters[row - 1][col] = self.buffer.characters[row][col];
+            }
         }
     }
     fn clear_bottom(&mut self) -> () {
@@ -131,6 +140,20 @@ impl SCREEN {
     }
     pub fn set_color(&mut self, color : ColorCode) -> () {
         self.color = color;
+    }
+    pub fn clear(&mut self) -> Result<(), VgaError<'_>> {
+        let blank = CHAR {
+            code : b' ',
+            color : self.color
+        };
+        for row in 0..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                self.buffer.characters[row][col] = blank;
+            }
+        }
+        self.col_pos = 0;
+        self.row_pos = 0;
+        Ok(())
     }
 }
 
