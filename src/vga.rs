@@ -1,7 +1,40 @@
 use core::fmt;
+use core::fmt::Write;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
+
+
+lazy_static! { 
+    pub static ref SCREEN : Mutex<Screen> = Mutex::new(Screen{
+        col_pos : 0,
+        row_pos : 0,
+        color : ColorCode::new(Color::LightGreen, Color::Black),
+        buffer : unsafe { &mut *(0xb8000 as *mut BUFFER) },
+    });
+}
+
+#[macro_export]
+macro_rules! println {
+    () => (print!("\n"));
+    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));
+}
+
+pub fn write_back() {
+    SCREEN.lock().write_byte(b'\r');
+}
+
+pub fn _print(args: fmt::Arguments) {
+    SCREEN.lock().write_fmt(args).unwrap();
+}
+
 
 
 /// The 16 colors available in VGA mode
@@ -136,7 +169,7 @@ impl Screen {
         self.write_string(s);
         self.set_color(old_color);
     }
-    fn new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
+    fn _new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
         Screen {col_pos : 0, row_pos : 0, color : color, buffer : buffer}
     }
     pub fn set_color(&mut self, color : ColorCode) -> () {
@@ -163,12 +196,4 @@ impl fmt::Write for Screen {
         self.write_string(s);
         Ok(())
     }
-}
-
-pub fn new_screen<'a>() -> Result<Screen, VgaError<'a>> {
-    let res = Screen::new(
-        ColorCode::new(Color::Yellow, Color::Black),
-        unsafe { &mut *(0xb8000 as *mut BUFFER) },
-    );
-    Ok(res)
 }
