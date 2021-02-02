@@ -83,6 +83,7 @@ impl Screen {
     pub fn write_byte(&mut self, byte : u8) {
         match byte {
             b'\n' => self.new_line(),
+            b'\r' => self.col_pos = 0,
             _ => {
                     if self.col_pos >= BUFFER_WIDTH {
                         self.new_line();

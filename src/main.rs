@@ -38,5 +38,10 @@ pub extern "C" fn _start() -> ! {
         writeln!(SCREEN.lock(), "{}", i).unwrap();
     }
 
+    for i in 0..1000000 {
+        write!(SCREEN.lock(), "{}/1000000", i).unwrap();
+        SCREEN.lock().write_byte(b'\r');
+    }
+
     loop{}
 }
