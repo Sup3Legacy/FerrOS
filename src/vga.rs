@@ -2,6 +2,7 @@ use core::fmt;
 use core::fmt::Write;
 use lazy_static::lazy_static;
 use spin::Mutex;
+use x86_64::instructions::interrupts;
 
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
@@ -32,7 +33,7 @@ pub fn write_back() {
 }
 
 pub fn _print(args: fmt::Arguments) {
-    SCREEN.lock().write_fmt(args).unwrap();
+    interrupts::without_interrupts(|| {SCREEN.lock().write_fmt(args).unwrap();});
 }
 
 
