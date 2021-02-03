@@ -6,6 +6,7 @@ use pic8259_simple::ChainedPics;
 use spin;
 use lazy_static::lazy_static;
 use crate::{println, print};
+use crate::gdt;
 //use crate::keyboard_layout;
 
 #[derive(Clone, Debug, Copy)]
@@ -28,9 +29,13 @@ lazy_static! {
     static ref IDT : InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
-        idt.double_fault.set_handler_fn(double_fault_handler);
+        //idt.double_fault.set_handler_fn(double_fault_handler);
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        unsafe {
+            idt.double_fault.set_handler_fn(double_fault_handler)
+            .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+        }
         idt
     };
 }
@@ -44,7 +49,7 @@ lazy_static! {
     );
 }
 
-pub fn init_idt() {
+pub fn init() {
     IDT.load();
     unsafe {
         PICS.lock().initialize();

@@ -4,12 +4,18 @@
 #![feature(alloc_error_handler)]
 
 use core::panic::PanicInfo;
+use bootloader::{BootInfo, entry_point};
+use x86_64::addr::VirtAddr;
+use x86_64::structures::paging::Translate;
 mod vga;
 mod interrupts;
-//mod keyboard;
-//mod allocator;
+mod gdt;
+mod memory;
+mod allocator;
 
-//extern crate alloc;
+extern crate alloc;
+
+use alloc::boxed::Box;
 
 /// This function is called on panic.
 #[panic_handler]
@@ -24,21 +30,18 @@ pub fn halt_loop() -> ! {
     }
 }
 
+pub fn init() {
+    interrupts::init();
+    gdt::init();
+}
+
+entry_point!(kernel_main);
 /// This is the starting function. Its name must not be changeed by the compiler, hence the `#![no_mangle]`
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
-    interrupts::init_idt();
-    /*
-    SCREEN.lock().clear().unwrap();
-
-    SCREEN.lock().write_byte(b'H');
-    SCREEN.lock().write_string("ello \n");
-    SCREEN.lock().write_string("Wörld! \n");
-    write!(SCREEN.lock(), "Test : {}", 42).unwrap();
-    */
-
-    
-
+fn kernel_main(_boot_info : &'static BootInfo) -> ! {
+    init();
+    let mut frame_allocator = unsafe {
+        memory::BootInfoAllocator::init(&_boot_info.memory_map)
+    };
     for i in 0..10 {
         println!("{}", i);
     }
@@ -51,7 +54,7 @@ pub extern "C" fn _start() -> ! {
         vga::write_back();
     }
 
-    //x86_64::instructions::interrupts::int3();
+    let x = Box::new([0, 1]);
 
     halt_loop();
 }
