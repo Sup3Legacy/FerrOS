@@ -99,6 +99,7 @@ pub struct CHAR {
     color : ColorCode
 }
 
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct BUFFER {
     characters : [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT]
@@ -164,7 +165,7 @@ impl Screen {
 
         }
     }
-    pub fn write_string_color(&mut self, s : &str, col : ColorCode) -> () {
+    pub fn _write_string_color(&mut self, s : &str, col : ColorCode) -> () {
         let old_color = self.color;
         self.set_color(col);
         self.write_string(s);
@@ -176,7 +177,7 @@ impl Screen {
     pub fn set_color(&mut self, color : ColorCode) -> () {
         self.color = color;
     }
-    pub fn clear(&mut self) -> Result<(), VgaError<'_>> {
+    pub fn _clear(&mut self) -> Result<(), VgaError<'_>> {
         let blank = CHAR {
             code : b' ',
             color : self.color
