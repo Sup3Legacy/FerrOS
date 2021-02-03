@@ -1,6 +1,7 @@
 
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::instructions::port::Port;
+use x86_64::registers::control::Cr2;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 use pic8259_simple::ChainedPics;
 use spin;
@@ -72,6 +73,13 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame : &mut InterruptS
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
+}
+
+extern "x86-interrupt" fn page_fault_handler(_stack_frame : &mut InterruptStackFrame, _error_code : PageFaultErrorCode) {
+    println!("PAGE FAULT! {:#?}", _stack_frame);
+    println!("TRYIED TO READ : {:#?}", Cr2::read());
+    println!("ERROR : {:#?}", _error_code);
+    crate::halt_loop();
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler (_stack_frame : &mut InterruptStackFrame) {
