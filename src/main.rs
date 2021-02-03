@@ -18,6 +18,12 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
+pub fn halt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
 /// This is the starting function. Its name must not be changeed by the compiler, hence the `#![no_mangle]`
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
@@ -47,5 +53,5 @@ pub extern "C" fn _start() -> ! {
 
     //x86_64::instructions::interrupts::int3();
 
-    loop{}
+    halt_loop();
 }
