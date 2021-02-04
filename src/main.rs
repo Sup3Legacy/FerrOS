@@ -2,8 +2,10 @@
 #![no_main] // disable all Rust-level entry points
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(wake_trait)]
 
 use core::panic::PanicInfo;
+use core::task::Poll;
 use bootloader::{BootInfo, entry_point};
 use x86_64::addr::{VirtAddr, VirtAddrNotValid};
 use x86_64::structures::paging::Translate;
@@ -27,11 +29,17 @@ use alloc::string::String;
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     println!("{}", _info);
-    loop {}
+    halt_loop();
 }
 
 pub fn halt_loop() -> ! {
     loop {
+        x86_64::instructions::hlt();
+    }
+}
+
+pub fn long_halt(i : usize) {
+    for _ in 0..i {
         x86_64::instructions::hlt();
     }
 }
@@ -44,12 +52,14 @@ pub fn init() {
 async fn task_1() {
     loop {
         print!("X");
+        long_halt(16);
     }
 }
 
 async fn task_2() {
     loop {
         print!("0");
+        long_halt(16);
     }
 }
 
