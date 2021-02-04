@@ -32,6 +32,12 @@ lazy_static! {
         idt.divide_error.set_handler_fn(divide_error_handler);
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.divide_error.set_handler_fn(divide_error_handler);
+        idt.overflow.set_handler_fn(overflow_handler);
+        idt.debug.set_handler_fn(debug_handler);
+        idt.non_maskable_interrupt.set_handler_fn(non_maskable_interrupt_handler);
+        idt.bound_range_exceeded.set_handler_fn(bound_range_exceeded_handler);
+        idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
         //idt.double_fault.set_handler_fn(double_fault_handler);
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
@@ -116,7 +122,7 @@ extern "x86-interrupt" fn general_protection_fault_handler(_stack_frame : &mut I
 
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame : &mut InterruptStackFrame) {
-    print!(".");
+    //print!(".");
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
@@ -133,7 +139,9 @@ extern "x86-interrupt" fn keyboard_interrupt_handler (_stack_frame : &mut Interr
     let mut keyboard = KEYBOARD.lock();
     let mut port = Port::new(0x60);
     let scancode : u8 = unsafe {port.read()};
-    
+    crate::keyboard::add_scancode(scancode);
+
+    /* Affichage des caractères
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
@@ -142,6 +150,9 @@ extern "x86-interrupt" fn keyboard_interrupt_handler (_stack_frame : &mut Interr
             }
         }
     }
+    */
+
+    
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }

@@ -12,6 +12,7 @@ mod interrupts;
 mod gdt;
 mod memory;
 mod allocator;
+mod keyboard;
 
 extern crate alloc;
 
