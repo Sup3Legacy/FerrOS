@@ -73,10 +73,16 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
         memory::BootInfoAllocator::init(&_boot_info.memory_map)
     };
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
-    for i in 0..10 {
+    println!("nom d'utilisateur : ");
+    let utilisateur:[char; 80] = keyboard::keyboard_interraction::get_input(false);
+    println!();
+    println!("mot de passe : ");
+    let mpd = keyboard::keyboard_interraction::get_input(true);
+    println!();
+    for i in 0..5 {
         println!("{}", i);
     }
-    for i in 0..30 {
+    for i in 0..5 {
         println!("{},", i);
     }
 
@@ -94,7 +100,6 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     println!("{}", y);
     crate::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
-    executor.spawn(Task::new(crate::keyboard::keyboard_interraction::get_input()));
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
     executor.run();

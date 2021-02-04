@@ -32,9 +32,9 @@ impl DoubleFile {
         }
     }
 
-    fn print_first(&mut self) -> bool {
+    fn print_first(&mut self, cache : bool) -> bool {
         if self.debut != self.fin || self.boucle {
-            print!("{}",self.tableau[self.debut]);
+            print!("{}",if cache {0xfe as char} else {self.tableau[self.debut]});
             self.debut = (self.debut + 1)%TAILLE;
             self.boucle = false;
             true
@@ -42,9 +42,26 @@ impl DoubleFile {
             false
         }
     }
+
+    fn sortie(&mut self) -> [char; TAILLE] {
+        let mut s  = [0xfe as char; TAILLE];
+        if self.debut < self.fin {
+            for i in self.debut..self.fin {
+                s[i - self.debut] = self.tableau[i];
+            }
+        } else if self.debut != self.fin || self.boucle {
+            for i in self.debut..TAILLE {
+                s[i - self.debut] = self.tableau[i];
+            };
+            for i in 0..self.fin {
+                s[i + TAILLE - self.debut] = self.tableau[i];
+            }
+        };
+        s
+    }
 }
 
-pub async fn get_input() {
+pub fn get_input(cache : bool) -> [char; TAILLE] {
     let mut stack = DoubleFile {
         debut : 0,
         fin : 0,
@@ -56,10 +73,13 @@ pub async fn get_input() {
             Ok(a) => {
                 match a {
                     DecodedKey::Unicode('\n') => {
+                        if stack.fin != 0 {
+                        let sortie = stack.sortie();
                         while stack.debut != stack.fin {
-                            stack.print_first();
+                            stack.print_first(cache);
                         };
                         println!("");
+                        break sortie}
                         },
 
                     DecodedKey::Unicode('\x08') => {
@@ -72,7 +92,7 @@ pub async fn get_input() {
                         let fin = stack.fin;
                         let boucle = stack.boucle;
                         while stack.debut != stack.fin {
-                            stack.print_first();
+                            stack.print_first(cache);
                         };
                         stack.debut = deb;
                         stack.fin = fin;
@@ -86,7 +106,7 @@ pub async fn get_input() {
                         let fin = stack.fin;
                         let boucle = stack.boucle;
                         while stack.debut != stack.fin {
-                            stack.print_first();
+                            stack.print_first(cache);
                         };
                         stack.debut = deb;
                         stack.fin = fin;
