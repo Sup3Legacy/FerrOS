@@ -1,9 +1,9 @@
-use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 
 pub struct Fr104Key;
 
-pub impl KeyboardLayout for Us104Key {
-    fn map_keycode(keycode: KeyCode, modifiers: &Modifiers) -> DecodedKey {
+impl KeyboardLayout for Fr104Key {
+    pub fn map_keycode(keycode: KeyCode, modifiers: &Modifiers) -> DecodedKey {
         match keycode {
             KeyCode::BackTick => {
                 if modifiers.is_shifted() {

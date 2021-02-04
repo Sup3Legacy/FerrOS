@@ -1,9 +1,12 @@
-use crossbeam_queue::ArrayQueue;
+use crossbeam_queue::{ArrayQueue, PopError};
 use conquer_once::spin::OnceCell;
+use pc_keyboard::{DecodedKey};
 use crate::print;
 use crate::println;
 
-static SCANCODE_QUEUE : OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
+pub mod keyboard_interraction;
+
+static SCANCODE_QUEUE : OnceCell<ArrayQueue<DecodedKey>> = OnceCell::uninit();
 
 static SCANCODE_QUEUE_CAP : usize = 10;
 
@@ -11,7 +14,7 @@ pub struct ScancodeStream {
     _private : () // Pour empêcher de contruire cette structure depuis l'extérieur
 }
 
-pub fn add_scancode(scancode : u8) {
+pub fn add_scancode(scancode : DecodedKey) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if let Err(_) = queue.push(scancode) {
             println!("Scancode queue full; dropping keyboard input.");
@@ -20,6 +23,12 @@ pub fn add_scancode(scancode : u8) {
         println!("Scancode queue uninitialized.");
         ScancodeStream::new();
     }
+}
+
+pub fn get_top_value() -> Result<DecodedKey, PopError> {
+    if let Ok(queue) = SCANCODE_QUEUE.try_get() {
+        queue.pop()
+    } else {Err(PopError)}
 }
 
 impl ScancodeStream {

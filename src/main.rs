@@ -94,6 +94,7 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     println!("{}", y);
     crate::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
+    executor.spawn(Task::new(crate::keyboard::keyboard_interraction::get_input()));
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
     executor.run();
