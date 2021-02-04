@@ -5,7 +5,7 @@
 
 use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
-use x86_64::addr::VirtAddr;
+use x86_64::addr::{VirtAddr, VirtAddrNotValid};
 use x86_64::structures::paging::Translate;
 mod vga;
 mod interrupts;
@@ -39,9 +39,12 @@ entry_point!(kernel_main);
 /// This is the starting function. Its name must not be changeed by the compiler, hence the `#![no_mangle]`
 fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     init();
+    let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
+    let mut mapper = unsafe {memory::init(phys_mem_offset)};
     let mut frame_allocator = unsafe {
         memory::BootInfoAllocator::init(&_boot_info.memory_map)
     };
+    allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
     for i in 0..10 {
         println!("{}", i);
     }
@@ -55,7 +58,7 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     }
 
     let ptr = 0xdeadbeaf as *mut u32;
-    unsafe { *ptr = 42; }
+    //unsafe { *ptr = 42; }
 
     let x = Box::new([0, 1]);
 
