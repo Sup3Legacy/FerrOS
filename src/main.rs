@@ -54,6 +54,9 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
         vga::write_back();
     }
 
+    let ptr = 0xdeadbeaf as *mut u32;
+    unsafe { *ptr = 42; }
+
     let x = Box::new([0, 1]);
 
     halt_loop();
