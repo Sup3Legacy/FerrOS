@@ -29,6 +29,7 @@ impl InterruptIndex {
 lazy_static! {
     static ref IDT : InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
+        idt.divide_error.set_handler_fn(divide_error_handler);
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
         //idt.double_fault.set_handler_fn(double_fault_handler);
@@ -59,8 +60,36 @@ pub fn init() {
     x86_64::instructions::interrupts::enable();
 }
 
+extern "x86-interrupt" fn divide_error_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("DIVISION BY ZERO");
+} // inutile car rust rattrape avant le CPU
+
+extern "x86-interrupt" fn debug_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("DEBUG");
+}  
+
+extern "x86-interrupt" fn non_maskable_interrupt_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("Non maskable Stack Frame");
+}
+
 extern "x86-interrupt" fn breakpoint_handler(stack_frame : &mut InterruptStackFrame) {
     println!("BREAKPOINT : {:#?}", stack_frame);
+}
+
+extern "x86-interrupt" fn overflow_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("OVERFLOW");
+}
+
+extern "x86-interrupt" fn bound_range_exceeded_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("BOUND RANGE EXCEEDED");
+}
+
+extern "x86-interrupt" fn invalid_opcode_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("INVALID OPCODE");
+}
+
+extern "x86-interrupt" fn device_not_available_handler(_stack_frame : &mut InterruptStackFrame) {
+    panic!("DEVICE NOT AVAILABLE");
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -68,6 +97,23 @@ extern "x86-interrupt" fn double_fault_handler(
         println!("ERROR : {:#?}", error_code);
         panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }
+
+extern "x86-interrupt" fn invalid_tss_handler(_stack_frame : &mut InterruptStackFrame, _error_code : u64) {
+    panic!("INVALID TSS");
+}
+
+extern "x86-interrupt" fn segment_not_present_handler(_stack_frame : &mut InterruptStackFrame, _error_code : u64) {
+    panic!("SEGMENT NOT PRESENT");
+}
+
+extern "x86-interrupt" fn stack_segment_fault_handler(_stack_frame : &mut InterruptStackFrame, _error_code : u64) {
+    panic!("STACK SEGMENT FAULT");
+}
+
+extern "x86-interrupt" fn general_protection_fault_handler(_stack_frame : &mut InterruptStackFrame, _error_code : u64) {
+    panic!("GENERAL PROTECTION FAULT");
+}
+
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame : &mut InterruptStackFrame) {
     print!(".");
