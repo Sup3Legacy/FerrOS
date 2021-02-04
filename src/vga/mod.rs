@@ -3,6 +3,7 @@ use core::fmt::Write;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::instructions::interrupts;
+use x86_64::instructions::port::Port;
 
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
@@ -127,6 +128,18 @@ impl Screen {
                     self.col_pos += 1;
             }
         };
+        self.set_cursor();
+    }
+
+    fn set_cursor(&mut self) {
+        let pos = self.row_pos * BUFFER_WIDTH + self.col_pos;
+        let mut port1 = Port::new(0x3D4);
+        let mut port2 = Port::new(0x3D5);
+        unsafe {port1.write(0x0F as u8);
+            port2.write((pos & 0xFF) as u8);
+            port1.write(0x0E as u8);
+            port2.write(((pos >> 8) & 0xFF) as u8)
+        }
     }
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
