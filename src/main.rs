@@ -8,15 +8,20 @@ use bootloader::{BootInfo, entry_point};
 use x86_64::addr::{VirtAddr, VirtAddrNotValid};
 use x86_64::structures::paging::Translate;
 mod vga;
+use vga::_print_at;
 mod interrupts;
 mod gdt;
 mod memory;
 mod allocator;
 mod keyboard;
+mod task;
+
+use crate::task::{Task, executor::Executor};
 
 extern crate alloc;
 
 use alloc::boxed::Box;
+use alloc::string::String;
 
 /// This function is called on panic.
 #[panic_handler]
@@ -34,6 +39,18 @@ pub fn halt_loop() -> ! {
 pub fn init() {
     interrupts::init();
     gdt::init();
+}
+
+async fn task_1() {
+    loop {
+        print!("X");
+    }
+}
+
+async fn task_2() {
+    loop {
+        print!("0");
+    }
 }
 
 entry_point!(kernel_main);
@@ -57,11 +74,18 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
         print!("{}/1000000", i);
         vga::write_back();
     }
+    println!();
 
     let ptr = 0xdeadbeaf as *mut u32;
     //unsafe { *ptr = 42; }
 
     let x = Box::new([0, 1]);
-
+    let y = String::from("Loul");
+    println!("{}", y);
+    crate::_print_at(2, 2, "loul");
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(task_1()));
+    executor.spawn(Task::new(task_2()));
+    executor.run();
     halt_loop();
 }
