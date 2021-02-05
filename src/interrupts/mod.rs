@@ -2,7 +2,7 @@
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::Cr2;
-use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
+//use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 use pic8259_simple::ChainedPics;
 use spin;
 use lazy_static::lazy_static;
@@ -58,12 +58,13 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref KEYBOARD : spin::Mutex<Keyboard<Fr104Key, ScancodeSet1>> =
+    static ref KEYBOARD : spin::Mutex<u8> = spin::Mutex::new(1);
+   /* static ref KEYBOARD : spin::Mutex<Keyboard<Fr104Key, ScancodeSet1>> =
     spin::Mutex::new(
         Keyboard::new(
             Fr104Key, ScancodeSet1, HandleControl::Ignore
         )
-    );
+    );*/
 }
 
 pub fn init() {
@@ -190,7 +191,7 @@ pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
-
+/*
 pub struct Fr104Key;
 
 impl KeyboardLayout for Fr104Key {
@@ -612,3 +613,4 @@ impl KeyboardLayout for Fr104Key {
         }
     }
 }
+*/

@@ -297,6 +297,8 @@ impl KeyBoardStatus {
                     }
                 },
 
+                Key::Space => Effect::Value(KeyEvent::Character(' ')),
+
                 Key::ShiftR => {
                     self.shift_r_down();
                     Effect::Nothing
