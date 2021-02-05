@@ -47,6 +47,7 @@ pub fn long_halt(i : usize) {
 pub fn init() {
     interrupts::init();
     gdt::init();
+    vga::init();
 }
 
 async fn task_1() {

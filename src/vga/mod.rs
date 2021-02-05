@@ -40,7 +40,9 @@ pub(crate) fn _print_at(row : usize, col : usize, s : &str) {
     interrupts::without_interrupts(|| {SCREEN.lock().write_to_pos(row, col, s);});
 }
 
-
+pub fn init() {
+    interrupts::without_interrupts(|| {SCREEN.lock()._clear();});
+}
 
 /// The 16 colors available in VGA mode
 #[allow(dead_code)]
