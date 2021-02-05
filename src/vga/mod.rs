@@ -41,6 +41,7 @@ pub(crate) fn _print_at(row : usize, col : usize, s : &str) {
 }
 
 pub fn init() {
+    #[allow(unused_must_use)]
     interrupts::without_interrupts(|| {SCREEN.lock()._clear();});
 }
 
@@ -119,7 +120,7 @@ pub struct Screen {
 }
 
 
-
+#[allow(dead_code)]
 impl Screen {
     pub fn write_byte(&mut self, byte : u8) {
         match byte {

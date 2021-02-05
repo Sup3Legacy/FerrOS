@@ -1,10 +1,9 @@
 //use pc_keyboard::{Keyboard, Modifiers, KeyCode, DecodedKey};
-use crossbeam_queue::{ArrayQueue, PopError};
-use alloc::boxed::Box;
-use lazy_static::lazy_static;
 use alloc::string::String;
 use crate::{println, print};
 use crate::keyboard::keyboard_layout;
+
+/*
 const TAILLE: usize = 80;
 
 struct DoubleFile {
@@ -61,7 +60,7 @@ impl DoubleFile {
         };
         s
     }
-}
+}*/
 
 pub fn get_input(cache : bool) -> String {
     let mut stack = String::new();
@@ -77,16 +76,7 @@ pub fn get_input(cache : bool) -> String {
 
                     keyboard_layout::KeyEvent::Character('\x08') => {
                         stack.pop();
-                        if cache {
-                            print!("\r");
-                            for i in 0..stack.len() {
-                                print!(" ");
-                            }
-                            print!(" \r");
-                            for i in 0..stack.len() {
-                                print!("{}", 0x1e as char);
-                            }
-                        } else {
+                        if !cache {
                             print!("\r{} \r{}",stack, stack);
                         }
 
@@ -94,29 +84,18 @@ pub fn get_input(cache : bool) -> String {
 
                     keyboard_layout::KeyEvent::Character(character) => {
                         stack.push(character);
-                        if cache {
-                            print!("{}", 0x1e as char);
-                        } else {
+                        if !cache {
                             print!("{}", character);
                         }
                         },
 
                     keyboard_layout::KeyEvent::SpecialKey(0) => {
                         stack.pop();
-                        if cache {
-                            print!("\r");
-                            for i in 0..stack.len() {
-                                print!(" ");
-                            }
-                            print!(" \r");
-                            for i in 0..stack.len() {
-                                print!("{}", 0x1e as char);
-                            }
-                        } else {
+                        if !cache {
                             print!("\r{} \r{}",stack, stack);
                         }
                         },
-                    keyboard_layout::KeyEvent::SpecialKey(key) => (),
+                    keyboard_layout::KeyEvent::SpecialKey(_) => (),
                 }
             },
 

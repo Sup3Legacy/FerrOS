@@ -5,10 +5,10 @@
 #![feature(wake_trait)]
 
 use core::panic::PanicInfo;
-use core::task::Poll;
+//use core::task::Poll;
 use bootloader::{BootInfo, entry_point};
-use x86_64::addr::{VirtAddr, VirtAddrNotValid};
-use x86_64::structures::paging::Translate;
+use x86_64::addr::VirtAddr;//, VirtAddrNotValid};
+//use x86_64::structures::paging::Translate;
 mod vga;
 use vga::_print_at;
 mod interrupts;
@@ -77,10 +77,10 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     keyboard::init();
     vga::init();
     println!("nom d'utilisateur :");
-    let utilisateur = keyboard::keyboard_interraction::get_input(false);
+    let _utilisateur = keyboard::keyboard_interraction::get_input(false);
     println!();
     println!("mot de passe : ");
-    let mpd = keyboard::keyboard_interraction::get_input(true);
+    let _mpd = keyboard::keyboard_interraction::get_input(true);
     println!();
     for i in 0..5 {
         println!("{}", i);
@@ -95,10 +95,8 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     }
     println!();
 
-    let ptr = 0xdeadbeaf as *mut u32;
-    //unsafe { *ptr = 42; }
 
-    let x = Box::new([0, 1]);
+    let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
     crate::_print_at(2, 2, "loul");
@@ -106,5 +104,4 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
     executor.run();
-    halt_loop();
 }

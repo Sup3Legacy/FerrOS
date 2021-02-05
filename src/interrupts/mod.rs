@@ -2,7 +2,7 @@
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::Cr2;
-use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
+use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 use pic8259_simple::ChainedPics;
 use spin;
 use lazy_static::lazy_static;
@@ -163,7 +163,7 @@ extern "x86-interrupt" fn page_fault_handler(_stack_frame : &mut InterruptStackF
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler (_stack_frame : &mut InterruptStackFrame) {
-    let mut keyboard = KEYBOARD.lock();
+    let _keyboard = KEYBOARD.lock();
     let mut port = Port::new(0x60);
     let scancode : u8 = unsafe {port.read()};
     crate::keyboard::add_scancode(scancode);

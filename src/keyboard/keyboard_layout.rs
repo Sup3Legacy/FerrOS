@@ -1,7 +1,8 @@
 //use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 
-pub struct Fr104Key;
+//pub struct Fr104Key;
 
+#[allow(dead_code)]
 pub struct KeyBoardStatus {
     maj : bool,
     shift_l : bool,
@@ -10,7 +11,7 @@ pub struct KeyBoardStatus {
     control : bool,
     alt : bool,
     fn_key : bool,
-    tableStatus : [bool; 128]
+    table_status : [bool; 128]
 
 }
 
@@ -24,6 +25,7 @@ pub enum KeyEvent {
     SpecialKey(u8)
 }
 
+#[allow(dead_code)]
 impl KeyBoardStatus {
     pub fn new() -> Self {
         KeyBoardStatus {
@@ -34,21 +36,21 @@ impl KeyBoardStatus {
             control : false,
             alt : false,
             fn_key : false,
-            tableStatus : [false; 128]
+            table_status : [false; 128]
         }
     }
 
-    pub fn shiftLD(&mut self) { self.shift_l = true }
-    pub fn shiftLU(&mut self) { self.shift_l = false}
-    pub fn shiftRD(&mut self) { self.shift_r = true }
-    pub fn shiftRU(&mut self) { self.shift_r = false}
-    pub fn altD(&mut self) {    self.alt = true     }
-    pub fn altU(&mut self) {    self.alt = false    }
+    pub fn shift_l_down(&mut self) { self.shift_l = true }
+    pub fn shift_l_up(&mut self) { self.shift_l = false}
+    pub fn shift_r_down(&mut self) { self.shift_r = true }
+    pub fn shift_r_up(&mut self) { self.shift_r = false}
+    pub fn alt_down(&mut self) {    self.alt = true     }
+    pub fn alt_up(&mut self) {    self.alt = false    }
     pub fn maj_s(&mut self) {    self.maj = !self.maj}
-    pub fn numLock(&mut self) { self.num_lock = !self.num_lock  }
-    pub fn fnKeyU(&mut self) {  self.fn_key = false }
-    pub fn fnKeyD(&mut self) {  self.fn_key = true  }
-    pub fn controlS(&mut self) {self.control = !self.control}
+    pub fn num_lock(&mut self) { self.num_lock = !self.num_lock  }
+    pub fn fn_up(&mut self) {  self.fn_key = false }
+    pub fn fn_down(&mut self) {  self.fn_key = true  }
+    pub fn control_s(&mut self) {self.control = !self.control}
 
     pub fn maj(&self) -> bool { self.maj || self.shift_l || self.shift_r    }
     pub fn num(&self) -> bool { self.num_lock || self.shift_l || self.shift_r   }
@@ -57,16 +59,16 @@ impl KeyBoardStatus {
     pub fn alt(&self) -> bool { self.alt    }
 
     pub fn process(&mut self, key : u8) -> Effect {
-        if (key > (127 as u8)) {
-            self.tableStatus[(key-128) as usize] = false;
+        if key > (127 as u8) {
+            self.table_status[(key-128) as usize] = false;
             match convert(key - 128) {
-                Key::ShiftR => self.shiftRU(),
-                Key::ShiftL => self.shiftLU(),
+                Key::ShiftR => self.shift_r_up(),
+                Key::ShiftL => self.shift_l_up(),
                 _ => ()
             };
             Effect::Nothing
-        } else if (!self.tableStatus[key as usize]) {
-            self.tableStatus[key as usize] = true;
+        } else if !self.table_status[key as usize] {
+            self.table_status[key as usize] = true;
             match convert(key) {
                 Key::Key1 => {
                     if self.num() {Effect::Value(KeyEvent::Character('1'))
@@ -121,13 +123,6 @@ impl KeyBoardStatus {
                     if self.num() {Effect::Value(KeyEvent::Character('8'))
                     } else {
                         Effect::Value(KeyEvent::Character('!'))
-                    }
-                },
-
-                Key::Key9 => {
-                    if self.num() {Effect::Value(KeyEvent::Character('9'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('ç'))
                     }
                 },
 
@@ -303,12 +298,12 @@ impl KeyBoardStatus {
                 },
 
                 Key::ShiftR => {
-                    self.shiftRD();
+                    self.shift_r_down();
                     Effect::Nothing
                 },
 
                 Key::ShiftL => {
-                    self.shiftLD();
+                    self.shift_l_down();
                     Effect::Nothing
                 },
 
@@ -335,8 +330,8 @@ impl KeyBoardStatus {
 }
 
 fn convert(key : u8) -> Key {
-    if (key < 128) {
-        TableCode[key as usize]
+    if key < 128 {
+        TABLE_CODE[key as usize]
     } else {
         panic!("Should not occur Keyboard_Layout")
     }
@@ -346,7 +341,7 @@ fn convert(key : u8) -> Key {
 
 
 
-static TableCode : [Key; 128] = [
+static TABLE_CODE : [Key; 128] = [
 Key::Unknown, Key::Unknown, Key::Key1, Key::Key2, Key::Key3, Key::Key4, Key::Key5, Key::Key6, Key::Key7, Key::Key8,
 Key::Key9, Key::Key0, Key::UpZero, Key::Min, Key::BackSpace, Key::Tab, Key::LetA, Key::LetZ, Key::LetE, Key::LetR,
 Key::LetT, Key::LetY, Key::LetU, Key::LetI, Key::LetO, Key::LetP, Key::Accent, Key::Dolar, Key::Enter, Key::Unknown,

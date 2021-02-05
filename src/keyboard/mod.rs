@@ -1,4 +1,4 @@
-use crossbeam_queue::{ArrayQueue, PopError};
+use crossbeam_queue::{ArrayQueue, PopError, PushError};
 use conquer_once::spin::OnceCell;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -33,6 +33,7 @@ pub fn add_scancode(scancode : u8) {
     }
 }
 
+#[allow(unused_must_use)]
 pub fn process() {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if let Ok(queue2) = KEY_QUEUE.try_get() {
@@ -41,7 +42,12 @@ pub fn process() {
                 Ok(key) => {
                     match KEYBOARD_STATUS.lock().process(key) {
                         keyboard_layout::Effect::Nothing => (),
-                        keyboard_layout::Effect::Value(v) => {queue2.push(v);}
+                        keyboard_layout::Effect::Value(mut v) => {
+                            while let Err(PushError(v2)) = queue2.push(v) {
+                                queue2.pop();
+                                v = v2;
+                            }
+                        }
                     }
                 }
             }

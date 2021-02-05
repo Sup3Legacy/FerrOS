@@ -1,6 +1,6 @@
-use alloc::alloc::{GlobalAlloc, Layout};
+//use alloc::alloc::{GlobalAlloc, Layout};
 use x86_64::{addr::VirtAddr, structures::paging::{FrameAllocator, Page, PageTableFlags, Size4KiB, Mapper, mapper::MapToError}};
-use core::ptr::null_mut;
+//use core::ptr::null_mut;
 use linked_list_allocator::LockedHeap; //Will be removed in favor of a custom allocator in the future
 
 pub const HEAP_START : usize = 0x4444_4444_0000;
