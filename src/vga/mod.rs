@@ -106,7 +106,7 @@ pub struct CHAR {
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct BUFFER {
-    characters : [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT]
+    characters : [CHAR; BUFFER_WIDTH * BUFFER_HEIGHT]
 }
 
 pub struct Screen {
@@ -124,10 +124,14 @@ impl Screen {
             b'\n' => self.new_line(),
             b'\r' => self.col_pos = 0,
             _ => {
-                    if self.col_pos >= BUFFER_WIDTH {
-                        self.new_line();
+                    if self.col_pos + self.row_pos * BUFFER_WIDTH == BUFFER_WIDTH * BUFFER_HEIGHT - 1 {
+                        if self.row_pos == 0 {
+                            self.new_line();
+                            panic!("to many words");
+                        }
+                        self.scroll_up();
                     }
-                    self.buffer.characters[self.row_pos][self.col_pos] = CHAR {code : byte, color : self.color};
+                    self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {code : byte, color : self.color};
                     self.col_pos += 1;
             }
         };
@@ -148,9 +152,9 @@ impl Screen {
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
     fn new_line(&mut self) -> () {
+        self.row_pos += 1 + (self.col_pos/BUFFER_WIDTH);
         self.col_pos = 0;
-        self.row_pos += 1;
-        if self.row_pos >= BUFFER_HEIGHT {
+        while self.row_pos >= BUFFER_HEIGHT {
             self.scroll_up();
             self.clear_bottom();
             self.row_pos = BUFFER_HEIGHT - 1;
@@ -160,7 +164,7 @@ impl Screen {
     fn scroll_up(&mut self) -> () {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                self.buffer.characters[row - 1][col] = self.buffer.characters[row][col];
+                self.buffer.characters[(row-1) * BUFFER_WIDTH + col] = self.buffer.characters[row * BUFFER_WIDTH + col];
             }
         }
     }
@@ -170,7 +174,7 @@ impl Screen {
             color : self.color
         };
         for col in 0..BUFFER_WIDTH {
-            self.buffer.characters[BUFFER_HEIGHT - 1][col] = blank;
+            self.buffer.characters[(BUFFER_HEIGHT - 1)*BUFFER_WIDTH + col] = blank;
         }
     }
     pub fn write_string(&mut self, s: &str) {
@@ -201,7 +205,7 @@ impl Screen {
         };
         for row in 0..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                self.buffer.characters[row][col] = blank;
+                self.buffer.characters[row * BUFFER_WIDTH + col] = blank;
             }
         }
         self.col_pos = 0;

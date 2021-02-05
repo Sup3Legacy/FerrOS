@@ -74,15 +74,12 @@ pub fn get_input(cache : bool) -> [char; TAILLE] {
                 match a {
                     DecodedKey::Unicode('\n') => {
                         if stack.fin != 0 {
-                        let sortie = stack.sortie();
-                        while stack.debut != stack.fin {
-                            stack.print_first(cache);
-                        };
                         println!("");
-                        break sortie}
+                        break stack.sortie()}
                         },
 
                     DecodedKey::Unicode('\x08') => {
+                        print!("\r");
                         stack.pop_end();
                         for i in 1..TAILLE {
                             print!(" ")
@@ -97,10 +94,10 @@ pub fn get_input(cache : bool) -> [char; TAILLE] {
                         stack.debut = deb;
                         stack.fin = fin;
                         stack.boucle = boucle;
-                        print!("\r")
                     },
 
                     DecodedKey::Unicode(character) => {
+                        print!("\r");
                         stack.push(character);
                         let deb = stack.debut;
                         let fin = stack.fin;
@@ -111,7 +108,6 @@ pub fn get_input(cache : bool) -> [char; TAILLE] {
                         stack.debut = deb;
                         stack.fin = fin;
                         stack.boucle = boucle;
-                        print!("\r")
                         },
                     DecodedKey::RawKey(KeyCode::Delete) => stack.pop_end(),
                     DecodedKey::RawKey(key) => (),
