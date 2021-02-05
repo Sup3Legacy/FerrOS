@@ -1,9 +1,10 @@
-use pc_keyboard::{Keyboard, Modifiers, KeyCode, DecodedKey};
+//use pc_keyboard::{Keyboard, Modifiers, KeyCode, DecodedKey};
+use crossbeam_queue::{ArrayQueue, PopError};
 use alloc::boxed::Box;
 use lazy_static::lazy_static;
 use alloc::string::String;
 use crate::{println, print};
-
+use crate::keyboard::keyboard_layout;
 const TAILLE: usize = 80;
 
 struct DoubleFile {
@@ -65,16 +66,16 @@ impl DoubleFile {
 pub fn get_input(cache : bool) -> String {
     let mut stack = String::new();
     loop {
-        match crate::keyboard::get_top_value() {
+        match {crate::keyboard::get_top_value()} {
             Ok(a) => {
                 match a {
-                    DecodedKey::Unicode('\n') => {
+                    keyboard_layout::KeyEvent::Character('\n') => {
                         if stack.len() != 0 {
                         println!("");
                         break stack}
                         },
 
-                    DecodedKey::Unicode('\x08') => {
+                    keyboard_layout::KeyEvent::Character('\x08') => {
                         stack.pop();
                         if cache {
                             print!("\r");
@@ -91,7 +92,7 @@ pub fn get_input(cache : bool) -> String {
 
                     },
 
-                    DecodedKey::Unicode(character) => {
+                    keyboard_layout::KeyEvent::Character(character) => {
                         stack.push(character);
                         if cache {
                             print!("{}", 0x1e as char);
@@ -100,7 +101,7 @@ pub fn get_input(cache : bool) -> String {
                         }
                         },
 
-                    DecodedKey::RawKey(KeyCode::Delete) => {
+                    keyboard_layout::KeyEvent::SpecialKey(0) => {
                         stack.pop();
                         if cache {
                             print!("\r");
@@ -115,7 +116,7 @@ pub fn get_input(cache : bool) -> String {
                             print!("\r{} \r{}",stack, stack);
                         }
                         },
-                    DecodedKey::RawKey(key) => (),
+                    keyboard_layout::KeyEvent::SpecialKey(key) => (),
                 }
             },
 

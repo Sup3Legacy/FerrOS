@@ -1,7 +1,394 @@
-use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
+//use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 
 pub struct Fr104Key;
 
+pub struct KeyBoardStatus {
+    maj : bool,
+    shift_l : bool,
+    shift_r : bool,
+    num_lock : bool,
+    control : bool,
+    alt : bool,
+    fn_key : bool,
+    tableStatus : [bool; 128]
+
+}
+
+pub enum Effect {
+    Nothing,
+    Value(KeyEvent)
+}
+
+pub enum KeyEvent {
+    Character(char),
+    SpecialKey(u8)
+}
+
+impl KeyBoardStatus {
+    pub fn new() -> Self {
+        KeyBoardStatus {
+            maj : false,
+            shift_l : false,
+            shift_r : false,
+            num_lock : false,
+            control : false,
+            alt : false,
+            fn_key : false,
+            tableStatus : [false; 128]
+        }
+    }
+
+    pub fn shiftLD(&mut self) { self.shift_l = true }
+    pub fn shiftLU(&mut self) { self.shift_l = false}
+    pub fn shiftRD(&mut self) { self.shift_r = true }
+    pub fn shiftRU(&mut self) { self.shift_r = false}
+    pub fn altD(&mut self) {    self.alt = true     }
+    pub fn altU(&mut self) {    self.alt = false    }
+    pub fn maj_s(&mut self) {    self.maj = !self.maj}
+    pub fn numLock(&mut self) { self.num_lock = !self.num_lock  }
+    pub fn fnKeyU(&mut self) {  self.fn_key = false }
+    pub fn fnKeyD(&mut self) {  self.fn_key = true  }
+    pub fn controlS(&mut self) {self.control = !self.control}
+
+    pub fn maj(&self) -> bool { self.maj || self.shift_l || self.shift_r    }
+    pub fn num(&self) -> bool { self.num_lock || self.shift_l || self.shift_r   }
+    pub fn function(&self) -> bool {  self.fn_key }
+    pub fn shift(&self) -> bool {   self.shift_r || self.shift_l    }
+    pub fn alt(&self) -> bool { self.alt    }
+
+    pub fn process(&mut self, key : u8) -> Effect {
+        if (key > (127 as u8)) {
+            self.tableStatus[(key-128) as usize] = false;
+            match convert(key - 128) {
+                Key::ShiftR => self.shiftRU(),
+                Key::ShiftL => self.shiftLU(),
+                _ => ()
+            };
+            Effect::Nothing
+        } else if (!self.tableStatus[key as usize]) {
+            self.tableStatus[key as usize] = true;
+            match convert(key) {
+                Key::Key1 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('1'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('&'))
+                    }
+                },
+
+                Key::Key2 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('2'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('é'))
+                    }
+                },
+
+                Key::Key3 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('3'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('"'))
+                    }
+                },
+                
+                Key::Key4 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('4'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('\''))
+                    }
+                },
+
+                Key::Key5 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('5'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('('))
+                    }
+                },
+
+                Key::Key6 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('6'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('§'))
+                    }
+                },
+
+                Key::Key7 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('7'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('è'))
+                    }
+                },
+
+                Key::Key8 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('8'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('!'))
+                    }
+                },
+
+                Key::Key9 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('9'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('ç'))
+                    }
+                },
+
+                Key::Key9 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('9'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('ç'))
+                    }
+                },
+
+                Key::Key0 => {
+                    if self.num() {Effect::Value(KeyEvent::Character('0'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('à'))
+                    }
+                },
+
+                Key::LetA => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('A'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('a'))
+                    }
+                },
+                Key::LetB => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('B'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('b'))
+                    }
+                },
+                Key::LetC => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('C'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('c'))
+                    }
+                },
+                Key::LetD => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('D'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('d'))
+                    }
+                },
+                Key::LetE => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('E'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('e'))
+                    }
+                },
+                Key::LetF => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('F'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('f'))
+                    }
+                },
+                Key::LetG => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('G'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('g'))
+                    }
+                },
+                Key::LetH => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('H'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('h'))
+                    }
+                },
+                Key::LetI => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('I'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('i'))
+                    }
+                },
+                Key::LetJ => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('J'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('j'))
+                    }
+                },
+                Key::LetK => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('K'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('k'))
+                    }
+                },
+                Key::LetL => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('L'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('l'))
+                    }
+                },
+                Key::LetM => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('M'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('m'))
+                    }
+                },
+                Key::LetN => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('N'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('n'))
+                    }
+                },
+                Key::LetO => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('O'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('o'))
+                    }
+                },
+                Key::LetP => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('P'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('p'))
+                    }
+                },
+                Key::LetQ => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('Q'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('q'))
+                    }
+                },
+                Key::LetR => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('R'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('r'))
+                    }
+                },
+                Key::LetS => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('S'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('s'))
+                    }
+                },
+                Key::LetT => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('T'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('t'))
+                    }
+                },
+                Key::LetU => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('U'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('u'))
+                    }
+                },
+                Key::LetV => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('V'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('v'))
+                    }
+                },
+                Key::LetW => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('W'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('w'))
+                    }
+                },
+                Key::LetX => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('X'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('x'))
+                    }
+                },
+                Key::LetY => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('Y'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('y'))
+                    }
+                },
+                Key::LetZ => {
+                    if self.maj() {Effect::Value(KeyEvent::Character('Z'))
+                    } else {
+                        Effect::Value(KeyEvent::Character('z'))
+                    }
+                },
+
+                Key::ShiftR => {
+                    self.shiftRD();
+                    Effect::Nothing
+                },
+
+                Key::ShiftL => {
+                    self.shiftLD();
+                    Effect::Nothing
+                },
+
+                Key::Maj => {
+                    self.maj_s();
+                    Effect::Nothing
+                },
+
+                Key::Enter => {
+                    Effect::Value(KeyEvent::Character('\n'))
+                }
+
+                Key::BackSpace => {
+                    Effect::Value(KeyEvent::SpecialKey(0))
+                }
+                _ => Effect::Nothing
+            }
+        } else {
+            Effect::Nothing
+        }
+
+    }
+
+}
+
+fn convert(key : u8) -> Key {
+    if (key < 128) {
+        TableCode[key as usize]
+    } else {
+        panic!("Should not occur Keyboard_Layout")
+    }
+}
+
+
+
+
+
+static TableCode : [Key; 128] = [
+Key::Unknown, Key::Unknown, Key::Key1, Key::Key2, Key::Key3, Key::Key4, Key::Key5, Key::Key6, Key::Key7, Key::Key8,
+Key::Key9, Key::Key0, Key::UpZero, Key::Min, Key::BackSpace, Key::Tab, Key::LetA, Key::LetZ, Key::LetE, Key::LetR,
+Key::LetT, Key::LetY, Key::LetU, Key::LetI, Key::LetO, Key::LetP, Key::Accent, Key::Dolar, Key::Enter, Key::Unknown,
+Key::LetQ, Key::LetS, Key::LetD, Key::LetF, Key::LetG, Key::LetH, Key::LetJ, Key::LetK, Key::LetL, Key::LetM,
+Key::Pourcent, Key::Ineg, Key::ShiftL, Key::Tild, Key::LetW, Key::LetX, Key::LetC, Key::LetV, Key::LetB, Key::LetN,
+Key::Comma, Key::Dot, Key::Slash, Key::Equal, Key::ShiftR, Key::Unknown, Key::Unknown, Key::Space, Key::Maj, Key::Unknown,
+Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
+Key::Unknown, Key::ArrowL, Key::Unknown, Key::Unknown, Key::Unknown, Key::ArrowU, Key::Unknown, Key::ArrowD, Key::Unknown, Key::Unknown,
+Key::ArrowR, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
+Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
+Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
+Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
+Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown];
+
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Key {
+    Key1 = 2, Key2 = 3, Key3 = 4, Key4 = 5, Key5 = 6, Key6 = 7, Key7 = 8, Key8 = 9, Key9 = 10, Key0 = 11, UpZero = 12, Min = 13,
+    BackSpace = 14,
+
+    Tab = 15, LetA = 16, LetZ = 17, LetE = 18, LetR = 19, LetT = 20, LetY = 21, LetU = 22, LetI = 23, LetO = 24, LetP = 25,
+    Accent = 26, Dolar = 27, Enter = 28,
+    
+    Maj = 58, LetQ = 30, LetS = 31, LetD = 32, LetF = 33, LetG = 34, LetH = 35, LetJ = 36, LetK = 37, LetL = 38, LetM = 39,
+    Pourcent = 40, Tild = 43,
+
+    ShiftL = 42, Ineg = 41, LetW = 44, LetX = 45, LetC = 46, LetV = 47, LetB = 48, LetN = 49, Comma = 50, Dot = 51, Slash = 52,
+    Equal = 53, ShiftR = 54,
+
+    Space = 57,
+    
+    ArrowU = 75,
+    ArrowD = 77,
+    ArrowL = 72,
+    ArrowR = 80,
+    Unknown = 0,
+
+}
+
+
+/*
 impl KeyboardLayout for Fr104Key {
     pub fn map_keycode(keycode: KeyCode, modifiers: &Modifiers) -> DecodedKey {
         match keycode {
@@ -421,3 +808,4 @@ impl KeyboardLayout for Fr104Key {
         }
     }
 }
+*/
