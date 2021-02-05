@@ -76,18 +76,45 @@ pub fn get_input(cache : bool) -> String {
 
                     DecodedKey::Unicode('\x08') => {
                         stack.pop();
-                        print!("\r{} \r{}",stack, stack);
+                        if cache {
+                            print!("\r");
+                            for i in 0..stack.len() {
+                                print!(" ");
+                            }
+                            print!(" \r");
+                            for i in 0..stack.len() {
+                                print!("{}", 0x1e as char);
+                            }
+                        } else {
+                            print!("\r{} \r{}",stack, stack);
+                        }
 
                     },
 
                     DecodedKey::Unicode(character) => {
                         stack.push(character);
-                        print!("\r{}",stack);
+                        if cache {
+                            print!("{}", 0x1e as char);
+                        } else {
+                            print!("{}", character);
+                        }
                         },
+
                     DecodedKey::RawKey(KeyCode::Delete) => {
                         stack.pop();
-                        print!("\r{} \r{}",stack, stack);
-                    },
+                        if cache {
+                            print!("\r");
+                            for i in 0..stack.len() {
+                                print!(" ");
+                            }
+                            print!(" \r");
+                            for i in 0..stack.len() {
+                                print!("{}", 0x1e as char);
+                            }
+                        } else {
+                            print!("\r{} \r{}",stack, stack);
+                        }
+                        },
                     DecodedKey::RawKey(key) => (),
                 }
             },

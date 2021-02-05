@@ -22,11 +22,6 @@ pub fn add_scancode(scancode : DecodedKey) {
     } else {
         println!("Scancode queue uninitialized.");
         ScancodeStream::new();
-        if let Ok(queue) = SCANCODE_QUEUE.try_get() {
-            if let Err(_) = queue.push(scancode) {
-                println!("Scancode queue full; dropping keyboard input.");
-            }
-        }
     }
 }
 
@@ -34,6 +29,11 @@ pub fn get_top_value() -> Result<DecodedKey, PopError> {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         queue.pop()
     } else {Err(PopError)}
+}
+
+pub fn init() {
+    println!("Scancode queue initialized.");
+    ScancodeStream::new();
 }
 
 impl ScancodeStream {

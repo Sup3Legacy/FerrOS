@@ -47,7 +47,6 @@ pub fn long_halt(i : usize) {
 pub fn init() {
     interrupts::init();
     gdt::init();
-    vga::init();
 }
 
 async fn task_1() {
@@ -74,7 +73,10 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
         memory::BootInfoAllocator::init(&_boot_info.memory_map)
     };
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
-    println!("nom d'utilisateur : ");
+
+    keyboard::init();
+    vga::init();
+    println!("nom d'utilisateur :");
     let utilisateur = keyboard::keyboard_interraction::get_input(false);
     println!();
     println!("mot de passe : ");

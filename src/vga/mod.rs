@@ -180,19 +180,21 @@ impl Screen {
         }
     }
     pub fn write_string(&mut self, s: &str) {
+
         for byte in s.bytes() {
             match byte {
                 0x20..=0x7e | b'\n' | b'\r' => self.write_byte(byte),
                 _ => self.write_byte(0xfe),
             }
-
         }
     }
+
     pub fn _write_string_color(&mut self, s : &str, col : ColorCode) -> () {
         let old_color = self.color;
         self.set_color(col);
         self.write_string(s);
         self.set_color(old_color);
+        println!("s = {}", s.bytes().len());
     }
     fn _new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
         Screen {col_pos : 0, row_pos : 0, color : color, buffer : buffer}
