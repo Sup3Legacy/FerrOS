@@ -74,7 +74,7 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
     };
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
     println!("nom d'utilisateur : ");
-    let utilisateur:[char; 80] = keyboard::keyboard_interraction::get_input(false);
+    let utilisateur = keyboard::keyboard_interraction::get_input(false);
     println!();
     println!("mot de passe : ");
     let mpd = keyboard::keyboard_interraction::get_input(true);

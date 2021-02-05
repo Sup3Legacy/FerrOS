@@ -1,6 +1,7 @@
 use pc_keyboard::{Keyboard, Modifiers, KeyCode, DecodedKey};
 use alloc::boxed::Box;
 use lazy_static::lazy_static;
+use alloc::string::String;
 use crate::{println, print};
 
 const TAILLE: usize = 80;
@@ -61,55 +62,32 @@ impl DoubleFile {
     }
 }
 
-pub fn get_input(cache : bool) -> [char; TAILLE] {
-    let mut stack = DoubleFile {
-        debut : 0,
-        fin : 0,
-        tableau : [' '; TAILLE],
-        boucle : false
-    };
+pub fn get_input(cache : bool) -> String {
+    let mut stack = String::new();
     loop {
         match crate::keyboard::get_top_value() {
             Ok(a) => {
                 match a {
                     DecodedKey::Unicode('\n') => {
-                        if stack.fin != 0 {
+                        if stack.len() != 0 {
                         println!("");
-                        break stack.sortie()}
+                        break stack}
                         },
 
                     DecodedKey::Unicode('\x08') => {
-                        print!("\r");
-                        stack.pop_end();
-                        for i in 1..TAILLE {
-                            print!(" ")
-                        };
-                        print!("\r");
-                        let deb = stack.debut;
-                        let fin = stack.fin;
-                        let boucle = stack.boucle;
-                        while stack.debut != stack.fin {
-                            stack.print_first(cache);
-                        };
-                        stack.debut = deb;
-                        stack.fin = fin;
-                        stack.boucle = boucle;
+                        stack.pop();
+                        print!("\r{} \r{}",stack, stack);
+
                     },
 
                     DecodedKey::Unicode(character) => {
-                        print!("\r");
                         stack.push(character);
-                        let deb = stack.debut;
-                        let fin = stack.fin;
-                        let boucle = stack.boucle;
-                        while stack.debut != stack.fin {
-                            stack.print_first(cache);
-                        };
-                        stack.debut = deb;
-                        stack.fin = fin;
-                        stack.boucle = boucle;
+                        print!("\r{}",stack);
                         },
-                    DecodedKey::RawKey(KeyCode::Delete) => stack.pop_end(),
+                    DecodedKey::RawKey(KeyCode::Delete) => {
+                        stack.pop();
+                        print!("\r{} \r{}",stack, stack);
+                    },
                     DecodedKey::RawKey(key) => (),
                 }
             },
