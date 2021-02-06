@@ -156,157 +156,157 @@ impl KeyBoardStatus {
                     }
                 },
 
-                Key::LetA => {
+                Key::Let0_0 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('A'))
                     } else {
                         Effect::Value(KeyEvent::Character('a'))
                     }
                 },
-                Key::LetB => {
+                Key::Let2_4 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('B'))
                     } else {
                         Effect::Value(KeyEvent::Character('b'))
                     }
                 },
-                Key::LetC => {
+                Key::Let2_2 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('C'))
                     } else {
                         Effect::Value(KeyEvent::Character('c'))
                     }
                 },
-                Key::LetD => {
+                Key::Let1_2 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('D'))
                     } else {
                         Effect::Value(KeyEvent::Character('d'))
                     }
                 },
-                Key::LetE => {
+                Key::Let0_2 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('E'))
                     } else {
                         Effect::Value(KeyEvent::Character('e'))
                     }
                 },
-                Key::LetF => {
+                Key::Let1_3 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('F'))
                     } else {
                         Effect::Value(KeyEvent::Character('f'))
                     }
                 },
-                Key::LetG => {
+                Key::Let1_4 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('G'))
                     } else {
                         Effect::Value(KeyEvent::Character('g'))
                     }
                 },
-                Key::LetH => {
+                Key::Let1_5 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('H'))
                     } else {
                         Effect::Value(KeyEvent::Character('h'))
                     }
                 },
-                Key::LetI => {
+                Key::Let0_7 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('I'))
                     } else {
                         Effect::Value(KeyEvent::Character('i'))
                     }
                 },
-                Key::LetJ => {
+                Key::Let1_6 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('J'))
                     } else {
                         Effect::Value(KeyEvent::Character('j'))
                     }
                 },
-                Key::LetK => {
+                Key::Let1_7 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('K'))
                     } else {
                         Effect::Value(KeyEvent::Character('k'))
                     }
                 },
-                Key::LetL => {
+                Key::Let1_8 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('L'))
                     } else {
                         Effect::Value(KeyEvent::Character('l'))
                     }
                 },
-                Key::LetM => {
+                Key::Let1_9 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('M'))
                     } else {
                         Effect::Value(KeyEvent::Character('m'))
                     }
                 },
-                Key::LetN => {
+                Key::Let2_5 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('N'))
                     } else {
                         Effect::Value(KeyEvent::Character('n'))
                     }
                 },
-                Key::LetO => {
+                Key::Let0_8 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('O'))
                     } else {
                         Effect::Value(KeyEvent::Character('o'))
                     }
                 },
-                Key::LetP => {
+                Key::Let0_9 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('P'))
                     } else {
                         Effect::Value(KeyEvent::Character('p'))
                     }
                 },
-                Key::LetQ => {
+                Key::Let1_0 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('Q'))
                     } else {
                         Effect::Value(KeyEvent::Character('q'))
                     }
                 },
-                Key::LetR => {
+                Key::Let0_3 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('R'))
                     } else {
                         Effect::Value(KeyEvent::Character('r'))
                     }
                 },
-                Key::LetS => {
+                Key::Let1_1 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('S'))
                     } else {
                         Effect::Value(KeyEvent::Character('s'))
                     }
                 },
-                Key::LetT => {
+                Key::Let0_4 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('T'))
                     } else {
                         Effect::Value(KeyEvent::Character('t'))
                     }
                 },
-                Key::LetU => {
+                Key::Let0_6 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('U'))
                     } else {
                         Effect::Value(KeyEvent::Character('u'))
                     }
                 },
-                Key::LetV => {
+                Key::Let2_3 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('V'))
                     } else {
                         Effect::Value(KeyEvent::Character('v'))
                     }
                 },
-                Key::LetW => {
+                Key::Let2_0 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('W'))
                     } else {
                         Effect::Value(KeyEvent::Character('w'))
                     }
                 },
-                Key::LetX => {
+                Key::Let2_1 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('X'))
                     } else {
                         Effect::Value(KeyEvent::Character('x'))
                     }
                 },
-                Key::LetY => {
+                Key::Let0_5 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('Y'))
                     } else {
                         Effect::Value(KeyEvent::Character('y'))
                     }
                 },
-                Key::LetZ => {
+                Key::Let0_1 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('Z'))
                     } else {
                         Effect::Value(KeyEvent::Character('z'))
@@ -427,164 +427,164 @@ impl KeyBoardStatus {
                     }
                 },
 
-                Key::LetA => {
+                Key::Let0_0 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('Q'))
                     } else {
                         Effect::Value(KeyEvent::Character('q'))
                     }
                 },
-                Key::LetB => {
+                Key::Let2_4 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('B'))
                     } else {
                         Effect::Value(KeyEvent::Character('b'))
                     }
                 },
-                Key::LetC => {
+                Key::Let2_2 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('C'))
                     } else {
                         Effect::Value(KeyEvent::Character('c'))
                     }
                 },
-                Key::LetD => {
+                Key::Let1_2 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('D'))
                     } else {
                         Effect::Value(KeyEvent::Character('d'))
                     }
                 },
-                Key::LetE => {
+                Key::Let0_2 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('E'))
                     } else {
                         Effect::Value(KeyEvent::Character('e'))
                     }
                 },
-                Key::LetF => {
+                Key::Let1_3 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('F'))
                     } else {
                         Effect::Value(KeyEvent::Character('f'))
                     }
                 },
-                Key::LetG => {
+                Key::Let1_4 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('G'))
                     } else {
                         Effect::Value(KeyEvent::Character('g'))
                     }
                 },
-                Key::LetH => {
+                Key::Let1_5 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('H'))
                     } else {
                         Effect::Value(KeyEvent::Character('h'))
                     }
                 },
-                Key::LetI => {
+                Key::Let0_7 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('I'))
                     } else {
                         Effect::Value(KeyEvent::Character('i'))
                     }
                 },
-                Key::LetJ => {
+                Key::Let1_6 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('J'))
                     } else {
                         Effect::Value(KeyEvent::Character('j'))
                     }
                 },
-                Key::LetK => {
+                Key::Let1_7 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('K'))
                     } else {
                         Effect::Value(KeyEvent::Character('k'))
                     }
                 },
-                Key::LetL => {
+                Key::Let1_8 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('L'))
                     } else {
                         Effect::Value(KeyEvent::Character('l'))
                     }
                 },
-                Key::LetM => {
+                Key::Let1_9 => {
                     if self.maj() {Effect::Value(KeyEvent::Character(':'))
                     } else {
                         Effect::Value(KeyEvent::Character(';'))
                     }
                 },
-                Key::LetN => {
+                Key::Let2_5 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('N'))
                     } else {
                         Effect::Value(KeyEvent::Character('n'))
                     }
                 },
-                Key::LetO => {
+                Key::Let0_8 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('O'))
                     } else {
                         Effect::Value(KeyEvent::Character('o'))
                     }
                 },
-                Key::LetP => {
+                Key::Let0_9 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('P'))
                     } else {
                         Effect::Value(KeyEvent::Character('p'))
                     }
                 },
-                Key::LetQ => {
+                Key::Let1_0 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('A'))
                     } else {
                         Effect::Value(KeyEvent::Character('a'))
                     }
                 },
-                Key::LetR => {
+                Key::Let0_3 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('R'))
                     } else {
                         Effect::Value(KeyEvent::Character('r'))
                     }
                 },
-                Key::LetS => {
+                Key::Let1_1 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('S'))
                     } else {
                         Effect::Value(KeyEvent::Character('s'))
                     }
                 },
-                Key::LetT => {
+                Key::Let0_4 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('T'))
                     } else {
                         Effect::Value(KeyEvent::Character('t'))
                     }
                 },
-                Key::LetU => {
+                Key::Let0_6 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('U'))
                     } else {
                         Effect::Value(KeyEvent::Character('u'))
                     }
                 },
-                Key::LetV => {
+                Key::Let2_3 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('V'))
                     } else {
                         Effect::Value(KeyEvent::Character('v'))
                     }
                 },
-                Key::LetW => {
+                Key::Let2_0 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('Z'))
                     } else {
                         Effect::Value(KeyEvent::Character('z'))
                     }
                 },
-                Key::LetX => {
+                Key::Let2_1 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('X'))
                     } else {
                         Effect::Value(KeyEvent::Character('x'))
                     }
                 },
-                Key::LetY => {
+                Key::Let0_5 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('Y'))
                     } else {
                         Effect::Value(KeyEvent::Character('y'))
                     }
                 },
-                Key::LetZ => {
+                Key::Let0_1 => {
                     if self.maj() {Effect::Value(KeyEvent::Character('W'))
                     } else {
                         Effect::Value(KeyEvent::Character('w'))
                     }
                 },
 
-                Key::Comma => {
+                Key::Let2_6 => {
                     if self.maj() {
                         Effect::Value(KeyEvent::Character('M'))
                     } else {
@@ -638,11 +638,11 @@ fn convert(key : u8) -> Key {
 
 static TABLE_CODE : [Key; 128] = [
 Key::Unknown, Key::Unknown, Key::Key1, Key::Key2, Key::Key3, Key::Key4, Key::Key5, Key::Key6, Key::Key7, Key::Key8,
-Key::Key9, Key::Key0, Key::UpZero, Key::Min, Key::BackSpace, Key::Tab, Key::LetA, Key::LetZ, Key::LetE, Key::LetR,
-Key::LetT, Key::LetY, Key::LetU, Key::LetI, Key::LetO, Key::LetP, Key::Accent, Key::Dolar, Key::Enter, Key::Unknown,
-Key::LetQ, Key::LetS, Key::LetD, Key::LetF, Key::LetG, Key::LetH, Key::LetJ, Key::LetK, Key::LetL, Key::LetM,
-Key::Pourcent, Key::Ineg, Key::ShiftL, Key::Tild, Key::LetW, Key::LetX, Key::LetC, Key::LetV, Key::LetB, Key::LetN,
-Key::Comma, Key::Dot, Key::Slash, Key::Equal, Key::ShiftR, Key::Unknown, Key::Unknown, Key::Space, Key::Maj, Key::Unknown,
+Key::Key9, Key::Key0, Key::UpZero, Key::Min, Key::BackSpace, Key::Tab, Key::Let0_0, Key::Let0_1, Key::Let0_2, Key::Let0_3,
+Key::Let0_4, Key::Let0_5, Key::Let0_6, Key::Let0_7, Key::Let0_8, Key::Let0_9, Key::Accent, Key::Dolar, Key::Enter, Key::Unknown,
+Key::Let1_0, Key::Let1_1, Key::Let1_2, Key::Let1_3, Key::Let1_4, Key::Let1_5, Key::Let1_6, Key::Let1_7, Key::Let1_8, Key::Let1_9,
+Key::Pourcent, Key::Ineg, Key::ShiftL, Key::Tild, Key::Let2_0, Key::Let2_1, Key::Let2_2, Key::Let2_3, Key::Let2_4, Key::Let2_5,
+Key::Let2_6, Key::Dot, Key::Slash, Key::Equal, Key::ShiftR, Key::Unknown, Key::Unknown, Key::Space, Key::Maj, Key::Unknown,
 Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
 Key::Unknown, Key::ArrowL, Key::Unknown, Key::Unknown, Key::Unknown, Key::ArrowU, Key::Unknown, Key::ArrowD, Key::Unknown, Key::Unknown,
 Key::ArrowR, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown, Key::Unknown,
@@ -658,13 +658,13 @@ pub enum Key {
     Key1 = 2, Key2 = 3, Key3 = 4, Key4 = 5, Key5 = 6, Key6 = 7, Key7 = 8, Key8 = 9, Key9 = 10, Key0 = 11, UpZero = 12, Min = 13,
     BackSpace = 14,
 
-    Tab = 15, LetA = 16, LetZ = 17, LetE = 18, LetR = 19, LetT = 20, LetY = 21, LetU = 22, LetI = 23, LetO = 24, LetP = 25,
+    Tab = 15, Let0_0 = 16, Let0_1 = 17, Let0_2 = 18, Let0_3 = 19, Let0_4 = 20, Let0_5 = 21, Let0_6 = 22, Let0_7 = 23, Let0_8 = 24, Let0_9 = 25,
     Accent = 26, Dolar = 27, Enter = 28,
     
-    Maj = 58, LetQ = 30, LetS = 31, LetD = 32, LetF = 33, LetG = 34, LetH = 35, LetJ = 36, LetK = 37, LetL = 38, LetM = 39,
+    Maj = 58, Let1_0 = 30, Let1_1 = 31, Let1_2 = 32, Let1_3 = 33, Let1_4 = 34, Let1_5 = 35, Let1_6 = 36, Let1_7 = 37, Let1_8 = 38, Let1_9 = 39,
     Pourcent = 40, Tild = 43,
 
-    ShiftL = 42, Ineg = 41, LetW = 44, LetX = 45, LetC = 46, LetV = 47, LetB = 48, LetN = 49, Comma = 50, Dot = 51, Slash = 52,
+    ShiftL = 42, Ineg = 41, Let2_0 = 44, Let2_1 = 45, Let2_2 = 46, Let2_3 = 47, Let2_4 = 48, Let2_5 = 49, Let2_6 = 50, Dot = 51, Slash = 52,
     Equal = 53, ShiftR = 54,
 
     Space = 57,
@@ -1017,7 +1017,7 @@ impl KeyboardLayout for Fr104Key {
                 }
             }
             KeyCode::Spacebar => DecodedKey::Unicode(' '),
-            KeyCode::Delete => DecodedKey::Unicode(127.into()),
+            KeyCode::DeLet0_2 => DecodedKey::Unicode(127.into()),
             KeyCode::NumpadSlash => DecodedKey::Unicode('/'),
             KeyCode::NumpadStar => DecodedKey::Unicode('*'),
             KeyCode::NumpadMinus => DecodedKey::Unicode('-'),

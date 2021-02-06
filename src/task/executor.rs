@@ -4,6 +4,9 @@ use alloc::sync::Arc;
 use alloc::task::Wake;
 use core::task::{Waker, Context, Poll};
 use crossbeam_queue::ArrayQueue;
+use x86_64::structures::paging::frame::PhysFrame;
+use x86_64::registers::control::Cr3Flags;
+use x86_64::addr::VirtAddr;
 
 #[repr(C)]
 pub struct Executor {
@@ -16,6 +19,16 @@ struct TaskWaker {
     task_id : TaskId,
     task_queue : Arc<ArrayQueue<TaskId>>,
 }
+
+pub struct Status {
+    pub ip : VirtAddr,
+    pub cs : u64,
+    pub cf : u64,
+    pub sp : VirtAddr,
+    pub ss : u64,
+    pub cr3 : (PhysFrame, Cr3Flags),
+}
+
 
 impl TaskWaker {
     fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {

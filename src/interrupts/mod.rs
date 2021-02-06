@@ -1,7 +1,8 @@
 
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::instructions::port::Port;
-use x86_64::registers::control::Cr2;
+use x86_64::registers::control::{Cr2, Cr3};
+use x86_64::addr::VirtAddr;
 //use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 use pic8259_simple::ChainedPics;
 use spin;
@@ -149,8 +150,22 @@ extern "x86-interrupt" fn security_exception_handler(_stack_frame : &mut Interru
     panic!("SECURITY EXCEPTION");
 }
 
-extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame : &mut InterruptStackFrame) {
+extern "x86-interrupt" fn timer_interrupt_handler(stack_frame : &mut InterruptStackFrame) {
     //print!(".");
+    //println!("Timer {:#?}", _stack_frame);
+    let stack_frame2 = unsafe {stack_frame.as_mut() };
+    let (pf,cr_f) = Cr3::read();
+    let state = crate::task::executor::Status {
+        cs : stack_frame2.code_segment,
+        cf : stack_frame2.cpu_flags,
+        sp : stack_frame2.stack_pointer,
+        ss : stack_frame2.stack_segment,
+        ip : stack_frame2.instruction_pointer,
+        cr3 : (pf, cr_f)
+    };
+    println!("test1");
+    stack_frame2.instruction_pointer = VirtAddr::new(8);
+    println!("test2");
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
