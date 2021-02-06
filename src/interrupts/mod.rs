@@ -164,7 +164,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(stack_frame : &mut InterruptSt
         cr3 : (pf, cr_f)
     };
     println!("test1");
-    stack_frame2.instruction_pointer = VirtAddr::new(8);
+    stack_frame2.instruction_pointer = VirtAddr::new(8); // cette ligne fait tout planter
     println!("test2");
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
