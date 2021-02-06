@@ -163,9 +163,17 @@ extern "x86-interrupt" fn timer_interrupt_handler(stack_frame : &mut InterruptSt
         ip : stack_frame2.instruction_pointer,
         cr3 : (pf, cr_f)
     };
+    let next = crate::task::executor::next_task(state);
+    stack_frame2.code_segment = next.cs;
+    stack_frame2.cpu_flags = next.cf;
+    stack_frame2.stack_pointer = next.sp;
+    stack_frame2.stack_segment = next.ss;
+    stack_frame2.instruction_pointer = next.ip;
+    unsafe { Cr3::write(next.cr3.0, next.cr3.1); };
+    /*
     println!("test1");
     stack_frame2.instruction_pointer = VirtAddr::new(8); // cette ligne fait tout planter
-    println!("test2");
+    println!("test2");*/
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }

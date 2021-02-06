@@ -67,6 +67,7 @@ impl Executor {
         }
         self.task_queue.push(task_id).expect("Executor queue full.");
     }
+
     pub fn run_tasks(&mut self) {
         let Self {tasks, task_queue, waker_cache} = self;
 
@@ -99,4 +100,8 @@ impl Executor {
             x86_64::instructions::hlt();
         }
     }
+}
+
+pub fn next_task(t : Status) -> Status {
+    t
 }
