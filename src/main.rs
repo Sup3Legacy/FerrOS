@@ -7,6 +7,7 @@
 use core::panic::PanicInfo;
 //use core::task::Poll;
 use bootloader::{BootInfo, entry_point};
+mod programs;
 use x86_64::addr::VirtAddr;//, VirtAddrNotValid};
 //use x86_64::structures::paging::Translate;
 mod vga;
@@ -76,11 +77,7 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
 
     keyboard::init();
     vga::init();
-    println!("nom d'utilisateur : {}", 0xfe as char);
-    let _utilisateur = keyboard::keyboard_interraction::get_input(false);
-    println!();
-    println!("mot de passe : ");
-    let _mpd = keyboard::keyboard_interraction::get_input(true);
+    programs::shell::main_shell();
     println!();
     for i in 0..5 {
         println!("{}", i);
