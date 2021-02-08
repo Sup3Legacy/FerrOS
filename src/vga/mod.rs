@@ -182,9 +182,9 @@ impl Screen {
     }
     pub fn write_string(&mut self, s: &str) {
 
-        for byte in s.bytes() {
-            match byte {
-                0x20..=0x7e | b'\n' | b'\r' => self.write_byte(byte),
+        for byte in s.chars() {
+            match byte as u8 {
+                0x20..=0x7e | b'\n' | b'\r' => self.write_byte(byte as u8),
                 _ => self.write_byte(0xfe),
             }
         }

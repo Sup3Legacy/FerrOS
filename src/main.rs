@@ -76,7 +76,7 @@ fn kernel_main(_boot_info : &'static BootInfo) -> ! {
 
     keyboard::init();
     vga::init();
-    println!("nom d'utilisateur :");
+    println!("nom d'utilisateur : {}", 0xfe as char);
     let _utilisateur = keyboard::keyboard_interraction::get_input(false);
     println!();
     println!("mot de passe : ");
