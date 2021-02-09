@@ -1,34 +1,35 @@
-use crossbeam_queue::{ArrayQueue, PopError, PushError};
+use crate::{print, println};
 use conquer_once::spin::OnceCell;
+use crossbeam_queue::{ArrayQueue, PopError, PushError};
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::instructions::port::Port;
-use crate::{print, println};
 
 mod keyboard_layout;
 
 pub mod keyboard_interraction;
 
-static SCANCODE_QUEUE : OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
-static KEY_QUEUE : OnceCell<ArrayQueue<keyboard_layout::KeyEvent>> = OnceCell::uninit();
+static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
+static KEY_QUEUE: OnceCell<ArrayQueue<keyboard_layout::KeyEvent>> = OnceCell::uninit();
 
-const MAX_LAYOUT : u8 = 2;
+const MAX_LAYOUT: u8 = 2;
 
-lazy_static! { 
-    pub static ref KEYBOARD_STATUS : Mutex<keyboard_layout::KeyBoardStatus> = Mutex::new(keyboard_layout::KeyBoardStatus::new(0));
+lazy_static! {
+    pub static ref KEYBOARD_STATUS: Mutex<keyboard_layout::KeyBoardStatus> =
+        Mutex::new(keyboard_layout::KeyBoardStatus::new(0));
 }
 
-static SCANCODE_QUEUE_CAP : usize = 10;
+static SCANCODE_QUEUE_CAP: usize = 10;
 
 pub struct ScancodeStream {
-    _private : () // Pour empêcher de contruire cette structure depuis l'extérieur
+    _private: (), // Pour empêcher de contruire cette structure depuis l'extérieur
 }
 
-pub fn add_scancode(scancode : u8) {
+pub fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if let Err(_) = queue.push(scancode) {
             println!("Scancode queue full; dropping keyboard input.");
-        } 
+        }
     } else {
         println!("Scancode queue uninitialized.");
         ScancodeStream::new();
@@ -44,7 +45,7 @@ pub fn process() {
                 Ok(key) => {
                     if key == 15 {
                         let i = KEYBOARD_STATUS.lock().get_id();
-                        set_layout((i + 1)% MAX_LAYOUT);
+                        set_layout((i + 1) % MAX_LAYOUT);
                     } else {
                         match KEYBOARD_STATUS.lock().process(key) {
                             keyboard_layout::Effect::Nothing => (),
@@ -62,12 +63,13 @@ pub fn process() {
     }
 }
 
-
 pub fn get_top_value() -> Result<keyboard_layout::KeyEvent, PopError> {
     process();
     if let Ok(queue) = KEY_QUEUE.try_get() {
         queue.pop()
-    } else {Err(PopError)}
+    } else {
+        Err(PopError)
+    }
 }
 
 pub fn init() {
@@ -78,18 +80,22 @@ pub fn init() {
 
 impl ScancodeStream {
     pub fn new() -> Self {
-        SCANCODE_QUEUE.try_init_once(|| ArrayQueue::new(2 * SCANCODE_QUEUE_CAP)).expect("Scancode queue should only be initialized once.");
-        KEY_QUEUE.try_init_once(|| ArrayQueue::new(SCANCODE_QUEUE_CAP)).expect("Scancode queue should only be initialized once.");
-        ScancodeStream {_private : ()}
+        SCANCODE_QUEUE
+            .try_init_once(|| ArrayQueue::new(2 * SCANCODE_QUEUE_CAP))
+            .expect("Scancode queue should only be initialized once.");
+        KEY_QUEUE
+            .try_init_once(|| ArrayQueue::new(SCANCODE_QUEUE_CAP))
+            .expect("Scancode queue should only be initialized once.");
+        ScancodeStream { _private: () }
     }
 }
 
-pub fn set_keyboard_responce(freq : u8, tim : u8) {
+pub fn set_keyboard_responce(freq: u8, tim: u8) {
     let mut port = Port::new(0xF3);
-    unsafe {port.write(((tim & 3) << 5) | (freq & 63))}
+    unsafe { port.write(((tim & 3) << 5) | (freq & 63)) }
 }
 
-pub fn set_layout(code : u8) {
+pub fn set_layout(code: u8) {
     if code < MAX_LAYOUT {
         let mut k = KEYBOARD_STATUS.lock();
         k.set(code);

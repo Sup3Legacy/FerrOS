@@ -1,7 +1,7 @@
 //use pc_keyboard::{Keyboard, Modifiers, KeyCode, DecodedKey};
-use alloc::string::String;
-use crate::{println, print};
 use crate::keyboard::keyboard_layout;
+use crate::{print, println};
+use alloc::string::String;
 
 /*
 const TAILLE: usize = 80;
@@ -62,45 +62,42 @@ impl DoubleFile {
     }
 }*/
 
-pub fn get_input(cache : bool) -> String {
+pub fn get_input(cache: bool) -> String {
     let mut stack = String::new();
     loop {
-        match {crate::keyboard::get_top_value()} {
-            Ok(a) => {
-                match a {
-                    keyboard_layout::KeyEvent::Character('\n') => {
-                        if stack.len() != 0 {
+        match { crate::keyboard::get_top_value() } {
+            Ok(a) => match a {
+                keyboard_layout::KeyEvent::Character('\n') => {
+                    if stack.len() != 0 {
                         println!("");
-                        break stack}
-                        },
-
-                    keyboard_layout::KeyEvent::Character('\x08') => {
-                        stack.pop();
-                        if !cache {
-                            print!("\r{} \r{}",stack, stack);
-                        }
-
-                    },
-
-                    keyboard_layout::KeyEvent::Character(character) => {
-                        stack.push(character);
-                        if !cache {
-                            print!("{}", character);
-                        }
-                        },
-
-                    keyboard_layout::KeyEvent::SpecialKey(0) => {
-                        stack.pop();
-                        if !cache {
-                            print!("\r{} \r{}",stack, stack);
-                        }
-                        },
-                    keyboard_layout::KeyEvent::SpecialKey(_) => (),
+                        break stack;
+                    }
                 }
+
+                keyboard_layout::KeyEvent::Character('\x08') => {
+                    stack.pop();
+                    if !cache {
+                        print!("\r{} \r{}", stack, stack);
+                    }
+                }
+
+                keyboard_layout::KeyEvent::Character(character) => {
+                    stack.push(character);
+                    if !cache {
+                        print!("{}", character);
+                    }
+                }
+
+                keyboard_layout::KeyEvent::SpecialKey(0) => {
+                    stack.pop();
+                    if !cache {
+                        print!("\r{} \r{}", stack, stack);
+                    }
+                }
+                keyboard_layout::KeyEvent::SpecialKey(_) => (),
             },
 
-            Err(_) => ()
+            Err(_) => (),
         }
     }
 }
-

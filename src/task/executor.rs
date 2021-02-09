@@ -2,33 +2,32 @@ use super::{Task, TaskId};
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::task::Wake;
-use core::task::{Waker, Context, Poll};
+use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
-use x86_64::structures::paging::frame::PhysFrame;
-use x86_64::registers::control::Cr3Flags;
 use x86_64::addr::VirtAddr;
+use x86_64::registers::control::Cr3Flags;
+use x86_64::structures::paging::frame::PhysFrame;
 
 #[repr(C)]
 pub struct Executor {
-    tasks : BTreeMap<TaskId, Task>,
-    task_queue : Arc<ArrayQueue<TaskId>>,
-    waker_cache : BTreeMap<TaskId, Waker>,
+    tasks: BTreeMap<TaskId, Task>,
+    task_queue: Arc<ArrayQueue<TaskId>>,
+    waker_cache: BTreeMap<TaskId, Waker>,
 }
 
 struct TaskWaker {
-    task_id : TaskId,
-    task_queue : Arc<ArrayQueue<TaskId>>,
+    task_id: TaskId,
+    task_queue: Arc<ArrayQueue<TaskId>>,
 }
 
 pub struct Status {
-    pub ip : VirtAddr,
-    pub cs : u64,
-    pub cf : u64,
-    pub sp : VirtAddr,
-    pub ss : u64,
-    pub cr3 : (PhysFrame, Cr3Flags),
+    pub ip: VirtAddr,
+    pub cs: u64,
+    pub cf: u64,
+    pub sp: VirtAddr,
+    pub ss: u64,
+    pub cr3: (PhysFrame, Cr3Flags),
 }
-
 
 impl TaskWaker {
     fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
@@ -39,15 +38,17 @@ impl TaskWaker {
     }
 
     fn wake_task(&self) {
-        self.task_queue.push(self.task_id).expect("task_queue full.");
+        self.task_queue
+            .push(self.task_id)
+            .expect("task_queue full.");
     }
 }
 
 impl Wake for TaskWaker {
-    fn wake(self : Arc<Self>) {
+    fn wake(self: Arc<Self>) {
         self.wake_task();
     }
-    fn wake_by_ref(self : &Arc<Self>) {
+    fn wake_by_ref(self: &Arc<Self>) {
         self.wake_task();
     }
 }
@@ -55,12 +56,12 @@ impl Wake for TaskWaker {
 impl Executor {
     pub fn new() -> Self {
         Executor {
-            tasks : BTreeMap::new(),
-            task_queue : Arc::new(ArrayQueue::new(100)),
-            waker_cache : BTreeMap::new(),
+            tasks: BTreeMap::new(),
+            task_queue: Arc::new(ArrayQueue::new(100)),
+            waker_cache: BTreeMap::new(),
         }
     }
-    pub fn spawn(&mut self, task : Task) {
+    pub fn spawn(&mut self, task: Task) {
         let task_id = task.id;
         if self.tasks.insert(task.id, task).is_some() {
             panic!("Task with same ID already in task BTreeMap.");
@@ -69,7 +70,11 @@ impl Executor {
     }
 
     pub fn run_tasks(&mut self) {
-        let Self {tasks, task_queue, waker_cache} = self;
+        let Self {
+            tasks,
+            task_queue,
+            waker_cache,
+        } = self;
 
         while let Ok(task_id) = task_queue.pop() {
             let task = match tasks.get_mut(&task_id) {
@@ -84,8 +89,8 @@ impl Executor {
                 Poll::Ready(()) => {
                     tasks.remove(&task_id);
                     waker_cache.remove(&task_id);
-                },
-                Poll::Pending => {}  
+                }
+                Poll::Pending => {}
             }
         }
     }
@@ -102,6 +107,6 @@ impl Executor {
     }
 }
 
-pub fn next_task(t : Status) -> Status {
+pub fn next_task(t: Status) -> Status {
     t
 }

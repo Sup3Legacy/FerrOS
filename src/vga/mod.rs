@@ -8,12 +8,12 @@ use x86_64::instructions::port::Port;
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-lazy_static! { 
-    pub static ref SCREEN : Mutex<Screen> = Mutex::new(Screen{
-        col_pos : 0,
-        row_pos : 0,
-        color : ColorCode::new(Color::LightGreen, Color::Black),
-        buffer : unsafe { &mut *(0xb8000 as *mut BUFFER) },
+lazy_static! {
+    pub static ref SCREEN: Mutex<Screen> = Mutex::new(Screen {
+        col_pos: 0,
+        row_pos: 0,
+        color: ColorCode::new(Color::LightGreen, Color::Black),
+        buffer: unsafe { &mut *(0xb8000 as *mut BUFFER) },
     });
 }
 
@@ -33,16 +33,22 @@ pub fn write_back() {
 }
 
 pub fn _print(args: fmt::Arguments) {
-    interrupts::without_interrupts(|| {SCREEN.lock().write_fmt(args).unwrap();});
+    interrupts::without_interrupts(|| {
+        SCREEN.lock().write_fmt(args).unwrap();
+    });
 }
 
-pub(crate) fn _print_at(row : usize, col : usize, s : &str) {
-    interrupts::without_interrupts(|| {SCREEN.lock().write_to_pos(row, col, s);});
+pub(crate) fn _print_at(row: usize, col: usize, s: &str) {
+    interrupts::without_interrupts(|| {
+        SCREEN.lock().write_to_pos(row, col, s);
+    });
 }
 
 pub fn init() {
     #[allow(unused_must_use)]
-    interrupts::without_interrupts(|| {SCREEN.lock()._clear();});
+    interrupts::without_interrupts(|| {
+        SCREEN.lock()._clear();
+    });
 }
 
 /// The 16 colors available in VGA mode
@@ -78,17 +84,17 @@ pub struct VgaError<'a>(&'a str);
 
 impl ColorCode {
     /// This creates a ColorCode given a foreground color and a background color
-    /// 
+    ///
     /// # Arguments
     /// * `foreground` - A color for the foreground
     /// * `background` - A color for the background
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// assert_eq!(ColorCode::new(Color::Blue, Color::Black), 1);
     /// ```
-    /// 
+    ///
     pub fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | (foreground as u8))
     }
@@ -102,40 +108,42 @@ impl ColorCode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub struct CHAR {
-    code : u8,
-    color : ColorCode
+    code: u8,
+    color: ColorCode,
 }
 
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct BUFFER {
-    characters : [CHAR; BUFFER_WIDTH * BUFFER_HEIGHT]
+    characters: [CHAR; BUFFER_WIDTH * BUFFER_HEIGHT],
 }
 
 pub struct Screen {
-    pub col_pos : usize,
-    pub row_pos : usize,
-    pub color : ColorCode,
-    pub buffer : &'static mut BUFFER
+    pub col_pos: usize,
+    pub row_pos: usize,
+    pub color: ColorCode,
+    pub buffer: &'static mut BUFFER,
 }
-
 
 #[allow(dead_code)]
 impl Screen {
-    pub fn write_byte(&mut self, byte : u8) {
+    pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
             b'\r' => self.col_pos = 0,
             _ => {
-                    if self.col_pos + self.row_pos * BUFFER_WIDTH == BUFFER_WIDTH * BUFFER_HEIGHT - 1 {
-                        if self.row_pos == 0 {
-                            self.new_line();
-                            panic!("to many words");
-                        }
-                        self.scroll_up();
+                if self.col_pos + self.row_pos * BUFFER_WIDTH == BUFFER_WIDTH * BUFFER_HEIGHT - 1 {
+                    if self.row_pos == 0 {
+                        self.new_line();
+                        panic!("to many words");
                     }
-                    self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {code : byte, color : self.color};
-                    self.col_pos += 1;
+                    self.scroll_up();
+                }
+                self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {
+                    code: byte,
+                    color: self.color,
+                };
+                self.col_pos += 1;
             }
         };
         self.set_cursor();
@@ -155,7 +163,7 @@ impl Screen {
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
     fn new_line(&mut self) -> () {
-        self.row_pos += 1 + (self.col_pos/BUFFER_WIDTH);
+        self.row_pos += 1 + (self.col_pos / BUFFER_WIDTH);
         self.col_pos = 0;
         while self.row_pos >= BUFFER_HEIGHT {
             self.scroll_up();
@@ -167,46 +175,51 @@ impl Screen {
     fn scroll_up(&mut self) -> () {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
-                self.buffer.characters[(row-1) * BUFFER_WIDTH + col] = self.buffer.characters[row * BUFFER_WIDTH + col];
+                self.buffer.characters[(row - 1) * BUFFER_WIDTH + col] =
+                    self.buffer.characters[row * BUFFER_WIDTH + col];
             }
         }
     }
     fn clear_bottom(&mut self) -> () {
         let blank = CHAR {
-            code : b' ',
-            color : self.color
+            code: b' ',
+            color: self.color,
         };
         for col in 0..BUFFER_WIDTH {
-            self.buffer.characters[(BUFFER_HEIGHT - 1)*BUFFER_WIDTH + col] = blank;
+            self.buffer.characters[(BUFFER_HEIGHT - 1) * BUFFER_WIDTH + col] = blank;
         }
     }
     pub fn write_string(&mut self, s: &str) {
-
         for byte in s.chars() {
             match byte as u8 {
                 0x20..=0x7e | b'\n' | b'\r' => self.write_byte(byte as u8),
-                _ => self.write_byte(0xfe),
+                _ => self.write_byte(byte as u8),
             }
         }
     }
 
-    pub fn _write_string_color(&mut self, s : &str, col : ColorCode) -> () {
+    pub fn _write_string_color(&mut self, s: &str, col: ColorCode) -> () {
         let old_color = self.color;
         self.set_color(col);
         self.write_string(s);
         self.set_color(old_color);
         println!("s = {}", s.bytes().len());
     }
-    fn _new(color : ColorCode, buffer : &'static mut BUFFER) -> Self {
-        Screen {col_pos : 0, row_pos : 0, color : color, buffer : buffer}
+    fn _new(color: ColorCode, buffer: &'static mut BUFFER) -> Self {
+        Screen {
+            col_pos: 0,
+            row_pos: 0,
+            color: color,
+            buffer: buffer,
+        }
     }
-    pub fn set_color(&mut self, color : ColorCode) -> () {
+    pub fn set_color(&mut self, color: ColorCode) -> () {
         self.color = color;
     }
     pub fn _clear(&mut self) -> Result<(), VgaError<'_>> {
         let blank = CHAR {
-            code : b' ',
-            color : self.color
+            code: b' ',
+            color: self.color,
         };
         for row in 0..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
@@ -217,16 +230,16 @@ impl Screen {
         self.row_pos = 0;
         Ok(())
     }
-    pub fn write_to_pos(&mut self, row : usize, col : usize, s : &str) {
+    pub fn write_to_pos(&mut self, row: usize, col: usize, s: &str) {
         let old_row = self.row_pos;
         let old_col = self.col_pos;
         if row >= BUFFER_HEIGHT {
             println!("Row out of bounds");
-            return
+            return;
         }
         if col >= BUFFER_WIDTH {
             println!("Col out of bounds");
-            return
+            return;
         }
         self.row_pos = row;
         self.col_pos = col;
