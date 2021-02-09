@@ -1,7 +1,4 @@
-use core::{
-    future::get_context,
-    str::{SplitAsciiWhitespace, SplitWhitespace},
-};
+use core::str::SplitWhitespace;
 
 use crate::keyboard::keyboard_interraction;
 use alloc::collections::BTreeMap;
@@ -56,7 +53,10 @@ pub fn _main_loop() -> ! {
             Some(a) => match COMMANDS.get(a) {
                 Some(command) => {
                     let func = command.function;
-                    func(it.map(|x| String::from(x)).collect::<Vec<String>>()).unwrap();
+                    match func(it.map(|x| String::from(x)).collect::<Vec<String>>()) {
+                        Ok(()) => (),
+                        _ => println!("{}", command.help),
+                    }
                 }
                 None => println!("No such command."),
             },
