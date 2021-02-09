@@ -3,6 +3,7 @@
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
 #![feature(wake_trait)]
+#![feature(gen_future)]
 
 use core::panic::PanicInfo;
 //use core::task::Poll;

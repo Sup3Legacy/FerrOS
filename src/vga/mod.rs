@@ -17,6 +17,7 @@ lazy_static! {
     });
 }
 
+/// crate-wide
 #[macro_export]
 macro_rules! println {
     () => (print!("\n"));
