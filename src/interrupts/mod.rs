@@ -8,35 +8,77 @@ use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
 //use x86_64::structures::idt::InterruptDescriptorTable;
 //use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
-//use crate::gdt;
+use crate::gdt;
 use crate::{print, println};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 use spin;
 
+
+macro_rules! handler {
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                llvm_asm!("mov rdi, rsp
+                      sub rsp, 8 // align the stack pointer
+                      call $0"
+                      :: "i"($name as extern "C" fn(
+                          &ExceptionStackFrame))
+                      : "rdi" : "intel");
+                llvm_asm!("add rsp, 8 // undo stack pointer alignment
+                      iretq"
+                      :::: "intel", "volatile");
+                ::core::intrinsics::unreachable();
+            }
+        }
+        wrapper
+    }};
+}
+
+macro_rules! handler_with_error_code {
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                llvm_asm!("pop rsi // pop error code into rsi
+                      mov rdi, rsp
+                      sub rsp, 8 // align the stack pointer
+                      call $0"
+                      :: "i"($name as extern "C" fn(
+                          &ExceptionStackFrame, u64))
+                      : "rdi","rsi" : "intel");
+                llvm_asm!("add rsp, 8 // undo stack pointer alignment
+                      iretq"
+                      :::: "intel", "volatile");
+                ::core::intrinsics::unreachable();
+            }
+        }
+        wrapper
+    }};
+}
+
 lazy_static! {
     static IDT: idt::Idt = {
         let mut idt = idt::Idt::new();
-        idt.set_handler_fn(0, divide_by_zero_handler);
-
-        idt.set_handler_fn(0, handler!(divide_error_handler));
-        idt.set_handler_fn(1, handler!(debug_handler));
-        idt.set_handler_fn(2, handler!(non_maskable_interrupt_handler));
-        idt.set_handler_fn(3, handler!(breakpoint_handler));
-        idt.set_handler_fn(4, handler!(overflow_handler));
-        idt.set_handler_fn(5, handler!(bound_range_exceeded_handler));
-        idt.set_handler_fn(6, handler!(invalid_opcode_handler));
-        idt.set_handler_fn(7, handler!(device_not_available_handler));
-        idt.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
-        idt.set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
-        idt.set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
-        idt.set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
-        idt.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
-        idt.set_handler_fn(16, handler!(x87_floating_point_handler));
-        idt.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
-        idt.set_handler_fn(19, handler!(simd_floating_point_handler));
-        idt.set_handler_fn(20, handler!(virtualization_handler));
-        idt.set_handler_fn(30, handler_with_error_code!(security_exception_handler));
+        idt.set_handler_fn(0, handler!(divide_by_zero_handler));
+ //       idt.set_handler_fn(1, handler!(debug_handler));
+   //     idt.set_handler_fn(2, handler!(non_maskable_interrupt_handler));
+     //   idt.set_handler_fn(3, handler!(breakpoint_handler));
+       // idt.set_handler_fn(4, handler!(overflow_handler));
+//        idt.set_handler_fn(5, handler!(bound_range_exceeded_handler));
+  //      idt.set_handler_fn(6, handler!(invalid_opcode_handler));
+    //    idt.set_handler_fn(7, handler!(device_not_available_handler));
+      //  idt.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
+        //idt.set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
+//        idt.set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
+  //      idt.set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
+    //    idt.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
+      //  idt.set_handler_fn(16, handler!(x87_floating_point_handler));
+        //idt.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
+//        idt.set_handler_fn(19, handler!(simd_floating_point_handler));
+  //      idt.set_handler_fn(20, handler!(virtualization_handler));
+    //    idt.set_handler_fn(30, handler_with_error_code!(security_exception_handler));
       //  idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
     //    idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         unsafe {
@@ -48,6 +90,35 @@ lazy_static! {
     };
 }
 
+
+fn new() -> idt::Idt {
+    let mut idt = idt::Idt::new();
+    idt.set_handler_fn(0, handler!(divide_by_zero_handler));
+//       idt.set_handler_fn(1, handler!(debug_handler));
+//     idt.set_handler_fn(2, handler!(non_maskable_interrupt_handler));
+ //   idt.set_handler_fn(3, handler!(breakpoint_handler));
+   // idt.set_handler_fn(4, handler!(overflow_handler));
+//        idt.set_handler_fn(5, handler!(bound_range_exceeded_handler));
+//      idt.set_handler_fn(6, handler!(invalid_opcode_handler));
+//    idt.set_handler_fn(7, handler!(device_not_available_handler));
+  //  idt.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
+    //idt.set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
+//        idt.set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
+//      idt.set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
+//    idt.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
+  //  idt.set_handler_fn(16, handler!(x87_floating_point_handler));
+    //idt.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
+//        idt.set_handler_fn(19, handler!(simd_floating_point_handler));
+//      idt.set_handler_fn(20, handler!(virtualization_handler));
+//    idt.set_handler_fn(30, handler_with_error_code!(security_exception_handler));
+  //  idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
+//    idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+    unsafe {
+        idt.set_handler_fn(8, handler_with_error_code!(double_fault_handler))
+            .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+    }
+    idt
+}
 
 pub fn init() {
     IDT.load();
@@ -66,48 +137,6 @@ lazy_static! {
         )
     );*/
 }
-
-
-macro_rules! handler {
-    ($name: ident) => {{
-        #[naked]
-        extern "C" fn wrapper() -> ! {
-            unsafe {
-                asm!("mov rdi, rsp
-                      sub rsp, 8 // align the stack pointer
-                      call $0"
-                      :: "i"($name as extern "C" fn(
-                          &ExceptionStackFrame))
-                      : "rdi" : "intel");
-                ::core::intrinsics::unreachable();
-            }
-        }
-        wrapper
-    }}
-}
-
-macro_rules! handler_with_error_code {
-    ($name: ident) => {{
-        #[naked]
-        extern "C" fn wrapper() -> ! {
-            unsafe {
-                asm!("pop rsi // pop error code into rsi
-                      mov rdi, rsp
-                      sub rsp, 8 // align the stack pointer
-                      call $0"
-                      :: "i"($name as extern "C" fn(
-                          &ExceptionStackFrame, u64))
-                      : "rdi","rsi" : "intel");
-                asm!("add rsp, 8 // undo stack pointer alignment
-                      iretq"
-                      :::: "intel", "volatile");
-                ::core::intrinsics::unreachable();
-            }
-        }
-        wrapper
-    }}
-}
-
 
 #[derive(Debug)]
 #[repr(C)]

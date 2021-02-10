@@ -98,7 +98,7 @@ impl Entry {
 }
 
 impl Idt {
-    pub fn new() -> Idt {
+    pub fn new() -> Self {
         Idt([Entry::missing(); 16])
     }
 
