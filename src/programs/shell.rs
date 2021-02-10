@@ -25,7 +25,7 @@ pub struct ShellCommand {
     pub function: fn(Vec<String>) -> Result<(), ShellErr>,
 }
 
-pub fn _test1(a: Vec<String>) -> Result<(), ShellErr> {
+pub fn _test1(_a: Vec<String>) -> Result<(), ShellErr> {
     println!("test");
     Ok(())
 }

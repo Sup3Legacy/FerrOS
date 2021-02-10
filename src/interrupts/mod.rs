@@ -1,4 +1,4 @@
-use x86_64::addr::VirtAddr;
+//use x86_64::addr::VirtAddr;
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};

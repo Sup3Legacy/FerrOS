@@ -4,6 +4,9 @@
 #![feature(alloc_error_handler)]
 #![feature(wake_trait)]
 #![feature(gen_future)]
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
 //use core::task::Poll;
@@ -76,6 +79,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     keyboard::init();
     vga::init();
+
+    // This enables the tests
+    #[cfg(test)]
+    test_main();
+
     programs::shell::main_shell();
     println!();
     for i in 0..5 {
@@ -99,4 +107,12 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
     executor.run();
+}
+
+#[cfg(test)]
+fn test_runner(tests: &[&dyn Fn()]) {
+    println!("Running {} tests", tests.len());
+    for test in tests {
+        test();
+    }
 }
