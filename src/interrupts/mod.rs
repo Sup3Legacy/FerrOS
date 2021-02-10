@@ -1,70 +1,69 @@
+
+mod idt;
+
 use x86_64::addr::VirtAddr;
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::{Cr2, Cr3};
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};
+//use x86_64::structures::idt::InterruptDescriptorTable;
 //use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
-use crate::gdt;
+//use crate::gdt;
 use crate::{print, println};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 use spin;
-//use crate::keyboard_layout;
-
-#[derive(Clone, Debug, Copy)]
-#[repr(u8)]
-pub enum InterruptIndex {
-    Timer = PIC_1_OFFSET,
-    Keyboard,
-}
-
-impl InterruptIndex {
-    fn as_u8(self) -> u8 {
-        self as u8
-    }
-    fn as_usize(self) -> usize {
-        usize::from(self.as_u8())
-    }
-}
 
 lazy_static! {
-    static ref IDT: InterruptDescriptorTable = {
-        let mut idt = InterruptDescriptorTable::new();
-        idt.divide_error.set_handler_fn(divide_error_handler);
-        idt.debug.set_handler_fn(debug_handler);
+    static IDT: idt::Idt = {
+        let mut idt = idt::Idt::new();
+        idt.set_handler(0, divide_by_zero_handler);
+
+        idt.divide_error.set_handler_fn(0, handler!(divide_error_handler));
+        idt.debug.set_handler_fn(1, handler!(debug_handler));
         idt.non_maskable_interrupt
-            .set_handler_fn(non_maskable_interrupt_handler);
-        idt.breakpoint.set_handler_fn(breakpoint_handler);
-        idt.overflow.set_handler_fn(overflow_handler);
+            .set_handler_fn(2, handler!(non_maskable_interrupt_handler));
+        idt.breakpoint.set_handler_fn(3, handler!(breakpoint_handler));
+        idt.overflow.set_handler_fn(4, handler!(overflow_handler));
         idt.bound_range_exceeded
-            .set_handler_fn(bound_range_exceeded_handler);
-        idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
+            .set_handler_fn(5, handler!(bound_range_exceeded_handler));
+        idt.invalid_opcode.set_handler_fn(6, handler!(invalid_opcode_handler));
         idt.device_not_available
-            .set_handler_fn(device_not_available_handler);
-        idt.invalid_tss.set_handler_fn(invalid_tss_handler);
+            .set_handler_fn(7, handler!(device_not_available_handler));
+        idt.invalid_tss.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
         idt.segment_not_present
-            .set_handler_fn(segment_not_present_handler);
+            .set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
         idt.stack_segment_fault
-            .set_handler_fn(stack_segment_fault_handler);
+            .set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
         idt.general_protection_fault
-            .set_handler_fn(general_protection_fault_handler);
-        idt.page_fault.set_handler_fn(page_fault_handler);
+            .set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
+        idt.page_fault.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
         idt.x87_floating_point
-            .set_handler_fn(x87_floating_point_handler);
-        idt.alignment_check.set_handler_fn(alignment_check_handler);
+            .set_handler_fn(16, handler!(x87_floating_point_handler));
+        idt.alignment_check.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
         idt.simd_floating_point
-            .set_handler_fn(simd_floating_point_handler);
-        idt.virtualization.set_handler_fn(virtualization_handler);
+            .set_handler_fn(19, handler!(simd_floating_point_handler));
+        idt.virtualization.set_handler_fn(20, handler!(virtualization_handler));
         idt.security_exception
-            .set_handler_fn(security_exception_handler);
-        idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
-        idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+            .set_handler_fn(30, handler_with_error_code!(security_exception_handler));
+      //  idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
+    //    idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         unsafe {
             idt.double_fault
-                .set_handler_fn(double_fault_handler)
+                .set_handler_fn(8, handler_with_error_code!(double_fault_handler))
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt
+
     };
+}
+
+
+pub fn init() {
+    IDT.load();
+    unsafe {
+        PICS.lock().initialize();
+    }
+    x86_64::instructions::interrupts::enable();
 }
 
 lazy_static! {
@@ -77,109 +76,155 @@ lazy_static! {
     );*/
 }
 
-pub fn init() {
-    IDT.load();
-    unsafe {
-        PICS.lock().initialize();
-    }
-    x86_64::instructions::interrupts::enable();
+
+macro_rules! handler {
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!("mov rdi, rsp
+                      sub rsp, 8 // align the stack pointer
+                      call $0"
+                      :: "i"($name as extern "C" fn(
+                          &ExceptionStackFrame))
+                      : "rdi" : "intel");
+                ::core::intrinsics::unreachable();
+            }
+        }
+        wrapper
+    }}
 }
 
-extern "x86-interrupt" fn divide_error_handler(_stack_frame: &mut InterruptStackFrame) {
-    panic!("DIVISION BY ZERO");
-} // inutile car rust rattrape avant le CPU
+macro_rules! handler_with_error_code {
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!("pop rsi // pop error code into rsi
+                      mov rdi, rsp
+                      sub rsp, 8 // align the stack pointer
+                      call $0"
+                      :: "i"($name as extern "C" fn(
+                          &ExceptionStackFrame, u64))
+                      : "rdi","rsi" : "intel");
+                asm!("add rsp, 8 // undo stack pointer alignment
+                      iretq"
+                      :::: "intel", "volatile");
+                ::core::intrinsics::unreachable();
+            }
+        }
+        wrapper
+    }}
+}
 
-extern "x86-interrupt" fn debug_handler(_stack_frame: &mut InterruptStackFrame) {
+
+#[derive(Debug)]
+#[repr(C)]
+struct ExceptionStackFrame {
+    instruction_pointer: u64,
+    code_segment: u64,
+    cpu_flags: u64,
+    stack_pointer: u64,
+    stack_segment: u64,
+}
+
+extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
+    println!("\nEXCEPTION: DIVIDE BY ZERO{:#?}", unsafe { &*stack_frame });
+    loop {}
+}
+
+extern "C" fn debug_handler(_stack_frame: &InterruptStackFrame) {
     panic!("DEBUG");
 }
 
-extern "x86-interrupt" fn non_maskable_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn non_maskable_interrupt_handler(_stack_frame: &InterruptStackFrame) {
     panic!("Non maskable Stack Frame");
 }
 
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
-    println!("BREAKPOINT : {:#?}", stack_frame);
+extern "C" fn breakpoint_handler(stack_frame: &InterruptStackFrame) {
+    let stack_frame = unsafe { &*stack_frame};
+    println!("BREAKPOINT : {:#?}", stack_frame.instruction_pointer);
 }
 
-extern "x86-interrupt" fn overflow_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn overflow_handler(_stack_frame: &InterruptStackFrame) {
     panic!("OVERFLOW");
 }
 
-extern "x86-interrupt" fn bound_range_exceeded_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn bound_range_exceeded_handler(_stack_frame: &InterruptStackFrame) {
     panic!("BOUND RANGE EXCEEDED");
 }
 
-extern "x86-interrupt" fn invalid_opcode_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn invalid_opcode_handler(_stack_frame: &InterruptStackFrame) {
     panic!("INVALID OPCODE");
 }
 
-extern "x86-interrupt" fn device_not_available_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn device_not_available_handler(_stack_frame: &InterruptStackFrame) {
     panic!("DEVICE NOT AVAILABLE");
 }
 
-extern "x86-interrupt" fn double_fault_handler(
-    stack_frame: &mut InterruptStackFrame,
+extern "C" fn double_fault_handler(
+    stack_frame: &InterruptStackFrame,
     error_code: u64,
-) -> ! {
+) {
     println!("ERROR : {:#?}", error_code);
     panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }
 
-extern "x86-interrupt" fn invalid_tss_handler(
-    _stack_frame: &mut InterruptStackFrame,
+extern "C" fn invalid_tss_handler(
+    _stack_frame: &InterruptStackFrame,
     _error_code: u64,
 ) {
     panic!("INVALID TSS");
 }
 
-extern "x86-interrupt" fn segment_not_present_handler(
-    _stack_frame: &mut InterruptStackFrame,
+extern "C" fn segment_not_present_handler(
+    _stack_frame: &InterruptStackFrame,
     _error_code: u64,
 ) {
     panic!("SEGMENT NOT PRESENT");
 }
 
-extern "x86-interrupt" fn stack_segment_fault_handler(
-    _stack_frame: &mut InterruptStackFrame,
+extern "C" fn stack_segment_fault_handler(
+    _stack_frame: &InterruptStackFrame,
     _error_code: u64,
 ) {
     panic!("STACK SEGMENT FAULT");
 }
 
-extern "x86-interrupt" fn general_protection_fault_handler(
-    _stack_frame: &mut InterruptStackFrame,
+extern "C" fn general_protection_fault_handler(
+    _stack_frame: &InterruptStackFrame,
     _error_code: u64,
 ) {
     panic!("GENERAL PROTECTION FAULT");
 }
 
-extern "x86-interrupt" fn x87_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn x87_floating_point_handler(_stack_frame: &InterruptStackFrame) {
     panic!("x87 FLOATING POINT");
 }
 
-extern "x86-interrupt" fn alignment_check_handler(
-    _stack_frame: &mut InterruptStackFrame,
+extern "C" fn alignment_check_handler(
+    _stack_frame: &InterruptStackFrame,
     _error_code: u64,
 ) {
     panic!("ALIGNMENT CHECK");
 }
 
-extern "x86-interrupt" fn simd_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn simd_floating_point_handler(_stack_frame: &InterruptStackFrame) {
     panic!("SIMD FLOATING POINT");
 }
 
-extern "x86-interrupt" fn virtualization_handler(_stack_frame: &mut InterruptStackFrame) {
+extern "C" fn virtualization_handler(_stack_frame: &InterruptStackFrame) {
     panic!("VIRTUALIZATION");
 }
 
-extern "x86-interrupt" fn security_exception_handler(
-    _stack_frame: &mut InterruptStackFrame,
+extern "C" fn security_exception_handler(
+    _stack_frame: &InterruptStackFrame,
     _error_code: u64,
 ) {
     panic!("SECURITY EXCEPTION");
 }
 
-extern "x86-interrupt" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame) {
+extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame) {
     //print!(".");
     //println!("Timer {:#?}", _stack_frame);
     let stack_frame2 = unsafe { stack_frame.as_mut() };
@@ -207,18 +252,21 @@ extern "x86-interrupt" fn timer_interrupt_handler(stack_frame: &mut InterruptSta
     println!("test2");*/
     unsafe {
         PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+            .notify_end_of_interrupt(0 as u8);
     }
 }
 
-extern "x86-interrupt" fn page_fault_handler(
-    _stack_frame: &mut InterruptStackFrame,
-    _error_code: PageFaultErrorCode,
-) {
-    println!("PAGE FAULT! {:#?}", _stack_frame);
-    println!("TRYIED TO READ : {:#?}", Cr2::read());
-    println!("ERROR : {:#?}", _error_code);
-    crate::halt_loop();
+extern "C" fn page_fault_handler(
+    stack_frame: &InterruptStackFrame,
+    error_code: u64,
+)  -> ! {
+    println!(
+        "\nEXCEPTION: PAGE FAULT while accessing ?\
+        \nerror code: {:?}\n{:#?}",
+        //unsafe { Cr2::read() },
+       error_code,// PageFaultErrorCode::from_bits(error_code).unwrap(),
+        unsafe { &*stack_frame });
+    loop {}
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
@@ -227,21 +275,11 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
     let scancode: u8 = unsafe { port.read() };
     crate::keyboard::add_scancode(scancode);
 
-    /* Affichage des caractères
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(key) => print!("{:?}", key),
-            }
-        }
-    }
-    */
 
     unsafe {
         PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
-    }
+           .notify_end_of_interrupt(1 as u8);
+    };
 }
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -249,426 +287,3 @@ pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
-/*
-pub struct Fr104Key;
-
-impl KeyboardLayout for Fr104Key {
-    fn map_keycode(keycode: KeyCode, modifiers: &Modifiers, _ : HandleControl) -> DecodedKey {
-        match keycode {
-            KeyCode::BackTick => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('²')
-                } else {
-                    DecodedKey::Unicode('²')
-                }
-            }
-            KeyCode::Escape => DecodedKey::Unicode(0x1B.into()),
-            KeyCode::Key1 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('1')
-                } else {
-                    DecodedKey::Unicode('&')
-                }
-            }
-            KeyCode::Key2 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('2')
-                } else {
-                    DecodedKey::Unicode('é')
-                }
-            }
-            KeyCode::Key3 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('3')
-                } else {
-                    DecodedKey::Unicode('"')
-                }
-            }
-            KeyCode::Key4 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('4')
-                } else {
-                    DecodedKey::Unicode('\'')
-                }
-            }
-            KeyCode::Key5 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('5')
-                } else {
-                    DecodedKey::Unicode('(')
-                }
-            }
-            KeyCode::Key6 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('6')
-                } else {
-                    DecodedKey::Unicode('-')
-                }
-            }
-            KeyCode::Key7 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('7')
-                } else {
-                    DecodedKey::Unicode('è')
-                }
-            }
-            KeyCode::Key8 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('8')
-                } else {
-                    DecodedKey::Unicode('_')
-                }
-            }
-            KeyCode::Key9 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('9')
-                } else {
-                    DecodedKey::Unicode('ç')
-                }
-            }
-            KeyCode::Key0 => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('0')
-                } else {
-                    DecodedKey::Unicode('à')
-                }
-            }
-            KeyCode::Minus => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('°')
-                } else {
-                    DecodedKey::Unicode(')')
-                }
-            }
-            KeyCode::Equals => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('+')
-                } else {
-                    DecodedKey::Unicode('=')
-                }
-            }
-            KeyCode::Backspace => DecodedKey::Unicode(0x08.into()),
-            KeyCode::Tab => DecodedKey::Unicode(0x09.into()),
-            KeyCode::Q => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('A')
-                } else {
-                    DecodedKey::Unicode('a')
-                }
-            }
-            KeyCode::W => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('Z')
-                } else {
-                    DecodedKey::Unicode('z')
-                }
-            }
-            KeyCode::E => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('E')
-                } else {
-                    DecodedKey::Unicode('e')
-                }
-            }
-            KeyCode::R => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('R')
-                } else {
-                    DecodedKey::Unicode('r')
-                }
-            }
-            KeyCode::T => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('T')
-                } else {
-                    DecodedKey::Unicode('t')
-                }
-            }
-            KeyCode::Y => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('Y')
-                } else {
-                    DecodedKey::Unicode('y')
-                }
-            }
-            KeyCode::U => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('U')
-                } else {
-                    DecodedKey::Unicode('u')
-                }
-            }
-            KeyCode::I => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('I')
-                } else {
-                    DecodedKey::Unicode('i')
-                }
-            }
-            KeyCode::O => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('O')
-                } else {
-                    DecodedKey::Unicode('o')
-                }
-            }
-            KeyCode::P => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('P')
-                } else {
-                    DecodedKey::Unicode('p')
-                }
-            }
-            KeyCode::BracketSquareLeft => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('\"')
-                } else {
-                    DecodedKey::Unicode('^')
-                }
-            }
-            KeyCode::BracketSquareRight => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('£')
-                } else {
-                    DecodedKey::Unicode('$')
-                }
-            }
-            KeyCode::BackSlash => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('|')
-                } else {
-                    DecodedKey::Unicode('\\')
-                }
-            }
-            KeyCode::A => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('Q')
-                } else {
-                    DecodedKey::Unicode('q')
-                }
-            }
-            KeyCode::S => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('S')
-                } else {
-                    DecodedKey::Unicode('s')
-                }
-            }
-            KeyCode::D => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('D')
-                } else {
-                    DecodedKey::Unicode('d')
-                }
-            }
-            KeyCode::F => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('F')
-                } else {
-                    DecodedKey::Unicode('f')
-                }
-            }
-            KeyCode::G => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('G')
-                } else {
-                    DecodedKey::Unicode('g')
-                }
-            }
-            KeyCode::H => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('H')
-                } else {
-                    DecodedKey::Unicode('h')
-                }
-            }
-            KeyCode::J => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('J')
-                } else {
-                    DecodedKey::Unicode('j')
-                }
-            }
-            KeyCode::K => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('K')
-                } else {
-                    DecodedKey::Unicode('k')
-                }
-            }
-            KeyCode::L => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('L')
-                } else {
-                    DecodedKey::Unicode('l')
-                }
-            }
-            KeyCode::SemiColon => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('M')
-                } else {
-                    DecodedKey::Unicode('m')
-                }
-            }
-            KeyCode::Quote => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('%')
-                } else {
-                    DecodedKey::Unicode('ù')
-                }
-            }
-            // Enter gives LF, not CRLF or CR
-            KeyCode::Enter => DecodedKey::Unicode(10.into()),
-            KeyCode::Z => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('W')
-                } else {
-                    DecodedKey::Unicode('w')
-                }
-            }
-            KeyCode::X => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('X')
-                } else {
-                    DecodedKey::Unicode('x')
-                }
-            }
-            KeyCode::C => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('C')
-                } else {
-                    DecodedKey::Unicode('c')
-                }
-            }
-            KeyCode::V => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('V')
-                } else {
-                    DecodedKey::Unicode('v')
-                }
-            }
-            KeyCode::B => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('B')
-                } else {
-                    DecodedKey::Unicode('b')
-                }
-            }
-            KeyCode::N => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('N')
-                } else {
-                    DecodedKey::Unicode('n')
-                }
-            }
-            KeyCode::M => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('?')
-                } else {
-                    DecodedKey::Unicode(',')
-                }
-            }
-            KeyCode::Comma => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('.')
-                } else {
-                    DecodedKey::Unicode(';')
-                }
-            }
-            KeyCode::Fullstop => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('/')
-                } else {
-                    DecodedKey::Unicode('!')
-                }
-            }
-            KeyCode::Slash => {
-                if modifiers.is_shifted() {
-                    DecodedKey::Unicode('§')
-                } else {
-                    DecodedKey::Unicode('!')
-                }
-            }
-            KeyCode::Spacebar => DecodedKey::Unicode(' '),
-            KeyCode::Delete => DecodedKey::RawKey(KeyCode::Delete),
-            KeyCode::NumpadSlash => DecodedKey::Unicode('/'),
-            KeyCode::NumpadStar => DecodedKey::Unicode('*'),
-            KeyCode::NumpadMinus => DecodedKey::Unicode('-'),
-            KeyCode::Numpad7 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('7')
-                } else {
-                    DecodedKey::RawKey(KeyCode::Home)
-                }
-            }
-            KeyCode::Numpad8 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('8')
-                } else {
-                    DecodedKey::RawKey(KeyCode::ArrowUp)
-                }
-            }
-            KeyCode::Numpad9 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('9')
-                } else {
-                    DecodedKey::RawKey(KeyCode::PageUp)
-                }
-            }
-            KeyCode::NumpadPlus => DecodedKey::Unicode('+'),
-            KeyCode::Numpad4 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('4')
-                } else {
-                    DecodedKey::RawKey(KeyCode::ArrowLeft)
-                }
-            }
-            KeyCode::Numpad5 => DecodedKey::Unicode('5'),
-            KeyCode::Numpad6 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('6')
-                } else {
-                    DecodedKey::RawKey(KeyCode::ArrowRight)
-                }
-            }
-            KeyCode::Numpad1 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('1')
-                } else {
-                    DecodedKey::RawKey(KeyCode::End)
-                }
-            }
-            KeyCode::Numpad2 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('2')
-                } else {
-                    DecodedKey::RawKey(KeyCode::ArrowDown)
-                }
-            }
-            KeyCode::Numpad3 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('3')
-                } else {
-                    DecodedKey::RawKey(KeyCode::PageDown)
-                }
-            }
-            KeyCode::Numpad0 => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('0')
-                } else {
-                    DecodedKey::RawKey(KeyCode::Insert)
-                }
-            }
-            KeyCode::NumpadPeriod => {
-                if modifiers.numlock {
-                    DecodedKey::Unicode('.')
-                } else {
-                    DecodedKey::Unicode(127.into())
-                }
-            }
-            KeyCode::NumpadEnter => DecodedKey::Unicode(10.into()),
-            k => DecodedKey::RawKey(k),
-        }
-    }
-}
-*/

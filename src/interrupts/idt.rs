@@ -1,3 +1,4 @@
+use x86_64::VirtAddr;
 use x86_64::instructions::{segmentation, tables::{DescriptorTablePointer, lidt}};
 use x86_64::structures::gdt::SegmentSelector;
 use x86_64::PrivilegeLevel;
@@ -22,8 +23,9 @@ pub struct EntryOptions(u16);
 impl EntryOptions {
 
     fn minimal() -> Self {
-        let mut options = 0;
-        options.set_bits(9..12, 0b111);
+        let mut options:u16 = 0;
+        //options.set_bits(9..12, 0b111);
+        options = options | 0b111_0000_0000;
         EntryOptions(options)
     }
 
@@ -34,22 +36,35 @@ impl EntryOptions {
     }
 
     pub fn set_present(&mut self, present : bool) -> &mut Self {
-        self.0.set_bit(15, present);
+        if present {
+            self.0 = self.0 | (1 << 15);
+        } else {
+            self.0 = self.0 & !(1 << 15);
+        }
+       // self.0.set(15, present);
         self
     }
 
     pub fn disable_interrupts(&mut self, disable : bool) -> &mut Self {
-        self.0.set_bit(8, !disable);
+        //self.0.set(8, !disable);
+        if disable {
+            self.0 = self.0 & !(1 << 15);
+        } else {
+            self.0 = self.0 | (1 << 15);
+        }
+        self
     }
 
     pub fn set_privilege_level(&mut self, dpl : u16) -> &mut Self {
-        self.0.set_bits(13..15, dpl);
+       // self.0.set_bits(13..15, dpl);
+        self.0 = (self.0 & !(0b11 << 13))| ((dpl & 0b11) << 13);
         self
     }
 
     pub fn set_stack_index(&mut self, index : u16) -> &mut Self {
-        self.0.set_bits(0..3, index);
-        self
+      //  self.0.set_bits(0..3, index);
+      self.0 = (self.0 & !0b111) | (index & 0b111);
+      self
     }
 }
 
@@ -61,19 +76,13 @@ impl Entry {
             pointer_low : pointer as u16,
             pointer_middle: (pointer >> 16) as u16,
             pointer_high: (pointer >> 32) as u32,
-            options : EnteryOptions::new(),
+            options : EntryOptions::new(),
             reserved : 0,
         }
     }
 }
 
 pub type HandlerFunc = extern "C" fn() -> !;
-
-impl  Idt {
-    pub fn new() -> Idt {
-        Idt([Entry::missing(); 16])
-    }
-}
 
 impl Entry {
     fn missing() -> Self {
@@ -89,6 +98,10 @@ impl Entry {
 }
 
 impl Idt {
+    pub fn new() -> Idt {
+        Idt([Entry::missing(); 16])
+    }
+
     pub fn set_handler_fn(&mut self, entry: u8, handler: HandlerFunc)
         -> &mut EntryOptions {
             self.0[entry as usize] = Entry::new(segmentation::cs(), handler);
@@ -97,7 +110,7 @@ impl Idt {
     
     pub fn load(&'static self) {
         let ptr = DescriptorTablePointer {
-            base: self as *const _ as u64,
+            base: VirtAddr::new(self as *const _ as u64),
             limit: (size_of::<Self>() - 1) as u16,
         };
 

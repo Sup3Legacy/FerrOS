@@ -2,22 +2,299 @@
 mod idt;
 
 use lazy_static::lazy_static;
+use x86_64::addr::VirtAddr;
+use x86_64::instructions::port::Port;
+use x86_64::registers::control::{Cr2, Cr3};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+//use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
+use crate::gdt;
+use crate::{print, println};
+use lazy_static::lazy_static;
+use pic8259_simple::ChainedPics;
+use spin;
+
+
+
+pub fn init() {
+    IDT.load();
+    unsafe {
+        PICS.lock().initialize();
+    }
+    x86_64::instructions::interrupts::enable();
+}
+
 
 lazy_static! {
     static IDT: idt::Idt = {
         let mut idt = idt::Idt::new();
         idt.set_handler(0, divide_by_zero_handler);
 
+        idt.divide_error.set_handler_fn(0, handler!(divide_error_handler));
+        idt.debug.set_handler_fn(1, handler!(debug_handler));
+        idt.non_maskable_interrupt
+            .set_handler_fn(2, handler!(non_maskable_interrupt_handler));
+        idt.breakpoint.set_handler_fn(3, handler!(breakpoint_handler));
+        idt.overflow.set_handler_fn(4, handler!(overflow_handler));
+        idt.bound_range_exceeded
+            .set_handler_fn(5, handler!(bound_range_exceeded_handler));
+        idt.invalid_opcode.set_handler_fn(6, handler!(invalid_opcode_handler));
+        idt.device_not_available
+            .set_handler_fn(7, handler!(device_not_available_handler));
+        idt.invalid_tss.set_handler_fn(10, handler!(invalid_tss_handler));
+        idt.segment_not_present
+            .set_handler_fn(11, handler!(segment_not_present_handler));
+        idt.stack_segment_fault
+            .set_handler_fn(12, handler!(stack_segment_fault_handler));
+        idt.general_protection_fault
+            .set_handler_fn(13, handler!(general_protection_fault_handler));
+        idt.page_fault.set_handler_fn(14, handler!(page_fault_handler));
+        idt.x87_floating_point
+            .set_handler_fn(16, handler!(x87_floating_point_handler));
+        idt.alignment_check.set_handler_fn(17, handler!(alignment_check_handler));
+        idt.simd_floating_point
+            .set_handler_fn(19, handler!(simd_floating_point_handler));
+        idt.virtualization.set_handler_fn(20, handler!(virtualization_handler));
+        idt.security_exception
+            .set_handler_fn(30, handler!(security_exception_handler));
+        idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
+        idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        unsafe {
+            idt.double_fault
+                .set_handler_fn(double_fault_handler)
+                .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+        }
         idt
 
     };
 }
 
-extern "C" fn divide_by_zero_handler() -> ! {
-    println!("EXCEPTION: DIVIDE BY ZERO");
+
+macro_rules! handler {
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!("mov rdi, rsp
+                      sub rsp, 8 // align the stack pointer
+                      call $0"
+                      :: "i"($name as extern "C" fn(
+                          &ExceptionStackFrame))
+                      : "rdi" : "intel");
+                ::core::intrinsics::unreachable();
+            }
+        }
+        wrapper
+    }}
+}
+
+macro_rules! handler_with_error_code {
+    ($name: ident) => {{
+        #[naked]
+        extern "C" fn wrapper() -> ! {
+            unsafe {
+                asm!("pop rsi // pop error code into rsi
+                      mov rdi, rsp
+                      sub rsp, 8 // align the stack pointer
+                      call $0"
+                      :: "i"($name as extern "C" fn(
+                          &ExceptionStackFrame, u64))
+                      : "rdi","rsi" : "intel");
+                asm!("add rsp, 8 // undo stack pointer alignment
+                      iretq"
+                      :::: "intel", "volatile");
+                ::core::intrinsics::unreachable();
+            }
+        }
+        wrapper
+    }}
+}
+
+bitflags! {
+    struct PageFaultErrorCode: u64 {
+        const PROTECTION_VIOLATION = 1 << 0;
+        const CAUSED_BY_WRITE = 1 << 1;
+        const USER_MODE = 1 << 2;
+        const MALFORMED_TABLE = 1 << 3;
+        const INSTRUCTION_FETCH = 1 << 4;
+    }
+}
+
+#[derive(Debug)]
+#[repr(C)]
+struct ExceptionStackFrame {
+    instruction_pointer: u64,
+    code_segment: u64,
+    cpu_flags: u64,
+    stack_pointer: u64,
+    stack_segment: u64,
+}
+
+extern "C" fn divide_by_zero_handler(stack_frame: &ExceptionStackFrame) {
+    println!("\nEXCEPTION: DIVIDE BY ZERO{:#?}", unsafe { &*stack_frame });
     loop {}
 }
 
-pub fn init() {
-    IDT.load();
+lazy_static! {
+    static ref KEYBOARD : spin::Mutex<u8> = spin::Mutex::new(1);
+   /* static ref KEYBOARD : spin::Mutex<Keyboard<Fr104Key, ScancodeSet1>> =
+    spin::Mutex::new(
+        Keyboard::new(
+            Fr104Key, ScancodeSet1, HandleControl::Ignore
+        )
+    );*/
 }
+
+extern "C" fn debug_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("DEBUG");
+}
+
+extern "C" fn non_maskable_interrupt_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("Non maskable Stack Frame");
+}
+
+extern "C" fn breakpoint_handler(stack_frame: &InterruptStackFrame) {
+    let stack_frame = unsafe { &*stack_frame};
+    println!("BREAKPOINT : {:#?}", stack_frame.instruction_pointer);
+}
+
+extern "C" fn overflow_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("OVERFLOW");
+}
+
+extern "C" fn bound_range_exceeded_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("BOUND RANGE EXCEEDED");
+}
+
+extern "C" fn invalid_opcode_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("INVALID OPCODE");
+}
+
+extern "C" fn device_not_available_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("DEVICE NOT AVAILABLE");
+}
+
+extern "C" fn double_fault_handler(
+    stack_frame: &InterruptStackFrame,
+    error_code: u64,
+) {
+    println!("ERROR : {:#?}", error_code);
+    panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
+}
+
+extern "C" fn invalid_tss_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: u64,
+) {
+    panic!("INVALID TSS");
+}
+
+extern "C" fn segment_not_present_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: u64,
+) {
+    panic!("SEGMENT NOT PRESENT");
+}
+
+extern "C" fn stack_segment_fault_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: u64,
+) {
+    panic!("STACK SEGMENT FAULT");
+}
+
+extern "C" fn general_protection_fault_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: u64,
+) {
+    panic!("GENERAL PROTECTION FAULT");
+}
+
+extern "C" fn x87_floating_point_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("x87 FLOATING POINT");
+}
+
+extern "C" fn alignment_check_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: u64,
+) {
+    panic!("ALIGNMENT CHECK");
+}
+
+extern "C" fn simd_floating_point_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("SIMD FLOATING POINT");
+}
+
+extern "C" fn virtualization_handler(_stack_frame: &InterruptStackFrame) {
+    panic!("VIRTUALIZATION");
+}
+
+extern "C" fn security_exception_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: u64,
+) {
+    panic!("SECURITY EXCEPTION");
+}
+
+extern "x86-interrupt" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame) {
+    //print!(".");
+    //println!("Timer {:#?}", _stack_frame);
+    let stack_frame2 = unsafe { stack_frame.as_mut() };
+    let (pf, cr_f) = Cr3::read();
+    let state = crate::task::executor::Status {
+        cs: stack_frame2.code_segment,
+        cf: stack_frame2.cpu_flags,
+        sp: stack_frame2.stack_pointer,
+        ss: stack_frame2.stack_segment,
+        ip: stack_frame2.instruction_pointer,
+        cr3: (pf, cr_f),
+    };
+    let next = crate::task::executor::next_task(state);
+    stack_frame2.code_segment = next.cs;
+    stack_frame2.cpu_flags = next.cf;
+    stack_frame2.stack_pointer = next.sp;
+    stack_frame2.stack_segment = next.ss;
+    stack_frame2.instruction_pointer = next.ip;
+    unsafe {
+        Cr3::write(next.cr3.0, next.cr3.1);
+    };
+    /*
+    println!("test1");
+    stack_frame2.instruction_pointer = VirtAddr::new(8); // cette ligne fait tout planter
+    println!("test2");*/
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    }
+}
+
+extern "C" fn page_fault_handler(
+    _stack_frame: &InterruptStackFrame,
+    _error_code: PageFaultErrorCode,
+)  -> ! {
+    use x86_64::registers::control_regs;
+    println!(
+        "\nEXCEPTION: PAGE FAULT while accessing {:#x}\
+        \nerror code: {:?}\n{:#?}",
+        unsafe { control_regs::cr2() },
+        PageFaultErrorCode::from_bits(error_code).unwrap(),
+        unsafe { &*stack_frame });
+}
+
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    let _keyboard = KEYBOARD.lock();
+    let mut port = Port::new(0x60);
+    let scancode: u8 = unsafe { port.read() };
+    crate::keyboard::add_scancode(scancode);
+
+
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
+pub const PIC_1_OFFSET: u8 = 32;
+pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+
+pub static PICS: spin::Mutex<ChainedPics> =
+    spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
