@@ -7,6 +7,7 @@ use x86_64::{
 };
 //use core::ptr::null_mut;
 use linked_list_allocator::LockedHeap; //Will be removed in favor of a custom allocator in the future
+pub mod linked_list;
 
 pub const HEAP_START: usize = 0x4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024;
@@ -16,8 +17,10 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     panic!("Allocation error : {:?}", layout)
 }
 
+use linked_list::LinkedListAllocator;
+
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 
 pub fn init(
     mapper: &mut impl Mapper<Size4KiB>,
@@ -45,4 +48,24 @@ pub fn init(
     }
 
     Ok(())
+}
+
+pub struct Locked<A> {
+    inner: spin::Mutex<A>,
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<A> {
+        self.inner.lock()
+    }
+}
+
+fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
 }

@@ -62,7 +62,7 @@ impl DoubleFile {
     }
 }*/
 
-pub fn get_input(debut : &str, cache: bool) -> String {
+pub fn get_input(debut: &str, cache: bool) -> String {
     let mut stack = String::new();
     print!("{}", debut);
     loop {

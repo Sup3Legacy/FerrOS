@@ -1,7 +1,11 @@
+<<<<<<< HEAD
 
 mod idt;
 
 use x86_64::addr::VirtAddr;
+=======
+//use x86_64::addr::VirtAddr;
+>>>>>>> 5863399ecd16106cc06dc843cd35ba1eebc26d0d
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::structures::idt::{InterruptStackFrame, PageFaultErrorCode};

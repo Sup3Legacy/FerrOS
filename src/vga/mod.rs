@@ -211,8 +211,8 @@ impl Screen {
         Screen {
             col_pos: 0,
             row_pos: 0,
-            color: color,
-            buffer: buffer,
+            color,
+            buffer,
         }
     }
     pub fn set_color(&mut self, color: ColorCode) -> () {
