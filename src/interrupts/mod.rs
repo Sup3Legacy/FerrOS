@@ -14,7 +14,7 @@ use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 use spin;
 
-
+#[macro_export]
 macro_rules! handler {
     ($name: ident) => {{
         #[naked]
@@ -36,6 +36,7 @@ macro_rules! handler {
     }};
 }
 
+#[macro_export]
 macro_rules! handler_with_error_code {
     ($name: ident) => {{
         #[naked]
@@ -59,7 +60,7 @@ macro_rules! handler_with_error_code {
 }
 
 lazy_static! {
-    static IDT: idt::Idt = {
+    static ref IDT: idt::Idt = {
         let mut idt = idt::Idt::new();
         idt.set_handler_fn(0, handler!(divide_by_zero_handler));
  //       idt.set_handler_fn(1, handler!(debug_handler));
