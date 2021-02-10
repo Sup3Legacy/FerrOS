@@ -17,13 +17,14 @@ lazy_static! {
     });
 }
 
-/// crate-wide
+/// crate-wide `println` macro.
 #[macro_export]
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
 }
 
+/// crate-wide `print` macro. It enables any program to write to the VGA interface
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));

@@ -11,6 +11,13 @@ use crate::{print, println};
 pub struct ShellErr {
     message: String,
 }
+
+/// ShellCommand is the wrapper around each command callable from the shell
+/// 
+/// *Attributes*
+/// - `keyword` keyword through which one can call the command
+/// - `help` help message displayd when the execution of the command returns an error
+/// - `function` main function of the command
 #[derive(Clone, Debug)]
 pub struct ShellCommand {
     pub keyword: String,
@@ -24,6 +31,7 @@ pub fn _test1(a: Vec<String>) -> Result<(), ShellErr> {
 }
 
 lazy_static! {
+    /// Main BTreeMap. Contains the bindings `keyword` <=> `command`
     pub static ref COMMANDS: BTreeMap<String, ShellCommand> = {
         let mut commands = BTreeMap::new();
         let test_command = ShellCommand {
@@ -36,6 +44,9 @@ lazy_static! {
     };
 }
 
+/// Entry function of the shell
+///
+/// TODO : clean it and make it more general
 pub fn main_shell() -> () {
     println!("nom d'utilisateur : {}", 0xfe as char);
     let _utilisateur = keyboard_interraction::get_input(false);
@@ -45,6 +56,10 @@ pub fn main_shell() -> () {
     _main_loop();
 }
 
+/// Main Read-Evaluate-Print loop of the shell.
+///
+/// The user can write comands. 
+/// The first word is the keywords, which indicates which (software-defined) programed is called
 pub fn _main_loop() -> ! {
     loop {
         let a = keyboard_interraction::get_input(false);
@@ -65,6 +80,8 @@ pub fn _main_loop() -> ! {
     }
 }
 
+/// Temporary function.
+/// Will be modified or removed in the future
 pub fn _parse_input_into_vec<'a>(s: &'a String) -> SplitWhitespace<'a> {
     s.split_whitespace()
 }

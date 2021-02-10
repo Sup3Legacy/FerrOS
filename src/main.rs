@@ -66,7 +66,7 @@ async fn task_2() {
 }
 
 entry_point!(kernel_main);
-/// This is the starting function. Its name must not be changeed by the compiler, hence the `#![no_mangle]`
+/// This is the starting function.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init();
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
