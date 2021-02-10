@@ -48,11 +48,9 @@ lazy_static! {
 ///
 /// TODO : clean it and make it more general
 pub fn main_shell() -> () {
-    println!("nom d'utilisateur : {}", 0xfe as char);
-    let _utilisateur = keyboard_interraction::get_input(false);
+    let _utilisateur = keyboard_interraction::get_input("pseudo : ",false);
     println!();
-    println!("mot de passe : ");
-    let _mpd = keyboard_interraction::get_input(true);
+    let _mpd = keyboard_interraction::get_input("mdp : ", true);
     _main_loop();
 }
 
@@ -62,7 +60,7 @@ pub fn main_shell() -> () {
 /// The first word is the keywords, which indicates which (software-defined) programed is called
 pub fn _main_loop() -> ! {
     loop {
-        let a = keyboard_interraction::get_input(false);
+        let a = keyboard_interraction::get_input(">> ", false);
         let mut it = _parse_input_into_vec(&a);
         match it.next() {
             Some(a) => match COMMANDS.get(a) {

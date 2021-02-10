@@ -62,8 +62,9 @@ impl DoubleFile {
     }
 }*/
 
-pub fn get_input(cache: bool) -> String {
+pub fn get_input(debut : &str, cache: bool) -> String {
     let mut stack = String::new();
+    print!("{}", debut);
     loop {
         match { crate::keyboard::get_top_value() } {
             Ok(a) => match a {
@@ -77,7 +78,7 @@ pub fn get_input(cache: bool) -> String {
                 keyboard_layout::KeyEvent::Character('\x08') => {
                     stack.pop();
                     if !cache {
-                        print!("\r{} \r{}", stack, stack);
+                        print!("\r{}{} \r{}{}", debut, stack, debut, stack);
                     }
                 }
 
@@ -91,7 +92,7 @@ pub fn get_input(cache: bool) -> String {
                 keyboard_layout::KeyEvent::SpecialKey(0) => {
                     stack.pop();
                     if !cache {
-                        print!("\r{} \r{}", stack, stack);
+                        print!("\r{}{} \r{}{}", debut, stack, debut, stack);
                     }
                 }
                 keyboard_layout::KeyEvent::SpecialKey(_) => (),
