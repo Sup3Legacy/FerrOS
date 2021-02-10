@@ -13,7 +13,7 @@ pub struct ShellErr {
 }
 
 /// ShellCommand is the wrapper around each command callable from the shell
-/// 
+///
 /// *Attributes*
 /// - `keyword` keyword through which one can call the command
 /// - `help` help message displayd when the execution of the command returns an error
@@ -48,7 +48,7 @@ lazy_static! {
 ///
 /// TODO : clean it and make it more general
 pub fn main_shell() -> () {
-    let _utilisateur = keyboard_interraction::get_input("pseudo : ",false);
+    let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
     println!();
     let _mpd = keyboard_interraction::get_input("mdp : ", true);
     _main_loop();
@@ -56,7 +56,7 @@ pub fn main_shell() -> () {
 
 /// Main Read-Evaluate-Print loop of the shell.
 ///
-/// The user can write comands. 
+/// The user can write comands.
 /// The first word is the keywords, which indicates which (software-defined) programed is called
 pub fn _main_loop() -> ! {
     loop {
