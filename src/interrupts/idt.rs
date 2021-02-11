@@ -4,7 +4,7 @@ use x86_64::structures::gdt::SegmentSelector;
 use x86_64::PrivilegeLevel;
 use core::mem::size_of;
 
-pub struct Idt([Entry; 16]);
+pub struct Idt([Entry; 64]);
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C, packed)]
@@ -99,7 +99,7 @@ impl Entry {
 
 impl Idt {
     pub fn new() -> Self {
-        Idt([Entry::missing(); 16])
+        Idt([Entry::missing(); 64])
     }
 
     pub fn set_handler_fn(&mut self, entry: u8, handler: HandlerFunc)
