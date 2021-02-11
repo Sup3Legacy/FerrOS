@@ -1,9 +1,9 @@
 # OS-test
 
 ## Dependencies
-- rust
 - cargo
 - rustup
+- qemu
 
 ## Installation
 Install the dependencies.
