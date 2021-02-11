@@ -841,7 +841,7 @@ static TABLE_CODE: [Key; 128] = [
     Key::Let1_7,
     Key::Let1_8,
     Key::Let1_9,
-    Key::Pourcent,
+    Key::Percent,
     Key::Ineg,
     Key::ShiftL,
     Key::Tild,
@@ -974,7 +974,7 @@ pub enum Key {
     Let1_7 = 37,
     Let1_8 = 38,
     Let1_9 = 39,
-    Pourcent = 40,
+    Percent = 40,
     Tild = 43,
 
     ShiftL = 42,
