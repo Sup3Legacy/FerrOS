@@ -828,7 +828,7 @@ static TABLE_CODE: [Key; 128] = [
     Key::Let0_8,
     Key::Let0_9,
     Key::Accent,
-    Key::Dolar,
+    Key::Dollar,
     Key::Enter,
     Key::Unknown,
     Key::Let1_0,
@@ -960,7 +960,7 @@ pub enum Key {
     Let0_8 = 24,
     Let0_9 = 25,
     Accent = 26,
-    Dolar = 27,
+    Dollar = 27,
     Enter = 28,
 
     Maj = 58,
