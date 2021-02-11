@@ -19,13 +19,33 @@ macro_rules! handler {
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
-                asm!("mov rdi, rsp",
-                      "sub rsp, 8", // align the stack pointer
+                asm!(
+                    "push rdi",
+                    "mov rdi, rsp",
+                    "add rdi, 8",
+                    "push rsi",
+                    "push rax",
+                    "push rcx",
+                    "push rdx",
+                    "push r8",
+                    "push r9",
+                    "push r10",
+                    "push r11",
+                    "sub rsp, 8", // align the stack pointer
                       "call {0}",
+                    "add rsp, 8",
+                    "pop r11",
+                    "pop r10",
+                    "pop r9",
+                    "pop r8",
+                    "pop rdx",
+                    "pop rcx",
+                    "pop rax",
+                    "pop rsi",
+                    "pop rdi",
+                    "iretq",
                       sym $name
                     );
-                asm!("add rsp, 8", // undo stack pointer alignment
-                      "iretq");
                 ::core::intrinsics::unreachable();
             }
         }
@@ -39,14 +59,34 @@ macro_rules! handler_with_error_code {
         #[naked]
         extern "C" fn wrapper() -> ! {
             unsafe {
-                asm!("pop rsi", // pop error code into rsi
-                      "mov rdi, rsp",
-                      "sub rsp, 8", // align the stack pointer
+                asm!(
+                    "push rdi",
+                    "mov rdi, rsp",
+                    "add rdi, 8",
+                    "push rsi",
+                    "mov rsi, [rsp + 16]",
+                    "push rax",
+                    "push rcx",
+                    "push rdx",
+                    "push r8",
+                    "push r9",
+                    "push r10",
+                    "push r11",
+                    "sub rsp, 8", // align the stack pointer
                       "call {0}",
-                      sym $name
+                    "add rsp, 8",
+                    "pop r11",
+                    "pop r10",
+                    "pop r9",
+                    "pop r8",
+                    "pop rdx",
+                    "pop rcx",
+                    "pop rax",
+                    "pop rsi",
+                    "pop rdi",
+                    "iretq",
+                    sym $name
                     );
-                asm!("add rsp, 8", // undo stack pointer alignment
-                      "iretq");
                 ::core::intrinsics::unreachable();
             }
         }
