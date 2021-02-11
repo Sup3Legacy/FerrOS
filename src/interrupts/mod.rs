@@ -59,25 +59,25 @@ lazy_static! {
     static ref IDT: idt::Idt = {
         let mut idt = idt::Idt::new();
         idt.set_handler_fn(0, handler!(divide_by_zero_handler));
- //       idt.set_handler_fn(1, handler!(debug_handler));
-   //     idt.set_handler_fn(2, handler!(non_maskable_interrupt_handler));
-     //   idt.set_handler_fn(3, handler!(breakpoint_handler));
-       // idt.set_handler_fn(4, handler!(overflow_handler));
-//        idt.set_handler_fn(5, handler!(bound_range_exceeded_handler));
-  //      idt.set_handler_fn(6, handler!(invalid_opcode_handler));
-    //    idt.set_handler_fn(7, handler!(device_not_available_handler));
-      //  idt.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
-        //idt.set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
-//        idt.set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
-  //      idt.set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
-    //    idt.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
-      //  idt.set_handler_fn(16, handler!(x87_floating_point_handler));
-        //idt.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
-//        idt.set_handler_fn(19, handler!(simd_floating_point_handler));
-  //      idt.set_handler_fn(20, handler!(virtualization_handler));
-    //    idt.set_handler_fn(30, handler_with_error_code!(security_exception_handler));
+        idt.set_handler_fn(1, handler!(debug_handler));
+        idt.set_handler_fn(2, handler!(non_maskable_interrupt_handler));
+        idt.set_handler_fn(3, handler!(breakpoint_handler));
+        idt.set_handler_fn(4, handler!(overflow_handler));
+        idt.set_handler_fn(5, handler!(bound_range_exceeded_handler));
+        idt.set_handler_fn(6, handler!(invalid_opcode_handler));
+        idt.set_handler_fn(7, handler!(device_not_available_handler));
+        idt.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
+        idt.set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
+        idt.set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
+        idt.set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
+        idt.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
+        idt.set_handler_fn(16, handler!(x87_floating_point_handler));
+        idt.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
+        idt.set_handler_fn(19, handler!(simd_floating_point_handler));
+        idt.set_handler_fn(20, handler!(virtualization_handler));
+        idt.set_handler_fn(30, handler_with_error_code!(security_exception_handler));
       //  idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
-    //    idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        //idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
         unsafe {
             idt.set_handler_fn(8, handler_with_error_code!(double_fault_handler))
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
@@ -85,36 +85,6 @@ lazy_static! {
         idt
 
     };
-}
-
-
-fn new() -> idt::Idt {
-    let mut idt = idt::Idt::new();
-    idt.set_handler_fn(0, handler!(divide_by_zero_handler));
-//       idt.set_handler_fn(1, handler!(debug_handler));
-//     idt.set_handler_fn(2, handler!(non_maskable_interrupt_handler));
- //   idt.set_handler_fn(3, handler!(breakpoint_handler));
-   // idt.set_handler_fn(4, handler!(overflow_handler));
-//        idt.set_handler_fn(5, handler!(bound_range_exceeded_handler));
-//      idt.set_handler_fn(6, handler!(invalid_opcode_handler));
-//    idt.set_handler_fn(7, handler!(device_not_available_handler));
-  //  idt.set_handler_fn(10, handler_with_error_code!(invalid_tss_handler));
-    //idt.set_handler_fn(11, handler_with_error_code!(segment_not_present_handler));
-//        idt.set_handler_fn(12, handler_with_error_code!(stack_segment_fault_handler));
-//      idt.set_handler_fn(13, handler_with_error_code!(general_protection_fault_handler));
-//    idt.set_handler_fn(14, handler_with_error_code!(page_fault_handler));
-  //  idt.set_handler_fn(16, handler!(x87_floating_point_handler));
-    //idt.set_handler_fn(17, handler_with_error_code!(alignment_check_handler));
-//        idt.set_handler_fn(19, handler!(simd_floating_point_handler));
-//      idt.set_handler_fn(20, handler!(virtualization_handler));
-//    idt.set_handler_fn(30, handler_with_error_code!(security_exception_handler));
-  //  idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
-//    idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
-    unsafe {
-        idt.set_handler_fn(8, handler_with_error_code!(double_fault_handler))
-            .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
-    }
-    idt
 }
 
 pub fn init() {
