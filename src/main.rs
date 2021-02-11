@@ -7,7 +7,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
-#![feature(llvm_asm)]
+#![feature(asm)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
