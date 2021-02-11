@@ -119,7 +119,7 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
         let (size, align) = LinkedListAllocator::size_align(layout);
         let mut allocator = self.lock();
 
-        println!("{:#?}", allocator.head);
+   //     println!("{:#?}", allocator.head);
 
         if let Some((region, alloc_start)) = allocator.find_region(size, align) {
             let alloc_end = alloc_start.checked_add(size).expect("overflow");

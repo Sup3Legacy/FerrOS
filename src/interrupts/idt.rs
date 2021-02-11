@@ -20,6 +20,8 @@ pub struct Entry {
 #[derive(Debug, Clone, Copy)]
 pub struct EntryOptions(u16);
 
+pub type HandlerFunc = extern "C" fn() -> !;
+
 impl EntryOptions {
 
     fn minimal() -> Self {
@@ -80,11 +82,7 @@ impl Entry {
             reserved : 0,
         }
     }
-}
 
-pub type HandlerFunc = extern "C" fn() -> !;
-
-impl Entry {
     fn missing() -> Self {
         Entry {
             gdt_selector: SegmentSelector::new(0, PrivilegeLevel::Ring0),
