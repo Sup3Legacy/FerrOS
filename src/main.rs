@@ -26,6 +26,7 @@ mod interrupts;
 mod keyboard;
 mod memory;
 mod task;
+mod serial;
 
 
 /// # The core of the FerrOS operating system.
@@ -40,9 +41,19 @@ use alloc::string::String;
 
 /// # Panic handling
 /// This function is called on panic.
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     println!("{}", _info);
+    halt_loop();
+}
+
+/// This function is called on panic in test mode.
+#[cfg(test)]
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    serial_println!("\n[failed] Error: {}", _info);
+    exit_qemu(QemuExitCode::Failed);
     halt_loop();
 }
 
@@ -133,10 +144,35 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     executor.run();
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum QemuExitCode {
+    Success = 0x10,
+    Failed = 0x11,
+}
+
+pub fn exit_qemu(exit_code: QemuExitCode) {
+    use x86_64::instructions::port::Port;
+
+    unsafe {
+        let mut port = Port::new(0xf4);
+        port.write(exit_code as u32);
+    }
+}
+
 #[cfg(test)]
 fn test_runner(tests: &[&dyn Fn()]) {
-    println!("Running {} tests", tests.len());
+    serial_println!("Running {} tests", tests.len());
     for test in tests {
         test();
     }
+    exit_qemu(QemuExitCode::Success);
+    serial_println!("Done exiting QEMU");
+}
+
+#[test_case]
+fn trivial_assertion() {
+    serial_print!("trivial assertion...");
+    assert_eq!(1, 2);
+    serial_println!(" [ok]");
 }
