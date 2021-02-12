@@ -18,14 +18,16 @@ use bootloader::{entry_point, BootInfo};
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
-mod vga;
-use vga::_print_at;
+mod vga_controller;
+use vga_controller::_print_at;
+use vga_controller::video_mode;
 mod allocator;
 mod gdt;
 mod interrupts;
 mod keyboard;
 mod memory;
 mod task;
+
 
 use crate::task::{executor::Executor, Task};
 
@@ -82,7 +84,8 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
 
     keyboard::init();
-    vga::init();
+    vga_controller::init();
+    //video_mode::init();
 
     // This enables the tests
     #[cfg(test)]
@@ -99,7 +102,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     for i in 0..10000 {
         print!("{}/1000000", i);
-        vga::write_back();
+        vga_controller::write_back();
     }
     println!();
 
