@@ -11,6 +11,7 @@ pub struct KeyBoardStatus {
     shift_r: bool,
     num_lock: bool,
     control: bool,
+    gui: bool,
     alt: bool,
     alt_gr: bool,
     fn_key: bool,
@@ -37,6 +38,7 @@ impl KeyBoardStatus {
             shift_r: false,
             num_lock: false,
             control: false,
+            gui: false,
             alt: false,
             alt_gr: false,
             fn_key: false,
@@ -57,11 +59,23 @@ impl KeyBoardStatus {
     pub fn shift_r_up(&mut self) {
         self.shift_r = false
     }
+    pub fn gui_down(&mut self) {
+        self.gui = false
+    }
+    pub fn gui_up(&mut self) {
+        self.gui = true
+    }
     pub fn alt_down(&mut self) {
         self.alt = true
     }
     pub fn alt_up(&mut self) {
         self.alt = false
+    }
+    pub fn alt_gr_down(&mut self) {
+        self.alt_gr = true
+    }
+    pub fn alt_gr_up(&mut self) {
+        self.alt_gr = false
     }
     pub fn maj_s(&mut self) {
         self.maj = !self.maj
@@ -98,31 +112,49 @@ impl KeyBoardStatus {
     pub fn shift(&self) -> bool {
         self.shift_r || self.shift_l
     }
+    pub fn gui(&self) -> bool {
+        self.gui
+    }
     pub fn alt(&self) -> bool {
         self.alt
+    }
+    pub fn alt_gr(&self) -> bool {
+        self.alt_gr
     }
 
     pub fn process(&mut self, key: u8) -> Effect {
         if self.id == 0 {
             self.process0_fr1(key)
         } else if self.id == 1 {
-            self.process1_en1(key)
+            self.process1_us_int(key)
         } else {
             panic!("Unallowed KeyboardId");
             //Effect::Nothing
         }
     }
 
+    // French layout.
     pub fn process0_fr1(&mut self, key: u8) -> Effect {
         if key > (127 as u8) {
             self.table_status[(key - 128) as usize] = false;
             match convert(key - 128) {
                 Key::ShiftR => self.shift_r_up(),
                 Key::ShiftL => self.shift_l_up(),
+                Key::Gui => self.gui_up(),
                 Key::Alt => self.alt_up(),
+                Key::AltGr => self.alt_gr_up(),
                 _ => (),
             };
-            Effect::Nothing
+            // Effect::
+            // TODO
+            match convert(key - 128) {
+                Key::Gui => Effect::Value(KeyEvent::Character('1')),
+                Key::AltGr => Effect::Value(KeyEvent::Character('2')),
+                Key::Alt => Effect::Value(KeyEvent::Character('3')),
+                Key::Let1_9 => Effect::Value(KeyEvent::Character('9')),
+                _ => Effect::Value(KeyEvent::Character('4')),
+                // _ => Effect::Nothing,
+            }
         } else {
             self.table_status[key as usize] = true;
             match convert(key) {
@@ -469,10 +501,21 @@ impl KeyBoardStatus {
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
 
+                Key::Gui => {
+                    self.gui_down();
+                    Effect::Nothing
+                }
+
                 Key::Alt => {
                     self.alt_down();
                     Effect::Nothing
                 }
+
+                Key::AltGr => {
+                    self.alt_gr_down();
+                    Effect::Nothing
+                }
+
                 _ => {
                     //println!("{:?}", key);
                     //println!("{:?}", convert(key));
@@ -482,12 +525,15 @@ impl KeyBoardStatus {
         }
     }
 
-    pub fn process1_en1(&mut self, key: u8) -> Effect {
+    // US international layout.
+    pub fn process1_us_int(&mut self, key: u8) -> Effect {
         if key > (127 as u8) {
             self.table_status[(key - 128) as usize] = false;
             match convert(key - 128) {
                 Key::ShiftR => self.shift_r_up(),
                 Key::ShiftL => self.shift_l_up(),
+                Key::Gui => self.gui_up(),
+                Key::AltGr => self.alt_gr_up(),
                 _ => (),
             };
             Effect::Nothing
@@ -786,6 +832,16 @@ impl KeyBoardStatus {
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
 
+                Key::Gui => {
+                    self.gui_down();
+                    Effect::Nothing
+                }
+
+                Key::AltGr => {
+                    self.alt_gr_up();
+                    Effect::Nothing
+                }
+
                 _ => Effect::Nothing,
             }
         }
@@ -860,8 +916,8 @@ static TABLE_CODE: [Key; 128] = [
     Key::Alt,
     Key::Space,
     Key::Maj,
-    Key::Unknown,
-    Key::Unknown,
+    Key::Gui,
+    Key::AltGr,
     Key::Unknown,
     Key::Unknown,
     Key::Unknown,
@@ -994,6 +1050,9 @@ pub enum Key {
     Alt = 56,
 
     Space = 57,
+
+    Gui = 91,  // TODO To verify.
+    AltGr = 96, // TODO To verify.
 
     ArrowU = 75,
     ArrowD = 77,
