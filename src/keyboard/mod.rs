@@ -43,7 +43,8 @@ pub fn process() {
             match queue.pop() {
                 Err(_) => (),
                 Ok(key) => {
-                    if key == 15 {
+                    // Change layout when pressing TAB or Win-Space.
+                    if key == 15 || (KEYBOARD_STATUS.lock().gui() && key == 57) {
                         let i = KEYBOARD_STATUS.lock().get_id();
                         set_layout((i + 1) % MAX_LAYOUT);
                     } else {
