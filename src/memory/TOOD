@@ -1,0 +1,9 @@
+TODO : refactoring for OS project
+
+Move testing into another module => Gabriel
+Develop a testing framework => Gabriel
+Expand documentation
+
+Ideas for improvements:
+    Get rid of external dependencies
+    Impose a limit on the number of processes (avoir fork bomb)
