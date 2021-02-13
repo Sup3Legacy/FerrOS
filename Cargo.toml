@@ -17,7 +17,6 @@ x86_64 = "0.13.2"
 pic8259_simple = "*"
 pc-keyboard = "*"
 linked_list_allocator = "*"
-vga="*"
 uart_16550 = "*"
 
 [dependencies.lazy_static]
@@ -39,6 +38,9 @@ default-features = false
 version = "*"
 default-features = false
 features = ["alloc"]
+
+[dependencies.vga]
+git = 'https://github.com/Pollux3737/vga.git'
 
 # Exit QEMU from the guest system.
 [package.metadata.bootimage]
