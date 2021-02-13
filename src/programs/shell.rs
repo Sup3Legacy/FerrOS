@@ -5,6 +5,8 @@ use alloc::collections::BTreeMap;
 use alloc::{string::String, vec::Vec};
 use lazy_static::lazy_static;
 
+use super::asciiFluid;
+
 use crate::{print, println};
 
 #[derive(Debug, Clone)]
@@ -30,6 +32,11 @@ pub fn _test1(_a: Vec<String>) -> Result<(), ShellErr> {
     Ok(())
 }
 
+pub fn ascii(_ : Vec<String>) -> Result<(), ShellErr> {
+    asciiFluid::main();
+    Ok(())
+}
+
 lazy_static! {
     /// Main BTreeMap. Contains the bindings `keyword` <=> `command`
     pub static ref COMMANDS: BTreeMap<String, ShellCommand> = {
@@ -40,6 +47,12 @@ lazy_static! {
             function: _test1,
         };
         commands.insert(String::from("test"), test_command);
+        let test_command = ShellCommand {
+            keyword: String::from("ascii"),
+            help: String::new(),
+            function: ascii,
+        };
+        commands.insert(String::from("ascii"), test_command);
         commands
     };
 }

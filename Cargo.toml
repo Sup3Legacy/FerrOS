@@ -8,16 +8,16 @@ authors = [
     "Gabriel DORIATH DÖHLER <gabriel.doriath.dohler@ens.psl.eu>",
 ]
 edition = "2018"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bootloader = { version = "0.9.8", features = ["map_physical_memory"]}
 spin = "0.5.2"
-x86_64 = "*"
+x86_64 = "0.13.2"
 pic8259_simple = "*"
 pc-keyboard = "*"
 linked_list_allocator = "*"
+vga="*"
 uart_16550 = "*"
 
 [dependencies.lazy_static]

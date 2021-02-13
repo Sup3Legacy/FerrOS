@@ -16,11 +16,12 @@ use core::panic::PanicInfo;
 // use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
+extern crate vga as vga_video;
+//use vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
 mod vga;
-use vga::_print_at;
 mod allocator;
 mod gdt;
 mod interrupts;
@@ -126,7 +127,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
-    crate::_print_at(2, 2, "loul");
+    vga::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
