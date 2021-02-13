@@ -15,5 +15,6 @@ Then run these three commands in the root directory of the project:
 - `rustup component add rust-src`
 
 ## Usage
+- Build: `cargo build`
 - Build and run: `cargo run`
 - Clean: `cargo clean`
