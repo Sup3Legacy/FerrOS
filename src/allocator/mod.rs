@@ -6,7 +6,7 @@ use x86_64::{
     },
 };
 //use core::ptr::null_mut;
-use linked_list_allocator::LockedHeap; //Will be removed in favor of a custom allocator in the future
+//Will be removed in favor of a custom allocator in the future
 pub mod linked_list;
 
 pub const HEAP_START: usize = 0x4444_4444_0000;

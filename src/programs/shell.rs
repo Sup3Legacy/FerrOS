@@ -5,7 +5,7 @@ use alloc::collections::BTreeMap;
 use alloc::{string::String, vec::Vec};
 use lazy_static::lazy_static;
 
-use super::asciiFluid;
+use super::ascii_fluid;
 
 use crate::{print, println};
 
@@ -32,8 +32,8 @@ pub fn _test1(_a: Vec<String>) -> Result<(), ShellErr> {
     Ok(())
 }
 
-pub fn ascii(_ : Vec<String>) -> Result<(), ShellErr> {
-    asciiFluid::main();
+pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
+    ascii_fluid::main();
     Ok(())
 }
 

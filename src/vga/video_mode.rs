@@ -1,6 +1,6 @@
+use lazy_static::lazy_static;
 use vga::colors::Color16;
 use vga::writers::{Graphics640x480x16, GraphicsWriter};
-use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref VIDEOMODE : Graphics640x480x16 = {
@@ -10,7 +10,6 @@ lazy_static! {
         mode
     };
 }
-
 
 pub fn init() -> () {
     VIDEOMODE.set_mode();
