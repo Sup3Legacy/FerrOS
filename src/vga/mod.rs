@@ -276,6 +276,6 @@ fn check_print_output() {
     println!("{}", s);
     for (i, c) in s.chars().enumerate() {
         let screen_char = SCREEN.lock().buffer.characters[pos + i];
-        assert_eq!(char::from(screen_char.code), c)
+        assert_eq!(char::from(screen_char.code), c);
     }
 }

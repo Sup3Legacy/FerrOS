@@ -8,11 +8,12 @@
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
 #![feature(asm)]
-#![test_runner(crate::test_runner)]
+#![test_runner(os_test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
 
 use core::panic::PanicInfo;
+// use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
 mod programs;
@@ -45,15 +46,6 @@ use alloc::string::String;
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     println!("{}", _info);
-    halt_loop();
-}
-
-/// This function is called on panic in test mode.
-#[cfg(test)]
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    serial_println!("\n[failed] Error: {}", _info);
-    exit_qemu(QemuExitCode::Failed);
     halt_loop();
 }
 
@@ -144,44 +136,10 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     executor.run();
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum QemuExitCode {
-    Success = 0x10,
-    Failed = 0x11,
-}
-
-pub fn exit_qemu(exit_code: QemuExitCode) {
-    use x86_64::instructions::port::Port;
-
-    unsafe {
-        let mut port = Port::new(0xf4);
-        port.write(exit_code as u32);
-    }
-}
-
-pub trait Testable {
-    fn run(&self) -> ();
-}
-
-impl<T> Testable for T
-where
-    T: Fn(),
-{
-    fn run(&self) {
-        serial_print!("{}...\t", core::any::type_name::<T>());
-        self();
-        serial_println!("\x1B[32m[ok]\x1B[0m");
-    }
-}
-
 #[cfg(test)]
-fn test_runner(tests: &[&dyn Testable]) {
-    serial_println!("Running {} tests.", tests.len());
-    for test in tests {
-        test.run();
-    }
-    exit_qemu(QemuExitCode::Success);
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    os_test::test_panic(_info)
 }
 
 #[test_case]

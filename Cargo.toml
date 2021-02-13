@@ -1,5 +1,5 @@
 [package]
-name = "os-test"
+name = "os_test"
 version = "0.1.0"
 authors = ["Constantin Gierczak--Galle <constantin.gierczak-galle@ens.fr>"]
 edition = "2018"
