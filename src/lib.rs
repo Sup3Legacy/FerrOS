@@ -4,10 +4,22 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+#![feature(alloc_error_handler)]
+#![feature(abi_x86_interrupt)]
+
 use core::panic::PanicInfo;
 
+pub mod allocator;
+pub mod gdt;
+pub mod interrupts;
+pub mod keyboard;
+pub mod memory;
+pub mod programs;
 pub mod serial;
+pub mod task;
 pub mod vga;
+
+extern crate alloc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
