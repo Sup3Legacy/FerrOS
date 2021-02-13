@@ -32,6 +32,7 @@ pub fn _test1(_a: Vec<String>) -> Result<(), ShellErr> {
     Ok(())
 }
 
+#[allow(unreachable_code)]
 pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
     ascii_fluid::main();
     Ok(())
