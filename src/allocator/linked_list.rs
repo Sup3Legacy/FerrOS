@@ -1,8 +1,8 @@
 use super::{align_up, Locked};
+use crate::{print, println};
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::mem;
 use core::ptr;
-use crate::{print, println};
 
 #[derive(Debug)]
 struct ListNode {
@@ -43,7 +43,7 @@ impl LinkedListAllocator {
         assert!(size >= mem::size_of::<ListNode>());
         let mut node = ListNode::new(size);
         node.next = self.head.next.take();
-        
+
         // Deuxième tentative
         /*
         let mut current = &mut self.head;
@@ -66,7 +66,7 @@ impl LinkedListAllocator {
                 break;
             }
             node.next = next_region.next.take();
-            //node.previous = 
+            //node.previous =
             current = next_region;
         }
         */
@@ -119,7 +119,7 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
         let (size, align) = LinkedListAllocator::size_align(layout);
         let mut allocator = self.lock();
 
-   //     println!("{:#?}", allocator.head);
+        //     println!("{:#?}", allocator.head);
 
         if let Some((region, alloc_start)) = allocator.find_region(size, align) {
             let alloc_end = alloc_start.checked_add(size).expect("overflow");

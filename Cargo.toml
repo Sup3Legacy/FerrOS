@@ -1,5 +1,5 @@
 [package]
-name = "os-test"
+name = "os_test"
 version = "0.1.0"
 authors = ["Constantin Gierczak--Galle <constantin.gierczak-galle@ens.fr>"]
 edition = "2018"
@@ -13,6 +13,7 @@ pic8259_simple = "*"
 pc-keyboard = "*"
 linked_list_allocator = "*"
 vga="*"
+uart_16550 = "*"
 
 [dependencies.lazy_static]
 version = "1.0"
@@ -33,3 +34,13 @@ default-features = false
 version = "*"
 default-features = false
 features = ["alloc"]
+
+# Exit QEMU from the guest system.
+[package.metadata.bootimage]
+test-timeout = 60  # Number of seconds before timeout.
+test-args = [
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
+    "-serial", "stdio",  # Redirect the output of the serial port to stdout.
+    "-display", "none"  # Hide the display in test mode.
+]
+test-success-exit-code = 33
