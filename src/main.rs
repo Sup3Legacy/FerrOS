@@ -15,12 +15,12 @@
 use core::panic::PanicInfo;
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
+extern crate vga as vga_video;
+//use vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
-mod vga_controller;
-use vga_controller::_print_at;
-use vga_controller::video_mode;
+mod vga;
 mod allocator;
 mod gdt;
 mod interrupts;
@@ -84,7 +84,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
 
     keyboard::init();
-    vga_controller::init();
+    vga::init();
     //video_mode::init();
 
     // This enables the tests
@@ -102,7 +102,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     for i in 0..10000 {
         print!("{}/1000000", i);
-        vga_controller::write_back();
+        vga::write_back();
     }
     println!();
 

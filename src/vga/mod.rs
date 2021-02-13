@@ -29,7 +29,7 @@ macro_rules! println {
 /// crate-wide `print` macro. It enables any program to write to the VGA interface
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::vga_controller::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));
 }
 
 pub fn write_back() {

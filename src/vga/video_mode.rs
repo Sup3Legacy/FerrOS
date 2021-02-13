@@ -1,5 +1,5 @@
-use vga::colors::Color16;
-use vga::writers::{Graphics640x480x16, GraphicsWriter};
+use vga_video::colors::Color16;
+use vga_video::writers::{Graphics640x480x16, GraphicsWriter};
 use lazy_static::lazy_static;
 
 lazy_static! {
