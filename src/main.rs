@@ -109,7 +109,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
-    crate::_print_at(2, 2, "loul");
+    vga::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
