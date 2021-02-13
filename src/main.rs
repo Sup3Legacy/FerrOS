@@ -16,11 +16,12 @@ use core::panic::PanicInfo;
 // use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
+extern crate vga as vga_video;
+//use vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
 mod vga;
-use vga::_print_at;
 mod allocator;
 mod gdt;
 mod interrupts;
