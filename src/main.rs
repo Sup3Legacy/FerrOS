@@ -2,7 +2,6 @@
 #![no_main] // disable all Rust-level entry points
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
-#![feature(wake_trait)]
 #![feature(gen_future)]
 #![feature(custom_test_frameworks)]
 #![feature(core_intrinsics)]
