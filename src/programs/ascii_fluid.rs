@@ -30,7 +30,7 @@ pub fn main() -> ! {
     let mut density = [0.; 2 * HEIGHT * WIDTH];
     let mut wall_flag = [0 as isize; 2 * HEIGHT * WIDTH];
     let mut total_of_particles = 0 as isize;
-    let mut SCREENBUFFER = [[0 as u8; HEIGHT]; WIDTH];
+    let mut screenbuffer = [[0 as u8; HEIGHT]; WIDTH];
 
     let mut particles_counter = 0;
 
@@ -129,7 +129,7 @@ pub fn main() -> ! {
 
         for i in 0..WIDTH {
             for j in 0..HEIGHT {
-                SCREENBUFFER[i][j] = 0 as u8;
+                screenbuffer[i][j] = 0 as u8;
             }
         }
 
@@ -158,16 +158,16 @@ pub fn main() -> ! {
             let y = (y_pos[particles_cursor as usize] / 2) as usize;
 
             if y < HEIGHT - 1 && x < WIDTH - 1 {
-                SCREENBUFFER[x][y] |= 8;
-                SCREENBUFFER[x + 1][y] |= 4;
-                SCREENBUFFER[x][y + 1] |= 2;
-                SCREENBUFFER[x + 1][y + 1] |= 1;
+                screenbuffer[x][y] |= 8;
+                screenbuffer[x + 1][y] |= 4;
+                screenbuffer[x][y + 1] |= 2;
+                screenbuffer[x + 1][y + 1] |= 1;
             }
         }
 
         for i in 0..WIDTH {
             for j in 0..HEIGHT {
-                let index = SCREENBUFFER[i][j];
+                let index = screenbuffer[i][j];
                 print!("{}", CHARS[index as usize]);
             }
             println!();
