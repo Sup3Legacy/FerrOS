@@ -75,7 +75,7 @@ pub fn get_top_value() -> Result<keyboard_layout::KeyEvent, PopError> {
 pub fn init() {
     println!("Scancode queue initialized.");
     ScancodeStream::new();
-   // set_keyboard_responce(31, 3);
+    // set_keyboard_responce(31, 3);
 }
 
 impl ScancodeStream {

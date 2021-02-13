@@ -105,7 +105,7 @@ impl ColorCode {
 }
 
 /// This is the base element, stored in the screen buffer.
-///  
+///
 /// # Fields
 /// * `code` - ASCII code of the character
 /// * `color` - color code of the character, 8-bit integer
@@ -257,5 +257,27 @@ impl fmt::Write for Screen {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
         Ok(())
+    }
+}
+
+#[test_case]
+fn print_without_panic() {
+    println!("abcdefghijklmnopqrstuvwwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=~`|?/>.<,:;\"'}}{{[]\\");
+    println!("éèàáöçµ®¢ŒÆÆæœ©®ßÁ§ÐðÏïŒœøØ¶°¦¬”»“«ÖöÓóÍíÚúÜüÞþËëÉåÅäÄ¡¹²³£¤€¸¼½¾˘’‘¥̣÷×");
+    print!("42");
+}
+
+#[test_case]
+fn check_print_output() {
+    let s = "Yolo";
+
+    let row = SCREEN.lock().row_pos;
+    let col = SCREEN.lock().col_pos;
+    let pos = row * BUFFER_WIDTH + col;
+
+    println!("{}", s);
+    for (i, c) in s.chars().enumerate() {
+        let screen_char = SCREEN.lock().buffer.characters[pos + i];
+        assert_eq!(char::from(screen_char.code), c);
     }
 }
