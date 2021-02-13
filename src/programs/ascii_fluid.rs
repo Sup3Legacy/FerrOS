@@ -78,8 +78,8 @@ pub fn main() -> ! {
                 y_particle_distance =
                     y_pos[particles_cursor as usize] - y_pos[particles_cursor2 as usize];
                 let particles_distance = sqrt(
-                    (x_particle_distance * x_particle_distance + y_particle_distance * y_particle_distance)
-                        as f32,
+                    (x_particle_distance * x_particle_distance
+                        + y_particle_distance * y_particle_distance) as f32,
                 );
                 let particles_interaction = (particles_distance / 2.) - 1.;
 
@@ -101,8 +101,8 @@ pub fn main() -> ! {
                 y_particle_distance =
                     y_pos[particles_cursor as usize] - y_pos[particles_cursor2 as usize];
                 let particles_distance = sqrt(
-                    (x_particle_distance * x_particle_distance + y_particle_distance * y_particle_distance)
-                        as f32,
+                    (x_particle_distance * x_particle_distance
+                        + y_particle_distance * y_particle_distance) as f32,
                 );
                 let particles_interaction = (particles_distance / 2.) - 1.;
 
@@ -140,11 +140,15 @@ pub fn main() -> ! {
                         + y_force[particles_cursor as usize] * y_force[particles_cursor as usize],
                 ) < 4.2
                 {
-                    x_velocity[particles_cursor as usize] += x_force[particles_cursor as usize] / 10.;
-                    y_velocity[particles_cursor as usize] += y_force[particles_cursor as usize] / 10.;
+                    x_velocity[particles_cursor as usize] +=
+                        x_force[particles_cursor as usize] / 10.;
+                    y_velocity[particles_cursor as usize] +=
+                        y_force[particles_cursor as usize] / 10.;
                 } else {
-                    x_velocity[particles_cursor as usize] += x_force[particles_cursor as usize] / 11.;
-                    y_velocity[particles_cursor as usize] += y_force[particles_cursor as usize] / 11.;
+                    x_velocity[particles_cursor as usize] +=
+                        x_force[particles_cursor as usize] / 11.;
+                    y_velocity[particles_cursor as usize] +=
+                        y_force[particles_cursor as usize] / 11.;
                 }
                 x_pos[particles_cursor as usize] += x_velocity[particles_cursor as usize] as isize;
                 y_pos[particles_cursor as usize] += y_velocity[particles_cursor as usize] as isize;
