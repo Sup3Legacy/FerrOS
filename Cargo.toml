@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = [
     "Constantin GIERCZAK--GALLE <constantin.gierczak-galle@ens.fr>",
     "Samuel VIVIEN",
-    "Paul FOURNIER",
+    "Paul FOURNIER <paul.fournier@ens.psl.eu>",
     "Gabriel DORIATH DÖHLER <gabriel.doriath.dohler@ens.psl.eu>",
 ]
 edition = "2018"
