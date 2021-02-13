@@ -63,18 +63,18 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 pub fn test_panic(_info: &PanicInfo) -> ! {
     serial_println!("[failed]\nError: {}\n", _info);
     exit_qemu(QemuExitCode::Failed);
-    loop {};
+    loop {}
 }
 
 #[cfg(test)]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-	test_main();
-	loop {}
+    test_main();
+    loop {}
 }
 
 #[cfg(test)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-	test_panic(info)
+    test_panic(info)
 }

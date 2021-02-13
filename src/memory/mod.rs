@@ -9,7 +9,7 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     //! Returns the virtual address of the level 4 page table, which is currently active (given by the CR3 register). The `physical_memory_offset` is needed as the model used is a `map_physical_memory` scheme.
     //! Is unsafe because the caller has to guarantee that the virtual memory is completely mapped as a physical_memory_offset.
     //! Should not be called more than once to avoid `&mut` aliasing.
-    
+
     let (level_4_frame, _) = Cr3::read();
     let phys = level_4_frame.start_address();
     let virt = physical_memory_offset + phys.as_u64();
@@ -31,7 +31,6 @@ pub struct BootInfoAllocator {
     memory_map: &'static MemoryMap,
     next: usize,
 }
-
 
 /// Create a FrameAllocator from the passed memory map.
 ///
@@ -63,7 +62,6 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
         frame
     }
 }
-
 
 // Not needed as implemented in x86_64 crate ; keep it for later reference
 /*

@@ -26,13 +26,11 @@ mod gdt;
 mod interrupts;
 mod keyboard;
 mod memory;
-mod task;
 mod serial;
-
+mod task;
 
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
-
 use crate::task::{executor::Executor, Task};
 
 extern crate alloc;
@@ -65,10 +63,10 @@ pub fn long_halt(i: usize) {
 
 /// # Initialization
 /// Initializes the configurations
-pub fn init(_boot_info : &'static BootInfo) {
+pub fn init(_boot_info: &'static BootInfo) {
     interrupts::init();
     gdt::init();
-    
+
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
@@ -104,7 +102,6 @@ entry_point!(kernel_main);
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
     // Why is this not in the init function ?
-
 
     // This enables the tests
     #[cfg(test)]
