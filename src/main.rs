@@ -68,7 +68,7 @@ pub fn long_halt(i: usize) {
 pub fn init(_boot_info : &'static BootInfo) {
     interrupts::init();
     gdt::init();
-    
+
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
