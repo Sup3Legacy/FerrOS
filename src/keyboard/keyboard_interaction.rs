@@ -101,6 +101,15 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                     }*/
                 }
                 
+                keyboard_layout::KeyEvent::SpecialKey(1) => {
+                    if let Some(_) = stack.pop() {
+                        print!("{}", '\x7F');
+                    }/*
+                    if !cache {
+                        print!("\r{}{} \r{}{}", debut, stack, debut, stack);
+                    }*/
+                }
+                
                 keyboard_layout::KeyEvent::SpecialKey(b'U') => {
                     vga::move_cursor_up();
                 }

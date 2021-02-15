@@ -469,6 +469,8 @@ impl KeyBoardStatus {
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
 
+                Key::Del => Effect::Value(KeyEvent::SpecialKey(1)),
+                
                 Key::Alt => {
                     self.alt_down();
                     Effect::Nothing
@@ -486,7 +488,7 @@ impl KeyBoardStatus {
                 Key::ArrowU => {
                     Effect::Value(KeyEvent::SpecialKey(b'U'))
                 }
-
+                
                 _ => {
                     //println!("{:?}", key);
                     //println!("{:?}", convert(key));
@@ -914,10 +916,10 @@ static TABLE_CODE: [Key; 128] = [
     Key::ArrowD,
     Key::Unknown, // Page Down
     Key::Unknown, // Insert
-    Key::Unknown, // Del
+    Key::Del,
     Key::Unknown,
     Key::Unknown,
-    Key::Unknown, // < >
+    Key::Ineg,
     Key::Unknown, // F11
     Key::Unknown, // F12
     Key::Unknown,
@@ -977,21 +979,22 @@ pub enum Key {
     UpZero = 12,
     Min = 13,
     BackSpace = 14,
-
-    Tab = 15,
-    Let0_0 = 16,
-    Let0_1 = 17,
-    Let0_2 = 18,
-    Let0_3 = 19,
-    Let0_4 = 20,
-    Let0_5 = 21,
-    Let0_6 = 22,
-    Let0_7 = 23,
-    Let0_8 = 24,
-    Let0_9 = 25,
-    Accent = 26,
-    Dolar = 27,
-    Enter = 28,
+    Del = 15,
+    
+    Tab = 16,
+    Let0_0 = 17,
+    Let0_1 = 18,
+    Let0_2 = 19,
+    Let0_3 = 20,
+    Let0_4 = 21,
+    Let0_5 = 22,
+    Let0_6 = 23,
+    Let0_7 = 24,
+    Let0_8 = 25,
+    Let0_9 = 26,
+    Accent = 27,
+    Dolar = 28,
+    Enter = 29,
 
     Maj = 58,
     Let1_0 = 30,

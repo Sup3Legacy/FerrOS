@@ -209,6 +209,12 @@ impl Screen {
                     color: self.color,
                 };
             }
+            b'\x7F' => {
+                self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {
+                    code: b' ',
+                    color: self.color,
+                };
+            }
             _ => {
 //                 if self.col_pos + self.row_pos * BUFFER_WIDTH >= BUFFER_WIDTH * BUFFER_HEIGHT - 1 {
 //                     if self.row_pos == 0 {
