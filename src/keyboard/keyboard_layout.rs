@@ -802,6 +802,8 @@ impl KeyBoardStatus {
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
                 
+                Key::Del => Effect::Value(KeyEvent::SpecialKey(1)),
+                
                 Key::ArrowL => {
                     Effect::Value(KeyEvent::SpecialKey(b'L'))
                 },
