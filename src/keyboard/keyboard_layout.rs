@@ -800,10 +800,13 @@ impl KeyBoardStatus {
 
                 Key::Enter => Effect::Value(KeyEvent::Character('\n')),
 
+                // For these two, they should be smarter by having the position of the previous characters remembered
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
                 
                 Key::Del => Effect::Value(KeyEvent::SpecialKey(1)),
                 
+                // In the end, these four keys should be context-dependend.
+                // When typing a username, we don't want to be able to move the cursor too much
                 Key::ArrowL => {
                     Effect::Value(KeyEvent::SpecialKey(b'L'))
                 },
