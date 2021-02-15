@@ -473,6 +473,19 @@ impl KeyBoardStatus {
                     self.alt_down();
                     Effect::Nothing
                 }
+                
+                Key::ArrowL => {
+                    Effect::Value(KeyEvent::SpecialKey(b'L'))
+                }
+                Key::ArrowR => {
+                    Effect::Value(KeyEvent::SpecialKey(b'R'))
+                }
+                Key::ArrowD => {
+                    Effect::Value(KeyEvent::SpecialKey(b'D'))
+                }
+                Key::ArrowU => {
+                    Effect::Value(KeyEvent::SpecialKey(b'U'))
+                }
                 _ => {
                     //println!("{:?}", key);
                     //println!("{:?}", convert(key));
@@ -786,6 +799,19 @@ impl KeyBoardStatus {
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
 
+                Key::ArrowL => {
+                    Effect::Value(KeyEvent::SpecialKey(b'L'))
+                }
+                Key::ArrowR => {
+                    Effect::Value(KeyEvent::SpecialKey(b'R'))
+                }
+                Key::ArrowD => {
+                    Effect::Value(KeyEvent::SpecialKey(b'D'))
+                }
+                Key::ArrowU => {
+                    Effect::Value(KeyEvent::SpecialKey(b'U'))
+                }
+
                 _ => Effect::Nothing,
             }
         }
@@ -872,16 +898,16 @@ static TABLE_CODE: [Key; 128] = [
     Key::Unknown,
     Key::Unknown,
     Key::Unknown,
-    Key::ArrowL,
-    Key::Unknown,
-    Key::Unknown,
     Key::Unknown,
     Key::ArrowU,
     Key::Unknown,
-    Key::ArrowD,
     Key::Unknown,
+    Key::ArrowL,
     Key::Unknown,
     Key::ArrowR,
+    Key::Unknown,
+    Key::Unknown,
+    Key::ArrowD,
     Key::Unknown,
     Key::Unknown,
     Key::Unknown,
