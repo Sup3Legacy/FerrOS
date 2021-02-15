@@ -486,6 +486,7 @@ impl KeyBoardStatus {
                 Key::ArrowU => {
                     Effect::Value(KeyEvent::SpecialKey(b'U'))
                 }
+
                 _ => {
                     //println!("{:?}", key);
                     //println!("{:?}", convert(key));
@@ -798,19 +799,22 @@ impl KeyBoardStatus {
                 Key::Enter => Effect::Value(KeyEvent::Character('\n')),
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
-
+                
                 Key::ArrowL => {
                     Effect::Value(KeyEvent::SpecialKey(b'L'))
-                }
+                },
+                
                 Key::ArrowR => {
                     Effect::Value(KeyEvent::SpecialKey(b'R'))
-                }
+                },
+                
                 Key::ArrowD => {
                     Effect::Value(KeyEvent::SpecialKey(b'D'))
-                }
+                },
+                
                 Key::ArrowU => {
                     Effect::Value(KeyEvent::SpecialKey(b'U'))
-                }
+                },
 
                 _ => Effect::Nothing,
             }
@@ -828,7 +832,7 @@ fn convert(key: u8) -> Key {
 
 static TABLE_CODE: [Key; 128] = [
     Key::Unknown,
-    Key::Unknown,
+    Key::Unknown, //Escape
     Key::Key1,
     Key::Key2,
     Key::Key3,
@@ -856,7 +860,7 @@ static TABLE_CODE: [Key; 128] = [
     Key::Accent,
     Key::Dolar,
     Key::Enter,
-    Key::Unknown,
+    Key::Unknown, //Ctrl Right
     Key::Let1_0,
     Key::Let1_1,
     Key::Let1_2,
@@ -868,7 +872,7 @@ static TABLE_CODE: [Key; 128] = [
     Key::Let1_8,
     Key::Let1_9,
     Key::Pourcent,
-    Key::Ineg,
+    Key::Unknown, // œ/²
     Key::ShiftL,
     Key::Tild,
     Key::Let2_0,
@@ -882,43 +886,43 @@ static TABLE_CODE: [Key; 128] = [
     Key::Slash,
     Key::Equal,
     Key::ShiftR,
-    Key::Unknown,
+    Key::Unknown, // Scren Capture
     Key::Alt,
     Key::Space,
     Key::Maj,
+    Key::Unknown, // F1
+    Key::Unknown, // F2
+    Key::Unknown, // F3
+    Key::Unknown, // F4
+    Key::Unknown, // F5
+    Key::Unknown, // F6
+    Key::Unknown, // F7
+    Key::Unknown, // F8
+    Key::Unknown, // F9
+    Key::Unknown, // F10
     Key::Unknown,
     Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
+    Key::Unknown, // Home
     Key::ArrowU,
-    Key::Unknown,
+    Key::Unknown, // Page Up
     Key::Unknown,
     Key::ArrowL,
     Key::Unknown,
     Key::ArrowR,
     Key::Unknown,
-    Key::Unknown,
+    Key::Unknown, // End
     Key::ArrowD,
+    Key::Unknown, // Page Down
+    Key::Unknown, // Insert
+    Key::Unknown, // Del
     Key::Unknown,
     Key::Unknown,
+    Key::Unknown, // < >
+    Key::Unknown, // F11
+    Key::Unknown, // F12
     Key::Unknown,
     Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
+    Key::Unknown, // Super
     Key::Unknown,
     Key::Unknown,
     Key::Unknown,
