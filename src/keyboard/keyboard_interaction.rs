@@ -75,12 +75,13 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                     }
                 }
 
-                keyboard_layout::KeyEvent::Character('\x08') => {
-                    stack.pop();
-                    if !cache {
-                        print!("\r{}{} \r{}{}", debut, stack, debut, stack);
-                    }
-                }
+// Dead code : Backspace treated as SpecialKey(0)
+//                 keyboard_layout::KeyEvent::Character('\x08') => {
+//                     stack.pop();
+//                     if !cache {
+//                         print!("\r{}{} \r{}{}", debut, stack, debut, stack);
+//                     }
+//                 }
 
                 keyboard_layout::KeyEvent::Character(character) => {
                     stack.push(character);
@@ -90,10 +91,12 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                 }
 
                 keyboard_layout::KeyEvent::SpecialKey(0) => {
-                    stack.pop();
+                    if let Some(_) = stack.pop() {
+                        print!("{}", '\x08');
+                    }/*
                     if !cache {
                         print!("\r{}{} \r{}{}", debut, stack, debut, stack);
-                    }
+                    }*/
                 }
                 keyboard_layout::KeyEvent::SpecialKey(_) => (),
             },
