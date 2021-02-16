@@ -17,9 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name : SetUp
-      run : rustup override set nightly
-      run : rustup component add llvm-tools-preview
-      run : rustup component add rust-src
+      run : rustup override set nightly && rustup component add llvm-tools-preview && rustup component add rust-src
     - name: Build
       run: cargo build --verbose
     - name: Run tests
