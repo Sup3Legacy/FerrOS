@@ -4,12 +4,22 @@ use alloc::alloc::{GlobalAlloc, Layout};
 use core::mem;
 use core::ptr;
 
+/// Implements the structure of a linked list.
+///
+/// Here, we consider a heap allocator that is a linked list of free heap segments.
+/// 
+/// Each node holds these values :
+/// * `size` - the size in bytes if the free segment
+/// * `previous` - static reference to the previous memory node
+/// * `next` - static reference to the next memory node
 #[derive(Debug)]
 struct ListNode {
     size: usize,
     previous: Option<&'static mut ListNode>,
     next: Option<&'static mut ListNode>,
 }
+
+
 
 impl ListNode {
     const fn new(size: usize) -> Self {
@@ -27,6 +37,9 @@ impl ListNode {
     }
 }
 
+/// Implements the structure of a memory allocator based on a linked list
+///
+/// It holds a single value `head` which is the first `ListNode` of the associated linked list.
 #[derive(Debug)]
 pub struct LinkedListAllocator {
     head: ListNode,
@@ -38,6 +51,8 @@ impl LinkedListAllocator {
             head: ListNode::new(0),
         }
     }
+    /// Adds a free region to the allocator. It works by placing a new `ListNode` at the front of the allocator with the given size.
+    /// TODO : add the functionnality of list simplification by merging contiguous free regions.
     unsafe fn add_free_region(&mut self, addr: usize, size: usize) {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
@@ -77,6 +92,8 @@ impl LinkedListAllocator {
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.add_free_region(heap_start, heap_size)
     }
+
+    /// Find the first free region in the allocator that has a size at least equal to the requested one.
     fn find_region(&mut self, size: usize, align: usize) -> Option<(&'static mut ListNode, usize)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
@@ -91,6 +108,13 @@ impl LinkedListAllocator {
         }
         None
     }
+
+    /// Checks whether a given region can hold a value of given size.
+    /// 
+    /// By first comparing `alloc_end` and `region.end_addr()`, we make sure the region has enough space for the value.
+    ///
+    /// Then we check whether the excess size (i.e. the memory space that would be left if the allocator would take this segment) 
+    /// allows to put the remaining memory space into a new free node.
     fn alloc_from_region(region: &ListNode, size: usize, align: usize) -> Result<usize, ()> {
         let alloc_start = align_up(region.start_addr(), align);
         let alloc_end = alloc_start.checked_add(size).ok_or(())?;

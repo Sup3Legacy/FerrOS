@@ -38,22 +38,41 @@ pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
     Ok(())
 }
 
+pub fn help(list: Vec<String>) -> Result<(), ShellErr> {
+    match list.get(0) {
+        Some(a) => match COMMANDS.get(a) {
+            Some(command) => {
+                println!("{} : \n {}", command.keyword, command.help);
+            }
+            None => println!("No such command."),
+        },
+        None => println!("Expected command keyword."),
+    }
+    Ok(())
+}
+
 lazy_static! {
     /// Main BTreeMap. Contains the bindings `keyword` <=> `command`
     pub static ref COMMANDS: BTreeMap<String, ShellCommand> = {
         let mut commands = BTreeMap::new();
         let test_command = ShellCommand {
             keyword: String::from("test"),
-            help: String::new(),
+            help: String::from("A simple test function."),
             function: _test1,
         };
         commands.insert(String::from("test"), test_command);
         let test_command = ShellCommand {
             keyword: String::from("ascii"),
-            help: String::new(),
+            help: String::from("Launches the ASCIIfluid program."),
             function: ascii,
         };
         commands.insert(String::from("ascii"), test_command);
+        let test_command = ShellCommand {
+            keyword: String::from("help"),
+            help: String::from("help [function_name]\nPrints the help indcations for any function."),
+            function: help,
+        };
+        commands.insert(String::from("help"), test_command);
         commands
     };
 }

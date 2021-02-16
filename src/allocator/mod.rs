@@ -9,7 +9,9 @@ use x86_64::{
 //Will be removed in favor of a custom allocator in the future
 pub mod linked_list;
 
+/// The start adress of the kernel heap.
 pub const HEAP_START: usize = 0x4444_4444_0000;
+/// The size of the kernel heap. It is for now pretty small.
 pub const HEAP_SIZE: usize = 100 * 1024;
 
 #[alloc_error_handler]
@@ -22,6 +24,9 @@ use linked_list::LinkedListAllocator;
 #[global_allocator]
 static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 
+/// Inits the Allocator, responsible for the...
+///
+/// TODO : continue working on this
 pub fn init(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
