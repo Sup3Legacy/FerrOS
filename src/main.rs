@@ -10,6 +10,7 @@
 #![test_runner(os_test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
+#![feature(wake_trait)]
 
 use core::panic::PanicInfo;
 // use os_test::println;  TODO

@@ -11,8 +11,8 @@ const CHARS: [char; 13] = [
 ];
 
 fn sqrt(x: f32) -> f32 {
-    let i = x.to_bits();
-    let i = 0x5f3759df - (i >> 1);
+    let mut i = x.to_bits();
+    i = 0x5f3759df - (i >> 1);
     let y = f32::from_bits(i);
     let res = y * (1.5 - 0.5 * x * y * y);
     1. / res
@@ -28,7 +28,7 @@ pub fn main() -> ! {
     let mut x_velocity = [0.; 2 * HEIGHT * WIDTH];
     let mut y_velocity = [0.; 2 * HEIGHT * WIDTH];
     let mut density = [0.; 2 * HEIGHT * WIDTH];
-    let mut wall_flag = [0 as isize; 2 * HEIGHT * WIDTH];
+    let mut wall_flag = [0 as usize; 2 * HEIGHT * WIDTH];
     let mut total_of_particles = 0 as isize;
     let mut screenbuffer = [[0 as u8; HEIGHT]; WIDTH];
 
@@ -60,29 +60,25 @@ pub fn main() -> ! {
 
     let mut x_particle_distance;
     let mut y_particle_distance;
-    let _a = (3 as f32) * 9.;
-    println!("{}", sqrt(100.));
     println!("Initialized!");
     loop {
-        println!("Loop beginning");
+        println!("Loop beginning, {}", total_of_particles);
         for particles_cursor in 0..total_of_particles {
-            println!("{} {}", particles_cursor, 256 as f32 * 1.1);
-            let _valeur = wall_flag[particles_cursor as usize];
-            println!("mdr");
-            //density[particles_cursor as usize] = valeur + 0.0001;
+            if particles_cursor % 100 == 0 {
+                println!("{}", particles_cursor);
+            }
+            let valeur = wall_flag[particles_cursor as usize] as f32;
+            density[particles_cursor as usize] = valeur;
 
             for particles_cursor2 in 0..total_of_particles {
-                println!("{}", particles_cursor2);
                 x_particle_distance =
                     x_pos[particles_cursor as usize] - x_pos[particles_cursor2 as usize];
                 y_particle_distance =
                     y_pos[particles_cursor as usize] - y_pos[particles_cursor2 as usize];
-                let particles_distance = sqrt(
-                    (x_particle_distance * x_particle_distance
-                        + y_particle_distance * y_particle_distance) as f32,
-                );
+                let squared = x_particle_distance * x_particle_distance
+                    + y_particle_distance * y_particle_distance;
+                let particles_distance = sqrt((squared as u16).into());
                 let particles_interaction = (particles_distance / 2.) - 1.;
-
                 if particles_interaction > 0. {
                     density[particles_cursor as usize] = density[particles_cursor as usize]
                         + particles_interaction * particles_interaction;
