@@ -1,6 +1,6 @@
 use core::str::SplitWhitespace;
 
-use crate::keyboard::keyboard_interaction;
+use crate::keyboard::keyboard_interraction;
 use alloc::collections::BTreeMap;
 use alloc::{string::String, vec::Vec};
 use lazy_static::lazy_static;
@@ -62,9 +62,9 @@ lazy_static! {
 ///
 /// TODO : clean it and make it more general
 pub fn main_shell() -> () {
-    let _utilisateur = keyboard_interaction::get_input("pseudo : ", false);
+    let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
     println!();
-    let _mpd = keyboard_interaction::get_input("mdp : ", true);
+    let _mpd = keyboard_interraction::get_input("mdp : ", true);
     _main_loop();
 }
 
@@ -74,7 +74,7 @@ pub fn main_shell() -> () {
 /// The first word is the keywords, which indicates which (software-defined) programed is called
 pub fn _main_loop() -> ! {
     loop {
-        let a = keyboard_interaction::get_input(">> ", false);
+        let a = keyboard_interraction::get_input(">> ", false);
         let mut it = _parse_input_into_vec(&a);
         match it.next() {
             Some(a) => match COMMANDS.get(a) {

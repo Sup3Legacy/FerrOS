@@ -2,8 +2,6 @@
 use crate::keyboard::keyboard_layout;
 use crate::{print, println};
 use alloc::string::String;
-use crate::vga;
-
 
 /*
 const TAILLE: usize = 80;
@@ -77,13 +75,12 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                     }
                 }
 
-// Dead code : Backspace treated as SpecialKey(0)
-//                 keyboard_layout::KeyEvent::Character('\x08') => {
-//                     stack.pop();
-//                     if !cache {
-//                         print!("\r{}{} \r{}{}", debut, stack, debut, stack);
-//                     }
-//                 }
+                keyboard_layout::KeyEvent::Character('\x08') => {
+                    stack.pop();
+                    if !cache {
+                        print!("\r{}{} \r{}{}", debut, stack, debut, stack);
+                    }
+                }
 
                 keyboard_layout::KeyEvent::Character(character) => {
                     stack.push(character);
@@ -93,39 +90,11 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                 }
 
                 keyboard_layout::KeyEvent::SpecialKey(0) => {
-                    if let Some(_) = stack.pop() {
-                        print!("{}", '\x08');
-                    }/*
+                    stack.pop();
                     if !cache {
                         print!("\r{}{} \r{}{}", debut, stack, debut, stack);
-                    }*/
+                    }
                 }
-                
-                keyboard_layout::KeyEvent::SpecialKey(1) => {
-                    if let Some(_) = stack.pop() {
-                        print!("{}", '\x7F');
-                    }/*
-                    if !cache {
-                        print!("\r{}{} \r{}{}", debut, stack, debut, stack);
-                    }*/
-                }
-                
-                keyboard_layout::KeyEvent::SpecialKey(b'U') => {
-                    vga::move_cursor_up();
-                }
-                
-                keyboard_layout::KeyEvent::SpecialKey(b'L') => {
-                    vga::move_cursor_left();
-                }
-                
-                keyboard_layout::KeyEvent::SpecialKey(b'R') => {
-                    vga::move_cursor_right();
-                }
-                
-                keyboard_layout::KeyEvent::SpecialKey(b'D') => {
-                    vga::move_cursor_down();
-                }
-                
                 keyboard_layout::KeyEvent::SpecialKey(_) => (),
             },
 

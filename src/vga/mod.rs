@@ -55,31 +55,6 @@ pub fn init() {
     });
 }
 
-pub fn move_cursor_down() {
-    interrupts::without_interrupts(|| {
-        SCREEN.lock()._move_cursor_down();
-    });
-}
-
-pub fn move_cursor_right() {
-    interrupts::without_interrupts(|| {
-        SCREEN.lock()._move_cursor_right();
-    });
-}
-
-pub fn move_cursor_up() {
-    interrupts::without_interrupts(|| {
-        SCREEN.lock()._move_cursor_up();
-    });
-}
-
-pub fn move_cursor_left() {
-    interrupts::without_interrupts(|| {
-        SCREEN.lock()._move_cursor_left();
-    });
-}
-
-
 /// The 16 colors available in VGA mode
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,77 +131,23 @@ pub struct Screen {
 
 #[allow(dead_code)]
 impl Screen {
-    fn _move_cursor_up(&mut self){
-        if self.row_pos == 0 {
-            self.scroll_down();
-        }
-        else {
-            self.row_pos -= 1;
-        }
-        self.set_cursor();
-    }
-    
-    fn _move_cursor_left(&mut self){
-        if self.col_pos == 0 {
-            self.col_pos = BUFFER_WIDTH - 1;
-            self._move_cursor_up();
-        }
-        else {
-            self.col_pos -= 1;
-        }
-        self.set_cursor();
-    }
-
-    fn _move_cursor_down(&mut self){
-        if self.row_pos >= BUFFER_HEIGHT - 1 {
-            self.scroll_up();
-        } else {
-            self.row_pos += 1;
-        }
-        self.set_cursor();
-    }
-
-    fn _move_cursor_right(&mut self){
-        if self.col_pos >= BUFFER_WIDTH - 1 {
-            self.col_pos = 0;
-            self._move_cursor_down();
-        }
-        else {
-            self.col_pos += 1;
-        }
-        self.set_cursor();
-    }
-    
-    
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
             b'\r' => self.col_pos = 0,
-            b'\x08' => {
-                self._move_cursor_left();
-                self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {
-                    code: b' ',
-                    color: self.color,
-                };
-            }
-            b'\x7F' => {
-                self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {
-                    code: b' ',
-                    color: self.color,
-                };
-            }
             _ => {
-//                 if self.col_pos + self.row_pos * BUFFER_WIDTH >= BUFFER_WIDTH * BUFFER_HEIGHT - 1 {
-//                     if self.row_pos == 0 {
-//                         self.new_line();
-//                     }
-//                     self.scroll_up();
-//                 }
+                if self.col_pos + self.row_pos * BUFFER_WIDTH == BUFFER_WIDTH * BUFFER_HEIGHT - 1 {
+                    if self.row_pos == 0 {
+                        self.new_line();
+                        panic!("to many words");
+                    }
+                    self.scroll_up();
+                }
                 self.buffer.characters[self.row_pos * BUFFER_WIDTH + self.col_pos] = CHAR {
                     code: byte,
                     color: self.color,
                 };
-                self._move_cursor_right();
+                self.col_pos += 1;
             }
         };
         self.set_cursor();
@@ -250,7 +171,7 @@ impl Screen {
         self.col_pos = 0;
         while self.row_pos >= BUFFER_HEIGHT {
             self.scroll_up();
-            self.clear_row(BUFFER_HEIGHT-1);
+            self.clear_bottom();
             self.row_pos = BUFFER_HEIGHT - 1;
         }
     }
@@ -261,33 +182,17 @@ impl Screen {
                 self.buffer.characters[(row - 1) * BUFFER_WIDTH + col] =
                     self.buffer.characters[row * BUFFER_WIDTH + col];
             }
-        };
-        self.clear_row(BUFFER_HEIGHT - 1);
-    }
-            
-    fn scroll_down(&mut self) -> () {
-        for row in (0..BUFFER_HEIGHT-1).rev() {
-            for col in 0..BUFFER_WIDTH {
-                self.buffer.characters[(row + 1) * BUFFER_WIDTH + col] =
-                    self.buffer.characters[row * BUFFER_WIDTH + col];
-            }
         }
-        self.clear_row(0);
     }
-
-        
-    fn clear_row(&mut self, row: usize) -> () {
+    fn clear_bottom(&mut self) -> () {
         let blank = CHAR {
             code: b' ',
             color: self.color,
         };
-        // perhaps a way to directly fidle in memory to clean all at once ?
         for col in 0..BUFFER_WIDTH {
-            self.buffer.characters[row * BUFFER_WIDTH + col] = blank;
+            self.buffer.characters[(BUFFER_HEIGHT - 1) * BUFFER_WIDTH + col] = blank;
         }
     }
-    
-    
     pub fn write_string(&mut self, s: &str) {
         for byte in s.chars() {
             match byte as u8 {
@@ -320,7 +225,6 @@ impl Screen {
             code: b' ',
             color: self.color,
         };
-        // perhaps a way to fidle in memory to clean all at once ?
         for row in 0..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 self.buffer.characters[row * BUFFER_WIDTH + col] = blank;

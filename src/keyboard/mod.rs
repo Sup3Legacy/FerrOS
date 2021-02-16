@@ -7,7 +7,7 @@ use x86_64::instructions::port::Port;
 
 mod keyboard_layout;
 
-pub mod keyboard_interaction;
+pub mod keyboard_interraction;
 
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static KEY_QUEUE: OnceCell<ArrayQueue<keyboard_layout::KeyEvent>> = OnceCell::uninit();

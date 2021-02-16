@@ -469,26 +469,10 @@ impl KeyBoardStatus {
 
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
 
-                Key::Del => Effect::Value(KeyEvent::SpecialKey(1)),
-                
                 Key::Alt => {
                     self.alt_down();
                     Effect::Nothing
                 }
-                
-                Key::ArrowL => {
-                    Effect::Value(KeyEvent::SpecialKey(b'L'))
-                }
-                Key::ArrowR => {
-                    Effect::Value(KeyEvent::SpecialKey(b'R'))
-                }
-                Key::ArrowD => {
-                    Effect::Value(KeyEvent::SpecialKey(b'D'))
-                }
-                Key::ArrowU => {
-                    Effect::Value(KeyEvent::SpecialKey(b'U'))
-                }
-                
                 _ => {
                     //println!("{:?}", key);
                     //println!("{:?}", convert(key));
@@ -800,28 +784,7 @@ impl KeyBoardStatus {
 
                 Key::Enter => Effect::Value(KeyEvent::Character('\n')),
 
-                // For these two, they should be smarter by having the position of the previous characters remembered
                 Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
-                
-                Key::Del => Effect::Value(KeyEvent::SpecialKey(1)),
-                
-                // In the end, these four keys should be context-dependend.
-                // When typing a username, we don't want to be able to move the cursor too much
-                Key::ArrowL => {
-                    Effect::Value(KeyEvent::SpecialKey(b'L'))
-                },
-                
-                Key::ArrowR => {
-                    Effect::Value(KeyEvent::SpecialKey(b'R'))
-                },
-                
-                Key::ArrowD => {
-                    Effect::Value(KeyEvent::SpecialKey(b'D'))
-                },
-                
-                Key::ArrowU => {
-                    Effect::Value(KeyEvent::SpecialKey(b'U'))
-                },
 
                 _ => Effect::Nothing,
             }
@@ -839,7 +802,7 @@ fn convert(key: u8) -> Key {
 
 static TABLE_CODE: [Key; 128] = [
     Key::Unknown,
-    Key::Unknown, //Escape
+    Key::Unknown,
     Key::Key1,
     Key::Key2,
     Key::Key3,
@@ -867,7 +830,7 @@ static TABLE_CODE: [Key; 128] = [
     Key::Accent,
     Key::Dolar,
     Key::Enter,
-    Key::Unknown, //Ctrl Right
+    Key::Unknown,
     Key::Let1_0,
     Key::Let1_1,
     Key::Let1_2,
@@ -879,7 +842,7 @@ static TABLE_CODE: [Key; 128] = [
     Key::Let1_8,
     Key::Let1_9,
     Key::Pourcent,
-    Key::Unknown, // œ/²
+    Key::Ineg,
     Key::ShiftL,
     Key::Tild,
     Key::Let2_0,
@@ -893,43 +856,43 @@ static TABLE_CODE: [Key; 128] = [
     Key::Slash,
     Key::Equal,
     Key::ShiftR,
-    Key::Unknown, // Scren Capture
+    Key::Unknown,
     Key::Alt,
     Key::Space,
     Key::Maj,
-    Key::Unknown, // F1
-    Key::Unknown, // F2
-    Key::Unknown, // F3
-    Key::Unknown, // F4
-    Key::Unknown, // F5
-    Key::Unknown, // F6
-    Key::Unknown, // F7
-    Key::Unknown, // F8
-    Key::Unknown, // F9
-    Key::Unknown, // F10
     Key::Unknown,
     Key::Unknown,
-    Key::Unknown, // Home
-    Key::ArrowU,
-    Key::Unknown, // Page Up
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
     Key::Unknown,
     Key::ArrowL,
     Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::ArrowU,
+    Key::Unknown,
+    Key::ArrowD,
+    Key::Unknown,
+    Key::Unknown,
     Key::ArrowR,
     Key::Unknown,
-    Key::Unknown, // End
-    Key::ArrowD,
-    Key::Unknown, // Page Down
-    Key::Unknown, // Insert
-    Key::Del,
     Key::Unknown,
     Key::Unknown,
-    Key::Ineg,
-    Key::Unknown, // F11
-    Key::Unknown, // F12
     Key::Unknown,
     Key::Unknown,
-    Key::Unknown, // Super
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
+    Key::Unknown,
     Key::Unknown,
     Key::Unknown,
     Key::Unknown,
@@ -984,22 +947,21 @@ pub enum Key {
     UpZero = 12,
     Min = 13,
     BackSpace = 14,
-    Del = 15,
-    
-    Tab = 16,
-    Let0_0 = 17,
-    Let0_1 = 18,
-    Let0_2 = 19,
-    Let0_3 = 20,
-    Let0_4 = 21,
-    Let0_5 = 22,
-    Let0_6 = 23,
-    Let0_7 = 24,
-    Let0_8 = 25,
-    Let0_9 = 26,
-    Accent = 27,
-    Dolar = 28,
-    Enter = 29,
+
+    Tab = 15,
+    Let0_0 = 16,
+    Let0_1 = 17,
+    Let0_2 = 18,
+    Let0_3 = 19,
+    Let0_4 = 20,
+    Let0_5 = 21,
+    Let0_6 = 22,
+    Let0_7 = 23,
+    Let0_8 = 24,
+    Let0_9 = 25,
+    Accent = 26,
+    Dolar = 27,
+    Enter = 28,
 
     Maj = 58,
     Let1_0 = 30,
