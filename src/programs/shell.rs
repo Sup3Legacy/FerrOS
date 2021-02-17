@@ -27,6 +27,7 @@ pub struct ShellCommand {
     pub function: fn(Vec<String>) -> Result<(), ShellErr>,
 }
 
+/// Test command
 pub fn _test1(_a: Vec<String>) -> Result<(), ShellErr> {
     println!("test");
     Ok(())
@@ -38,6 +39,10 @@ pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
     Ok(())
 }
 
+/// Help command
+///
+/// `help [keyword]` prints the help string provided for the associated command. 
+/// Prints error messages if invalid input.
 pub fn help(list: Vec<String>) -> Result<(), ShellErr> {
     match list.get(0) {
         Some(a) => match COMMANDS.get(a) {
