@@ -65,7 +65,7 @@ pub fn long_halt(i: usize) {
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
-    interrupts::init();
+    
     gdt::init();
 
     // Memory allocation Initialization
@@ -77,6 +77,9 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
+
+    // Interrupt initialisation put at the end to avoid messing up with I/O
+    interrupts::init();
 }
 
 // test taks, to move out of here

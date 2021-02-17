@@ -7,7 +7,7 @@ use core::ptr;
 /// Implements the structure of a linked list.
 ///
 /// Here, we consider a heap allocator that is a linked list of free heap segments.
-/// 
+///
 /// Each node holds these values :
 /// * `size` - the size in bytes if the free segment
 /// * `previous` - static reference to the previous memory node
@@ -18,8 +18,6 @@ struct ListNode {
     previous: Option<&'static mut ListNode>,
     next: Option<&'static mut ListNode>,
 }
-
-
 
 impl ListNode {
     const fn new(size: usize) -> Self {
@@ -110,10 +108,10 @@ impl LinkedListAllocator {
     }
 
     /// Checks whether a given region can hold a value of given size.
-    /// 
+    ///
     /// By first comparing `alloc_end` and `region.end_addr()`, we make sure the region has enough space for the value.
     ///
-    /// Then we check whether the excess size (i.e. the memory space that would be left if the allocator would take this segment) 
+    /// Then we check whether the excess size (i.e. the memory space that would be left if the allocator would take this segment)
     /// allows to put the remaining memory space into a new free node.
     fn alloc_from_region(region: &ListNode, size: usize, align: usize) -> Result<usize, ()> {
         let alloc_start = align_up(region.start_addr(), align);
