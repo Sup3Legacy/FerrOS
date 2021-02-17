@@ -4,7 +4,7 @@ build-std-features = ["compiler-builtins-mem"]
 
 
 [build]
-target = "x86_64-os_test.json"
+target = "x86_64-ferros.json"
 
 [target.'cfg(target_os = "none")']
 runner = "bootimage runner"
