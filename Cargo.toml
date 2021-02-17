@@ -1,5 +1,5 @@
 [package]
-name = "FerrOS"
+name = "ferr_os"
 version = "0.1.0"
 authors = [
     "Constantin GIERCZAK--GALLE <constantin.gierczak-galle@ens.fr>",

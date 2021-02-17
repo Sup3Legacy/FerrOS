@@ -7,7 +7,7 @@
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
 #![feature(asm)]
-#![test_runner(os_test::test_runner)]
+#![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
 #![feature(wake_trait)]
@@ -140,7 +140,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 #[cfg(test)]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    os_test::test_panic(_info)
+    ferr_os::test_panic(_info)
 }
 
 #[test_case]
