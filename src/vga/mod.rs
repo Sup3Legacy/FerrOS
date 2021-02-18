@@ -42,7 +42,7 @@ pub fn _print(args: fmt::Arguments) {
     });
 }
 
-pub(crate) fn _print_at(row: usize, col: usize, s: &str) {
+pub fn _print_at(row: usize, col: usize, s: &str) {
     interrupts::without_interrupts(|| {
         SCREEN.lock().write_to_pos(row, col, s);
     });

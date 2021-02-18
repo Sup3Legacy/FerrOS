@@ -41,7 +41,7 @@ pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
 
 /// Help command
 ///
-/// `help [keyword]` prints the help string provided for the associated command. 
+/// `help [keyword]` prints the help string provided for the associated command.
 /// Prints error messages if invalid input.
 pub fn help(list: Vec<String>) -> Result<(), ShellErr> {
     match list.get(0) {
