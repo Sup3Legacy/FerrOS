@@ -3,13 +3,13 @@ use crate::{println, print};
 
 #[repr(C)]
 pub struct Registers {
-    rax: u64, // syscall number
-    rdi: u64, // syscall argument 0
-    rsi: u64, // syscall argument 1
-    rdx: u64, // syscall argument 2
-    r10: u64, // syscall argument 3
-    r8 : u64, // syscall argument 4
     r9 : u64, // syscall argument 5
+    r8 : u64, // syscall argument 4
+    r10: u64, // syscall argument 3
+    rdx: u64, // syscall argument 2
+    rsi: u64, // syscall argument 1
+    rdi: u64, // syscall argument 0
+    rax: u64, // syscall number
 }
 
 pub type SysCallFunc = extern "C" fn();
@@ -33,7 +33,7 @@ extern "C" fn syscall_0_read(args: Registers) {
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: Registers) {
-    println!("rax:{} rdi:{} rsi:{} rdx:{} r10:{} r9:{}", args.rax, args.rdi, args.rsi, args.rdx, args.r10, args.r9)
+    println!("congrats you just called the good syscall!")
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
@@ -51,7 +51,6 @@ extern "C" fn syscall_not_implemented(args: Registers) {
 }
 
 extern "C" fn syscall_dispatch(args: Registers) {
-    println!("rax:{} rdi:{} rsi:{} rdx:{} r10:{} r9:{}", args.rax, args.rdi, args.rsi, args.rdx, args.r10, args.r9);
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall")
     } else {

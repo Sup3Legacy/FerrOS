@@ -114,7 +114,15 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
-    unsafe { asm! ("int 0x80");}
+    unsafe { asm! (
+        "push rax",
+        "push rdi",
+        "mov rax, 0x01",
+        "mov rdi, 0x10",
+        "int 0x80",
+        "pop rdi",
+        "pop rax");
+    }
 
     // Yet again, some ugly tests in main
     programs::shell::main_shell();
