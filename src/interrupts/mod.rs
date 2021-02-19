@@ -10,6 +10,8 @@ use crate::{print, println};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 use spin;
+
+mod syscalls;
 //use crate::keyboard_layout;
 
 #[derive(Clone, Debug, Copy)]
@@ -60,6 +62,7 @@ lazy_static! {
             .set_handler_fn(security_exception_handler);
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        idt.syscall.set_handler_fn(syscalls::naked_syscall_dispatch);
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)

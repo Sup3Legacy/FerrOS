@@ -30,6 +30,9 @@ mod serial;
 mod task;
 mod vga;
 
+#[macro_use] // needed for the `int!` macro
+extern crate x86_64;
+
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
@@ -110,6 +113,8 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     // This enables the tests
     #[cfg(test)]
     test_main();
+
+    unsafe { asm! ("int 0x80");}
 
     // Yet again, some ugly tests in main
     programs::shell::main_shell();
