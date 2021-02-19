@@ -10,6 +10,7 @@
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
 
+pub mod scheduler;
 pub mod allocator;
 pub mod gdt;
 pub mod interrupts;
