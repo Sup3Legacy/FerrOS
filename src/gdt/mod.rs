@@ -14,8 +14,8 @@ pub struct Selectors {
     tss_selector: SegmentSelector,
 }
 
-/// Internal representation of a GDT, based on the GlobalDescriptorTable provided by x86_64
 lazy_static! {
+    /// Defines the InterruptDescriptorTable and all the interruption handlers.
     static ref GDT: (GlobalDescriptorTable, Selectors) = {
         let mut gdt = GlobalDescriptorTable::new();
         let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
@@ -30,8 +30,8 @@ lazy_static! {
     };
 }
 
-/// Internal represntattion of a TSS, based on the TaskStateSegment provided by x86_64
 lazy_static! {
+    /// Defines the InterruptDescriptorTable and all the interruption handlers
     static ref TSS: TaskStateSegment = {
         let mut tss = TaskStateSegment::new();
         tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
