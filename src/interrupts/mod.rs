@@ -1,6 +1,9 @@
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::{Cr2, Cr3};
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+mod idt;
+use idt::Idt as InterruptDescriptorTable;
+use idt::{InterruptStackFrame, PageFaultErrorCode};
+//use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 //use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
 use crate::gdt;
 use crate::{print, println};
