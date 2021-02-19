@@ -8,6 +8,7 @@
 // #![feature(abi_x86_interrupt)]
 
 use core::panic::PanicInfo;
+pub mod scheduler;
 
 pub mod allocator;
 pub mod gdt;
