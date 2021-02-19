@@ -1,6 +1,7 @@
+use super::PROCESS_MAX_NUMBER;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
-use super::PROCESS_MAX_NUMBER;
+use spin::Mutex;
 
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
@@ -14,24 +15,44 @@ use super::PROCESS_MAX_NUMBER;
 /// * `state` - state of the process
 /// * `children` - vec containing the processes it spawned.
 /// * `value` - return value
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Process {
     id: ID,
     pid: ID,
     priority: Priority,
-    quantum : u64,
+    quantum: u64,
     cr3: usize,
     state: State,
-    children : Vec<Process>,
-    value : usize
+    children: Vec<Mutex<Process>>,
+    value: usize,
+}
+
+impl Process {
+    pub fn new(parent: ID, priority: Priority) -> Self {
+        Self {
+            id: ID::new(),
+            pid: parent,
+            priority,
+            quantum: 0 as u64,
+            cr3: 42, // /!\
+            state: State::Runnable,
+            children: Vec::new(),
+            value: 0,
+        }
+    }
+    pub fn spawn(&mut self, priority: Priority) -> &Mutex<Self> {
+        let child = Process::new(self.id, priority);
+        self.children.push(Mutex::new(child));
+        &(self.children[self.children.len() - 1])
+    }
 }
 
 /// A process's priority, used by the scheduler
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Priority(usize);
 
 /// All different states a process can reach
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum State {
     Runnable,
     Running,
@@ -45,7 +66,7 @@ pub enum State {
 ///
 /// It's uniqueness throughout the system is ensured by the atomic `fetch_add` operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ID (u64);
+pub struct ID(u64);
 
 impl ID {
     /// Returns a fresh ID. It uses an atomic operation to make sure no two processes can have the same id.
