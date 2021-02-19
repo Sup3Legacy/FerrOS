@@ -5,19 +5,20 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
-// #![feature(abi_x86_interrupt)]
+#![feature(abi_x86_interrupt)]
 
 use core::panic::PanicInfo;
-pub mod scheduler;
+extern crate vga as vga_video;
 
+pub mod scheduler;
 pub mod allocator;
 pub mod gdt;
-// pub mod interrupts;
-// pub mod keyboard;
+pub mod interrupts;
+pub mod keyboard;
 pub mod memory;
-// pub mod programs;
+pub mod programs;
 pub mod serial;
-// pub mod task;
+pub mod task;
 pub mod vga;
 
 extern crate alloc;
@@ -78,4 +79,18 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     test_panic(info)
+}
+
+/// Halts forever
+pub fn halt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
+/// Halts for some time
+pub fn long_halt(i: usize) {
+    for _ in 0..i {
+        x86_64::instructions::hlt();
+    }
 }
