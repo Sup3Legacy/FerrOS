@@ -1,5 +1,6 @@
 use core::str::SplitWhitespace;
 
+use crate::keyboard;
 use crate::keyboard::keyboard_interraction;
 use alloc::collections::BTreeMap;
 use alloc::{string::String, vec::Vec};
@@ -86,6 +87,9 @@ lazy_static! {
 ///
 /// TODO : clean it and make it more general
 pub fn main_shell() -> () {
+    keyboard::set_keyboard_responce(0x0, 0);
+    let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
+    keyboard::set_keyboard_responce(0x7F, 0);
     let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
     println!();
     let _mpd = keyboard_interraction::get_input("mdp : ", true);
