@@ -10,7 +10,7 @@
 #![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
-#![feature(wake_trait)]
+//#![feature(wake_trait)]
 
 use core::panic::PanicInfo;
 // use os_test::println;  TODO
@@ -29,6 +29,7 @@ mod memory;
 mod serial;
 mod task;
 mod vga;
+
 
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
