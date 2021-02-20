@@ -114,8 +114,9 @@ impl GdtEntryBits {
         self
     }
 
-    pub unsafe fn set_always_0(&mut self, available: bool) -> &mut Self {
-        if available {
+    /// is used to indicate x86-64 code descriptor. * For data segments, this bit is reserved *
+    pub unsafe fn set_x86_64_code_descriptor(&mut self, code_descriptor: bool) -> &mut Self {
+        if code_descriptor {
             self.granularity = self.granularity | 0x20
         } else {
             self.granularity = self.granularity & !0x20
@@ -123,7 +124,7 @@ impl GdtEntryBits {
         self
     }
 
-    /// 32bit opcodes for code, uint32_t stack for data
+    /// 32bit opcodes for code, uint32_t stack for data must be 0 is L is 1 !
     pub fn set_big(&mut self, big: bool) -> &mut Self {
         if big {
             self.granularity = self.granularity | 0x40
@@ -179,6 +180,7 @@ pub fn new_cs() -> u64 {
         .set_available(true)
         .set_big(true)
         .set_gran(true);
+    unsafe { cs.set_x86_64_code_descriptor(true);};
     cs.as_u64()
 }
 
@@ -192,8 +194,8 @@ pub fn kernel_cs() -> u64 {
         .set_dpl(0)
         .set_big(false)
         .set_available(true)
-        .set_gran(false);
-    unsafe { kernel_cs.set_always_0(true);};
+        .set_gran(true);
+    unsafe { kernel_cs.set_x86_64_code_descriptor(true);};
     kernel_cs.as_u64()
 }
 
@@ -206,7 +208,6 @@ pub fn kernel_ds() -> u64 {
         .is_code(false)
         .set_dpl(0)
         .set_big(true)
-        .set_gran(false);
-    unsafe { kernel_ds.set_always_0(true);};
+        .set_gran(true);
     kernel_ds.as_u64()
 }
