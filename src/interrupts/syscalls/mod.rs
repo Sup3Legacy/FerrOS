@@ -27,26 +27,26 @@ const SYSCALL_TABLE : [extern "C" fn(Registers); SYSCALL_NUMBER as usize] = [
 
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
-extern "C" fn syscall_0_read(args: Registers) {
+extern "C" fn syscall_0_read(_args: Registers) {
     panic!("not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
-extern "C" fn syscall_1_write(args: Registers) {
+extern "C" fn syscall_1_write(_args: Registers) {
     println!("congrats you just called the good syscall!")
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
-extern "C" fn syscall_2_open(args: Registers) {
+extern "C" fn syscall_2_open(_args: Registers) {
     panic!("not implemented")
 }
 
 /// close file. arg0 : unsigned int fd
-extern "C" fn syscall_3_close(args: Registers) {
+extern "C" fn syscall_3_close(_args: Registers) {
     panic!("not implemented")
 }
 
-extern "C" fn syscall_not_implemented(args: Registers) {
+extern "C" fn syscall_not_implemented(_args: Registers) {
     panic!("not implemented")
 }
 

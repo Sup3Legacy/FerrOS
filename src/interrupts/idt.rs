@@ -2,7 +2,7 @@ use core::mem::size_of;
 use x86_64::instructions::{segmentation, 
     tables::{lidt, DescriptorTablePointer},
 };
-use x86_64::structures::gdt::SegmentSelector;
+//use x86_64::structures::gdt::SegmentSelector;
 use x86_64::{PrivilegeLevel, VirtAddr};
 use core::marker::PhantomData;
 use core::ops::{ Index, IndexMut};
@@ -43,7 +43,7 @@ pub struct Idt {
     interrupt_31: Entry<HandlerFunc>, // reserved
     pub interrupt_32_: [Entry<HandlerFunc>; SYSCALL_POSITION-32],
     pub syscall: Entry<SyscallFunc>,
-    pub interrupt_SYSCALL_: [Entry<HandlerFunc>; 255-SYSCALL_POSITION],
+    pub interrupt_post_syscall_: [Entry<HandlerFunc>; 255-SYSCALL_POSITION],
 }
 
 impl Idt {
@@ -75,7 +75,7 @@ impl Idt {
             interrupt_31: Entry::missing(),
             interrupt_32_: [Entry::missing(); SYSCALL_POSITION-32],
             syscall: Entry::missing(),
-            interrupt_SYSCALL_: [Entry::missing(); 255-SYSCALL_POSITION],
+            interrupt_post_syscall_: [Entry::missing(); 255-SYSCALL_POSITION],
         }
     }
 
@@ -118,7 +118,7 @@ impl Index<usize> for Idt {
             31 => panic!("access not allowed! It is reserved"),
             i @ 32..=SYSCALL_POSITION_1 => &self.interrupt_32_[i - 32],
             SYSCALL_POSITION => panic!("wrong function type"),
-            i @ SYSCALL_POSITION_2..=255 => &self.interrupt_SYSCALL_[i - SYSCALL_POSITION-1],
+            i @ SYSCALL_POSITION_2..=255 => &self.interrupt_post_syscall_[i - SYSCALL_POSITION-1],
             _i => panic!("no such entry")
         }
     }
@@ -151,7 +151,7 @@ impl IndexMut<usize> for Idt {
             31 => panic!("access not allowed! It is reserved"),
             i @ 32..=SYSCALL_POSITION_1 => &mut self.interrupt_32_[i - 32],
             SYSCALL_POSITION => panic!("wrong function type"),
-            i @ SYSCALL_POSITION_2..=255 => &mut self.interrupt_SYSCALL_[i - SYSCALL_POSITION-1],
+            i @ SYSCALL_POSITION_2..=255 => &mut self.interrupt_post_syscall_[i - SYSCALL_POSITION-1],
             _i => panic!("no such entry")
         }
     }
