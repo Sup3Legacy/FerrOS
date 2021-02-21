@@ -58,13 +58,9 @@ extern "C" fn syscall_dispatch(args: Registers) {
     }
 }
 
-pub extern "C" fn naked_syscall_dispatch() -> ! {
-    loop {}
-}
 
-/*
 #[naked]
-pub extern "C" fn naked_syscall_dispatch() -> ! {
+pub extern "C" fn naked_syscall_dispatch() {
     unsafe {
         asm!(
             "push rcx",
@@ -90,8 +86,5 @@ pub extern "C" fn naked_syscall_dispatch() -> ! {
             "iretq",
               sym syscall_dispatch
             );
-        ::core::intrinsics::unreachable();
     }
 }
-
-*/

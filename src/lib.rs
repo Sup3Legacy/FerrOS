@@ -6,6 +6,8 @@
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
 #![feature(abi_x86_interrupt)]
+#![feature(naked_functions)]
+#![feature(asm)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;

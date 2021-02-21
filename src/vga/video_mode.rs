@@ -30,5 +30,3 @@ pub fn init() -> () {
         VIDEOMODE.draw_character(270 + offset * 8, 72, character, Color16::White)
     }
 }
-
-// commentaire inutile

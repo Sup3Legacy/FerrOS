@@ -162,7 +162,7 @@ pub type HandlerFuncWithErrorCode = extern "x86-interrupt" fn(&mut InterruptStac
 pub type PageFaultHandler = extern "x86-interrupt" fn(&mut InterruptStackFrame, PageFaultErrorCode);
 pub type DivergingFunc = extern "x86-interrupt" fn(&mut InterruptStackFrame) -> !;
 pub type DivergingFuncWithErrorCode = extern "x86-interrupt" fn(&mut InterruptStackFrame, error_code: u64) -> !;
-pub type SyscallFunc = extern "C" fn() -> !;
+pub type SyscallFunc = extern "C" fn();
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
