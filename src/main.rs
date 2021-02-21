@@ -11,7 +11,6 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
 
-
 use core::panic::PanicInfo;
 // use os_test::println;  TODO
 //use core::task::Poll;
@@ -22,23 +21,12 @@ mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
 
-mod allocator;
-mod gdt;
-mod interrupts;
-mod keyboard;
-mod memory;
-mod serial;
-mod task;
-mod vga;
-mod sound;
-
-
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print, println, serial,
-    task, test_panic, vga,
+    task, test_panic, vga, sound
 };
 
 extern crate alloc;

@@ -21,6 +21,7 @@ pub mod serial;
 pub mod task;
 pub mod vga;
 pub mod filesystem;
+pub mod sound;
 
 extern crate alloc;
 
