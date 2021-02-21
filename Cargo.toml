@@ -19,6 +19,8 @@ pc-keyboard = "*"
 linked_list_allocator = "*"
 uart_16550 = "*"
 vga= "*"
+bitflags = "*"
+bit_field = "*"
 
 [dependencies.lazy_static]
 version = "1.0"

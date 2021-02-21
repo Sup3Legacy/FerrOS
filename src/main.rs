@@ -11,6 +11,7 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
 
+
 use core::panic::PanicInfo;
 // use os_test::println;  TODO
 //use core::task::Poll;
@@ -20,6 +21,17 @@ extern crate vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
+
+mod allocator;
+mod gdt;
+mod interrupts;
+mod keyboard;
+mod memory;
+mod serial;
+mod task;
+mod vga;
+
+
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
