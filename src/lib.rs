@@ -20,6 +20,7 @@ pub mod programs;
 pub mod serial;
 pub mod task;
 pub mod vga;
+pub mod filesystem;
 
 extern crate alloc;
 
