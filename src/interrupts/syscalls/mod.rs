@@ -31,11 +31,9 @@ const SYSCALL_TABLE : [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCAL
 
 #[naked]
 unsafe extern "C" fn convert_register_to_full( args: RegistersMini) -> Registers {
-    unsafe {
-        asm!("mov rax, rdi",
-        "ret");
-        loop {}
-    }
+    asm!("mov rax, rdi",
+    "ret");
+    loop {}
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
@@ -76,6 +74,7 @@ extern "C" fn syscall_dispatch(args: RegistersMini, isf: InterruptStackFrame) {
 pub extern "C" fn naked_syscall_dispatch() {
     unsafe {
         asm!(
+            "cli",
             "push rax",
             "push rdi",
             "push rsi",
@@ -111,6 +110,7 @@ pub extern "C" fn naked_syscall_dispatch() {
             "pop rsi",
             "pop rdi",
             "pop rax",
+            "sti",
             "iretq",
               sym syscall_dispatch
             );

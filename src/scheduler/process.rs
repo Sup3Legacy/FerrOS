@@ -5,6 +5,10 @@ use spin::Mutex;
 use lazy_static::lazy_static;
 use crate::data_storage::registers::Registers;
 
+extern "C" {
+    fn launch_asm(first_process: fn(), initial_rsp: u64);
+}
+
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
 ///
@@ -19,6 +23,7 @@ use crate::data_storage::registers::Registers;
 /// * `value` - return value
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
 #[derive(Debug)]
+#[repr(C)]
 pub struct Process {
     id: ID,
     pid: ID,
@@ -74,6 +79,11 @@ impl Process {
         let child = Process::create_new(self.id, priority, self.owner);
         self.children.push(child.id);//Mutex::new(child));
         &(self.children[self.children.len() - 1])
+    }
+
+    pub unsafe fn launch() {
+        fn f() { loop{} } // /!\
+        launch_asm(f, 0);
     }
 }
 
@@ -133,4 +143,6 @@ lazy_static! {
         Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(),
         Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing()
         ];
+
+    static ref CURRENT_PROCESS: Process = Process::missing();
 }
