@@ -91,7 +91,15 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
-    sound::beep();
+    sound::open_output();
+    sound::Do();
+    sound::re();
+    sound::mi();
+    sound::fa();
+    sound::sol();
+    sound::la();
+    sound::close_output();
+    println!("fin");
     // Yet again, some ugly tests in main
     programs::shell::main_shell();
     println!();
