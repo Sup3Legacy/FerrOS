@@ -10,7 +10,7 @@
 #![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
-//#![feature(wake_trait)]
+
 
 use core::panic::PanicInfo;
 // use os_test::println;  TODO
@@ -21,6 +21,7 @@ extern crate vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
+
 mod allocator;
 mod gdt;
 mod interrupts;
@@ -34,6 +35,10 @@ mod vga;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
+use ferr_os::{
+    allocator, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print, println, serial,
+    task, test_panic, vga,
+};
 
 extern crate alloc;
 
@@ -49,24 +54,9 @@ fn panic(_info: &PanicInfo) -> ! {
     halt_loop();
 }
 
-/// Halts forever
-pub fn halt_loop() -> ! {
-    loop {
-        x86_64::instructions::hlt();
-    }
-}
-
-/// Halts for some time
-pub fn long_halt(i: usize) {
-    for _ in 0..i {
-        x86_64::instructions::hlt();
-    }
-}
-
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
-    
     gdt::init();
 
     // Memory allocation Initialization
@@ -86,7 +76,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 // test taks, to move out of here
 async fn task_1() {
     loop {
-        print!("X");
+        ferr_os::print!("X");
         long_halt(16);
     }
 }
@@ -141,7 +131,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 #[cfg(test)]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    ferr_os::test_panic(_info)
+    test_panic(_info)
 }
 
 #[test_case]
