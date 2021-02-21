@@ -11,12 +11,10 @@ fn play_sound( frequence: u32) {
         let mut port42 = Port::new(0x42);
         port42.write( div as u8);
         port42.write( (div >> 8) as u8);
-        println!("div : {}", div);
         let mut port61 = Port::new(0x61);
         let tmp: u8 = port61.read();
-        println!("tmp : {} {} {}", tmp, tmp & 3, tmp | 3);
         if (tmp & 3 != 3) {
-            port61.write(tmp | 3);
+            port61.write(tmp | 0b1111_1111);
         }
     }
 
@@ -33,8 +31,6 @@ fn nosound() {
 
 pub fn beep() {
     unsafe { play_sound(1000); }
-    println!("sound playing");
-    loop {}
-    crate::long_halt(10);
+    crate::long_halt(3);
     nosound();
 }
