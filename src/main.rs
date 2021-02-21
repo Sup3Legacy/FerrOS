@@ -30,6 +30,7 @@ mod memory;
 mod serial;
 mod task;
 mod vga;
+mod sound;
 
 
 /// # The core of the FerrOS operating system.
@@ -102,6 +103,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
+    sound::beep();
     // Yet again, some ugly tests in main
     programs::shell::main_shell();
     println!();
