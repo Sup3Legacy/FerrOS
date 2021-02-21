@@ -1,8 +1,11 @@
 
 use crate::{println, print};
+use super::idt::InterruptStackFrame;
+use crate::data_storage::registers::Registers;
 
 #[repr(C)]
-pub struct Registers {
+#[derive(Clone, Copy, Debug)]
+pub struct RegistersMini {
     r9 : u64, // syscall argument 5
     r8 : u64, // syscall argument 4
     r10: u64, // syscall argument 3
@@ -12,11 +15,11 @@ pub struct Registers {
     rax: u64, // syscall number
 }
 
-pub type SysCallFunc = extern "C" fn();
+pub type SyscallFunc = extern "C" fn();
 
 const SYSCALL_NUMBER: u64 = 5;
 
-const SYSCALL_TABLE : [extern "C" fn(Registers); SYSCALL_NUMBER as usize] = [
+const SYSCALL_TABLE : [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
     syscall_0_read,
     syscall_1_write,
     syscall_2_open,
@@ -26,35 +29,45 @@ const SYSCALL_TABLE : [extern "C" fn(Registers); SYSCALL_NUMBER as usize] = [
 ];
 
 
+#[naked]
+unsafe extern "C" fn convert_register_to_full( args: RegistersMini) -> Registers {
+    unsafe {
+        asm!("mov rax, rdi",
+        "ret");
+        loop {}
+    }
+}
+
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
-extern "C" fn syscall_0_read(_args: Registers) {
+extern "C" fn syscall_0_read(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
-extern "C" fn syscall_1_write(_args: Registers) {
+extern "C" fn syscall_1_write(_args: RegistersMini, _isf: InterruptStackFrame) {
     println!("congrats you just called the good syscall!")
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
-extern "C" fn syscall_2_open(_args: Registers) {
+extern "C" fn syscall_2_open(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
 
 /// close file. arg0 : unsigned int fd
-extern "C" fn syscall_3_close(_args: Registers) {
+extern "C" fn syscall_3_close(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
 
-extern "C" fn syscall_not_implemented(_args: Registers) {
+
+extern "C" fn syscall_not_implemented(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
 
-extern "C" fn syscall_dispatch(args: Registers) {
+extern "C" fn syscall_dispatch(args: RegistersMini, isf: InterruptStackFrame) {
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall")
     } else {
-        SYSCALL_TABLE[args.rax as usize](args)
+        SYSCALL_TABLE[args.rax as usize](args, isf)
     }
 }
 
@@ -63,8 +76,6 @@ extern "C" fn syscall_dispatch(args: Registers) {
 pub extern "C" fn naked_syscall_dispatch() {
     unsafe {
         asm!(
-            "push rcx",
-            "push r11",
             "push rax",
             "push rdi",
             "push rsi",
@@ -72,8 +83,27 @@ pub extern "C" fn naked_syscall_dispatch() {
             "push r10",
             "push r8",
             "push r9",
+            "push r15",
+            "push r14",
+            "push r13",
+            "push r12",
+            "push r11",
+            "push rbp",
+            "push rcx",
+            "push rbx",
             "mov rdi, rsp",
+            "add rdi, 8*8",
+            "mov rsi, rsp",
+            "add rsi, 7*8",
             "call {0}",
+            "pop rbx",
+            "pop rcx",
+            "pop rbp",
+            "pop r11",
+            "pop r12",
+            "pop r13",
+            "pop r14",
+            "pop r15",
             "pop r9",
             "pop r8",
             "pop r10",
@@ -81,8 +111,6 @@ pub extern "C" fn naked_syscall_dispatch() {
             "pop rsi",
             "pop rdi",
             "pop rax",
-            "pop r11",
-            "pop rcx",
             "iretq",
               sym syscall_dispatch
             );

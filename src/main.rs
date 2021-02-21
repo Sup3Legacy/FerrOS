@@ -26,7 +26,7 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print, println, serial,
-    task, test_panic, vga, sound
+    task, test_panic, vga, sound, data_storage
 };
 
 extern crate alloc;

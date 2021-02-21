@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use spin::Mutex;
 use lazy_static::lazy_static;
+use crate::data_storage::registers::Registers;
 
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
@@ -24,7 +25,9 @@ pub struct Process {
     priority: Priority,
     quantum: u64,
     cr3: usize,
-    rsp: usize,
+    rsp: u64,
+    rip: u64,
+    registers: Registers,
     state: State,
   //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
     children: Vec<ID>,
@@ -41,6 +44,8 @@ impl Process {
             quantum: 0 as u64,
             cr3: 42, // /!\
             rsp: 0, // /!\
+            rip: 0, // /!\
+            registers: Registers::new(),
             state: State::Runnable,
             children: Vec::new(),
             value: 0,
@@ -56,6 +61,8 @@ impl Process {
             quantum: 0 as u64,
             cr3: 0,
             rsp: 0,
+            rip: 0,
+            registers: Registers::new(),
             state: State::SlotAvailable,
             children: Vec::new(),
             value: 0,

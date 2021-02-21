@@ -9,6 +9,7 @@ use core::ops::{ Index, IndexMut};
 use core::fmt;
 use bitflags::bitflags;
 use bit_field::BitField;
+//use super::syscalls::SyscallFunc;
 
 const SYSCALL_POSITION: usize = 0x80;
 const SYSCALL_POSITION_1: usize = 0x7E;
