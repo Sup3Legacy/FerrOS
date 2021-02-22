@@ -1,6 +1,6 @@
 use alloc::sync::Arc;
 use core::{borrow::BorrowMut, ops::DerefMut};
-use core::cell::RefCell;;
+use core::cell::RefCell;
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
