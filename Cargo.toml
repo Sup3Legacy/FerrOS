@@ -21,7 +21,7 @@ uart_16550 = "*"
 vga= "*"
 bitflags = "*"
 bit_field = "*"
-ferr_os-librust = { git = "https://github.com/Sup3Legacy/FerrOS-librust" }
+# ferr_os-librust = { git = "https://github.com/Sup3Legacy/FerrOS-librust" }
 
 [dependencies.lazy_static]
 version = "1.0"
