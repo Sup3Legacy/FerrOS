@@ -1,9 +1,19 @@
+//! Part of the OS responsible for handling syscalls
+
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::Registers;
 use crate::{print, println};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
+/// interface structure for syscalls
+/// * r9,  syscall argument 5
+/// * r8,  syscall argument 4
+/// * r10, syscall argument 3
+/// * rdx, syscall argument 2
+/// * rsi, syscall argument 1
+/// * rdi, syscall argument 0
+/// * rax, syscall number
 pub struct RegistersMini {
     r9: u64,  // syscall argument 5
     r8: u64,  // syscall argument 4
@@ -14,10 +24,15 @@ pub struct RegistersMini {
     rax: u64, // syscall number
 }
 
+
+/// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
 
+
+/// total number of syscalls
 const SYSCALL_NUMBER: u64 = 5;
 
+/// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
     syscall_0_read,
     syscall_1_write,
@@ -26,6 +41,7 @@ const SYSCALL_TABLE: [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL
     syscall_not_implemented,
 ];
 
+/// highly dangerous function should use only when knowing what you are doing
 #[naked]
 unsafe extern "C" fn convert_register_to_full(args: RegistersMini) -> Registers {
     asm!("mov rax, rdi", "ret");
@@ -56,6 +72,7 @@ extern "C" fn syscall_not_implemented(_args: RegistersMini, _isf: InterruptStack
     panic!("not implemented")
 }
 
+/// dispatch function who gives control to the good syscall function
 extern "C" fn syscall_dispatch(args: RegistersMini, isf: InterruptStackFrame) {
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall")
@@ -64,6 +81,8 @@ extern "C" fn syscall_dispatch(args: RegistersMini, isf: InterruptStackFrame) {
     }
 }
 
+/// interface function for syscalls, saves every register before giving control to the dispatch function
+/// it disables interrupts at entry !
 #[naked]
 pub extern "C" fn naked_syscall_dispatch() {
     unsafe {
