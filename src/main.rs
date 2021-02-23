@@ -89,8 +89,13 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
 
     // quelques tests de drive
-
+    let mut table:[u16; 256] = [0; 256];
     filesystem::test::test();
+    filesystem::test::read(table, 2, 0x170);
+
+    for i in 0..40 {
+        print!("{}{}", (table[i] & 0xFF) as u8 as char, (table[i] >> 8) as u8 as char);
+    }
 
     // fin des tests
 
