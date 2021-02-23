@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
-#![test_runner(os_test::test_runner)]
+#![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
-use os_test::print;
-use os_test::println;
+use ferr_os::print;
+use ferr_os::println;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
@@ -17,7 +17,7 @@ pub extern "C" fn _start() -> ! {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    os_test::test_panic(info)
+    ferr_os::test_panic(info)
 }
 
 #[test_case]

@@ -1,4 +1,6 @@
-# OS-test
+# FerrOS
+
+## Build status : ![Rust](https://github.com/Sup3Legacy/FerrOS/workflows/Rust/badge.svg)
 
 ## Dependencies
 - cargo

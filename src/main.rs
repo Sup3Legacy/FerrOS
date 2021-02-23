@@ -7,9 +7,10 @@
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
 #![feature(asm)]
-#![test_runner(os_test::test_runner)]
+#![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
+//#![feature(wake_trait)]
 
 use core::panic::PanicInfo;
 // use os_test::println;  TODO
@@ -28,6 +29,7 @@ mod memory;
 mod serial;
 mod task;
 mod vga;
+
 
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
@@ -64,7 +66,7 @@ pub fn long_halt(i: usize) {
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
-    interrupts::init();
+    
     gdt::init();
 
     // Memory allocation Initialization
@@ -76,6 +78,9 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
+
+    // Interrupt initialisation put at the end to avoid messing up with I/O
+    interrupts::init();
 }
 
 // test taks, to move out of here
@@ -136,7 +141,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 #[cfg(test)]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    os_test::test_panic(_info)
+    ferr_os::test_panic(_info)
 }
 
 #[test_case]

@@ -32,9 +32,11 @@ macro_rules! handler {
                     "push r9",
                     "push r10",
                     "push r11",
-                    "sub rsp, 8", // align the stack pointer
-                      "call {0}", // change to int {0} ?
-                    "add rsp, 8",
+
+               //     "sub rsp, 8", // align the stack pointer
+                      "call {0}",
+                 //   "add rsp, 8",
+                  
                     "pop r11",
                     "pop r10",
                     "pop r9",
@@ -74,9 +76,10 @@ macro_rules! handler_with_error_code {
                     "push r9",
                     "push r10",
                     "push r11",
-                    "sub rsp, 8", // align the stack pointer
-                      "call {0}", // change to int {0} ?
-                    "add rsp, 8",
+
+               //     "sub rsp, 8", // align the stack pointer
+                      "call {0}",
+                //    "add rsp, 8",
                     "pop r11",
                     "pop r10",
                     "pop r9",

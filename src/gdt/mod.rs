@@ -7,24 +7,32 @@ use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector
 use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
 
+mod gdt_entry;
+
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 pub struct Selectors {
     code_selector: SegmentSelector,
     tss_selector: SegmentSelector,
+    code_segment: SegmentSelector,
+    data_segment: SegmentSelector,
 }
 
 lazy_static! {
     /// Defines the InterruptDescriptorTable and all the interruption handlers.
     static ref GDT: (GlobalDescriptorTable, Selectors) = {
         let mut gdt = GlobalDescriptorTable::new();
-        let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
+        let code_selector = gdt.add_entry(Descriptor::SystemSegment(gdt_entry::kernel_cs(), gdt_entry::kernel_ds()));
         let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
+        let code_segment = gdt.add_entry(Descriptor::UserSegment(gdt_entry::new_cs()));
+        let data_segment = gdt.add_entry(Descriptor::UserSegment(gdt_entry::new_ds()));
         (
             gdt,
             Selectors {
                 code_selector,
                 tss_selector,
+                code_segment,
+                data_segment,
             },
         )
     };
