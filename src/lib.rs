@@ -12,19 +12,19 @@
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
 
-pub mod scheduler;
 pub mod allocator;
+pub mod data_storage;
+pub mod filesystem;
 pub mod gdt;
 pub mod interrupts;
 pub mod keyboard;
 pub mod memory;
 pub mod programs;
+pub mod scheduler;
 pub mod serial;
+pub mod sound;
 pub mod task;
 pub mod vga;
-pub mod filesystem;
-pub mod sound;
-pub mod data_storage;
 
 extern crate alloc;
 

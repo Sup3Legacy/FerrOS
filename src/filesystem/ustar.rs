@@ -1,10 +1,12 @@
+use super::disk_operations;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
 const NUMBER_FILE: u32 = 128;
 
 lazy_static! {
-    static ref Memory:Mutex<[FileNode; NUMBER_FILE as usize]>  = Mutex::new([FileNode::missing(); NUMBER_FILE as usize]);
+    static ref Memory: Mutex<[FileNode; NUMBER_FILE as usize]> =
+        Mutex::new([FileNode::missing(); NUMBER_FILE as usize]);
 }
 
 #[repr(u8)]
@@ -26,43 +28,42 @@ enum FileType {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct HeaderFlags {
-    user_owner : u8,
-    group_misc : u8
+    user_owner: u8,
+    group_misc: u8,
 }
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
 pub enum Type {
-    Dir,
-    File
+    Dir = 0 as u8,
+    File = 1 as u8,
 }
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
 pub enum FileMode {
-    Short,
-    Long
+    Short = 0 as u8,
+    Long = 1 as u8,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct UGOID (u64);
+pub struct UGOID(u64);
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Header {
-    file_type : Type, // 1 byte
-    flags : HeaderFlags, // 2 bytes
-    name : [u8; 100], // 100 bytes
-    user : UGOID, // 8 bytes
-    owner : UGOID, // 8 bytes
-    group : UGOID, // 8 bytes
-    parent_adress : u64, // 8 bytes
-    length : u64, // 8 bytes
-    mode : FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
-    blocks : [u64; 46]
+    file_type: Type,    // 1 byte
+    flags: HeaderFlags, // 2 bytes
+    name: [u8; 100],    // 100 bytes
+    user: UGOID,        // 8 bytes
+    owner: UGOID,       // 8 bytes
+    group: UGOID,       // 8 bytes
+    parent_adress: u32, // 8 bytes
+    length: u32,        // 8 bytes
+    mode: FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
+    blocks: [u32; 92],
 }
-
 
 /// Copied the norm, should decide our own impelmentation
 /// * type_flag : 0 normal file, 1 hard link, 2 symbolic link, 3 character device, 4 block device, 5 directory, 6 named pipe (FIFO)
@@ -82,11 +83,11 @@ pub struct FileNode {
 
     check_sum: u64, // checksum for header record
 
-    type_flag: FileType, 
+    type_flag: FileType,
     name_of_linked_file: [u32; 25],
 
     ustar_indicator: [char; 6], // should be "ustar" then nul
-    ustar_version: [u8; 2], // should be 00
+    ustar_version: [u8; 2],     // should be 00
 
     user_name: [char; 32],
     group_name: [char; 32],
@@ -95,22 +96,19 @@ pub struct FileNode {
     device_minor_number: u64,
 
     file_name_prefix: [char; 155],
-
 }
 
 pub fn get_available() -> u32 {
     let memory = Memory.lock();
     for i in 0..NUMBER_FILE {
         if (memory[i as usize].type_flag as u8) == (FileType::Available as u8) {
-            return i
+            return i;
         }
     }
     panic!("memory is full")
 }
 
-
 impl FileNode {
-
     pub fn missing() -> Self {
         FileNode {
             file_name: [0; 100],
@@ -133,7 +131,7 @@ impl FileNode {
         }
     }
 
-    pub fn change_name(&mut self, new_name: &str) -> Result<(), ()>{
+    pub fn change_name(&mut self, new_name: &str) -> Result<(), ()> {
         let n = new_name.len();
         if n >= 100 {
             Err(())
@@ -144,16 +142,17 @@ impl FileNode {
             self.file_name[n] = 0;
             Ok(())
         }
-    } 
+    }
 
-    pub fn new_directory(file_position: u32, directory_name: &str) -> Result<(),()> {
+    pub fn new_directory(file_position: u32, directory_name: &str) -> Result<(), ()> {
         let mut memory = Memory.lock();
         let new_id = get_available();
         let mut name = [0; 100];
         let name_size = name.len();
-        let mut calculated_sum: u64 = memory[file_position as usize].owner_id + memory[file_position as usize].group_id;
+        let mut calculated_sum: u64 =
+            memory[file_position as usize].owner_id + memory[file_position as usize].group_id;
         if name_size >= 100 {
-            return Err(())
+            return Err(());
         }
         for i in 0..name_size {
             name[i as usize] = directory_name.as_bytes()[i as usize];

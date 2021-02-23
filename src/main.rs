@@ -25,8 +25,8 @@ mod filesystem;
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print, println, serial,
-    task, test_panic, vga, sound, data_storage
+    allocator, data_storage, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print,
+    println, serial, sound, task, test_panic, vga,
 };
 
 extern crate alloc;
@@ -87,16 +87,9 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
     // Why is this not in the init function ?
 
-
     // quelques tests de drive
-    let mut table:[u16; 256] = [0; 256];
-    filesystem::test::test();
-    filesystem::test::read(table, 2, 0x170);
-
-    for i in 0..40 {
-        print!("{}{}", (table[i] & 0xFF) as u8 as char, (table[i] >> 8) as u8 as char);
-    }
-
+    filesystem::disk_operations::init();
+    filesystem::disk_operations::test_read();
     // fin des tests
 
     // This enables the tests

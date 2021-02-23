@@ -1,9 +1,9 @@
 use super::PROCESS_MAX_NUMBER;
+use crate::data_storage::registers::Registers;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
-use spin::Mutex;
 use lazy_static::lazy_static;
-use crate::data_storage::registers::Registers;
+use spin::Mutex;
 
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
@@ -34,7 +34,7 @@ pub struct Process {
     rip: u64,
     registers: Registers,
     state: State,
-  //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
+    //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
     children: Vec<ID>,
     value: usize,
     owner: u64,
@@ -48,8 +48,8 @@ impl Process {
             priority,
             quantum: 0 as u64,
             cr3: 42, // /!\
-            rsp: 0, // /!\
-            rip: 0, // /!\
+            rsp: 0,  // /!\
+            rip: 0,  // /!\
             registers: Registers::new(),
             state: State::Runnable,
             children: Vec::new(),
@@ -75,14 +75,17 @@ impl Process {
         }
     }
 
-    pub fn spawn(&mut self, priority: Priority) -> &ID {// -> &Mutex<Self> {
+    pub fn spawn(&mut self, priority: Priority) -> &ID {
+        // -> &Mutex<Self> {
         let child = Process::create_new(self.id, priority, self.owner);
-        self.children.push(child.id);//Mutex::new(child));
+        self.children.push(child.id); //Mutex::new(child));
         &(self.children[self.children.len() - 1])
     }
 
     pub unsafe fn launch() {
-        fn f() { loop{} } // /!\
+        fn f() {
+            loop {}
+        } // /!\
         launch_asm(f, 0);
     }
 }
@@ -128,21 +131,47 @@ impl ID {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
             match ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state {
                 State::SlotAvailable => return ID(new),
-                _ => ()
+                _ => (),
             }
         }
         panic!("no slot available")
     }
 }
 
-
 lazy_static! {
     static ref ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
-        Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(),
-        Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(),
-        Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(),
-        Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing(), Process::missing()
-        ];
-
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing(),
+        Process::missing()
+    ];
     static ref CURRENT_PROCESS: Process = Process::missing();
 }

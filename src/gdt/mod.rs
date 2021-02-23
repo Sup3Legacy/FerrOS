@@ -19,7 +19,10 @@ pub struct Selectors {
 lazy_static! {
     static ref GDT: (GlobalDescriptorTable, Selectors) = {
         let mut gdt = GlobalDescriptorTable::new();
-        let code_selector = gdt.add_entry(Descriptor::SystemSegment(gdt_entry::kernel_cs(), gdt_entry::kernel_ds()));
+        let code_selector = gdt.add_entry(Descriptor::SystemSegment(
+            gdt_entry::kernel_cs(),
+            gdt_entry::kernel_ds(),
+        ));
         let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
         let code_segment = gdt.add_entry(Descriptor::UserSegment(gdt_entry::new_cs()));
         let data_segment = gdt.add_entry(Descriptor::UserSegment(gdt_entry::new_ds()));
