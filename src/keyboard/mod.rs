@@ -94,7 +94,7 @@ pub fn set_keyboard_responce(freq: u8, tim: u8) {
     disable_keyboard();
     let mut command_port = Port::new(0x64);
     let mut data_port = Port::new(0x60);
-    unsafe { 
+    unsafe {
         let mut i2: u8 = 0xFE;
         while i2 == 0xFE {
             command_port.write(0xF3 as u8);
@@ -116,7 +116,7 @@ pub fn set_keyboard_responce(freq: u8, tim: u8) {
     }
     //loop {};
     enable_keyboard();
-    loop {};
+    loop {}
 }
 
 pub fn set_layout(code: u8) {
@@ -130,23 +130,24 @@ pub fn disable_keyboard() {
     let mut command_port = Port::new(0x64);
     let mut data_port = Port::new(0x60);
 
-    unsafe { 
+    unsafe {
         data_port.write(0 as u8);
         command_port.write(0xF5 as u8);
-        let i2:u8 = data_port.read();
-        println!("disable : {}", i2);}
-} 
+        let i2: u8 = data_port.read();
+        println!("disable : {}", i2);
+    }
+}
 
 pub fn enable_keyboard() {
     let mut command_port = Port::new(0x64);
     let mut data_port = Port::new(0x60);
-    unsafe { 
+    unsafe {
         data_port.write(0 as u8);
         command_port.write(0xF4 as u8);
-        let i2:u8 = data_port.read();
+        let i2: u8 = data_port.read();
         println!("{} = disable", i2);
-        }
-} 
+    }
+}
 
 /*
 use alloc::collections:Box;

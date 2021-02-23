@@ -20,13 +20,13 @@ extern crate vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
-
+mod filesystem;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print, println, serial,
-    task, test_panic, vga, sound, data_storage
+    allocator, data_storage, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print,
+    println, serial, sound, task, test_panic, vga,
 };
 
 extern crate alloc;
@@ -86,6 +86,16 @@ entry_point!(kernel_main);
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
     // Why is this not in the init function ?
+
+    // quelques tests de drive
+    filesystem::disk_operations::init();
+    let old = filesystem::disk_operations::read_sector(1);
+    println!("{:x?}", old[0]);
+    filesystem::disk_operations::write_sector(&[1; 256], 1);
+    println!("{:x?}", filesystem::disk_operations::read_sector(1)[0]);
+    filesystem::disk_operations::write_sector(&old, 1);
+    println!("{:x?}", filesystem::disk_operations::read_sector(1)[0]);
+    // fin des tests
 
     // This enables the tests
     #[cfg(test)]

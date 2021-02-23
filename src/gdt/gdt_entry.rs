@@ -1,4 +1,3 @@
-
 #[repr(C)]
 pub struct GdtEntryBits {
     base_high: u8,
@@ -10,7 +9,6 @@ pub struct GdtEntryBits {
 }
 
 impl GdtEntryBits {
-    
     pub fn new() -> Self {
         GdtEntryBits {
             base_high: 0,
@@ -22,7 +20,7 @@ impl GdtEntryBits {
         }
     }
 
-    fn set_limit_low(&mut self, val : u16) {
+    fn set_limit_low(&mut self, val: u16) {
         self.limit_low = val
     }
 
@@ -32,7 +30,7 @@ impl GdtEntryBits {
 
     pub fn set_limit(&mut self, val: u32) -> &mut Self {
         self.set_limit_low(val as u16);
-        self.set_limit_high( (val >> 16) as u8);
+        self.set_limit_high((val >> 16) as u8);
         self
     }
 
@@ -92,7 +90,7 @@ impl GdtEntryBits {
 
     /// set privilege level
     pub fn set_dpl(&mut self, dpl: u8) -> &mut Self {
-        self.attributes = (self.attributes & 0x9F) | ( (dpl & 0b11) << 1);
+        self.attributes = (self.attributes & 0x9F) | ((dpl & 0b11) << 1);
         self
     }
 
@@ -144,15 +142,14 @@ impl GdtEntryBits {
         self
     }
 
-    pub fn as_u64(& self) -> u64 {
-        ((self.limit_low as u64) << 0) | ((self.base_low1 as u64) << 16)
+    pub fn as_u64(&self) -> u64 {
+        ((self.limit_low as u64) << 0)
+            | ((self.base_low1 as u64) << 16)
             | ((self.base_low2 as u64) << 32)
             | ((self.attributes as u64) << 40)
             | ((self.granularity as u64) << 48)
             | ((self.base_high as u64) << 54)
     }
-
-
 }
 
 pub fn new_ds() -> u64 {
@@ -180,13 +177,16 @@ pub fn new_cs() -> u64 {
         .set_available(true)
         .set_big(true)
         .set_gran(true);
-    unsafe { cs.set_x86_64_code_descriptor(true);};
+    unsafe {
+        cs.set_x86_64_code_descriptor(true);
+    };
     cs.as_u64()
 }
 
 pub fn kernel_cs() -> u64 {
     let mut kernel_cs = GdtEntryBits::new();
-    kernel_cs.set_limit(0xFFFFF)
+    kernel_cs
+        .set_limit(0xFFFFF)
         .set_base(0)
         .set_present(true)
         .set_read_write(true)
@@ -195,13 +195,16 @@ pub fn kernel_cs() -> u64 {
         .set_big(false)
         .set_available(true)
         .set_gran(true);
-    unsafe { kernel_cs.set_x86_64_code_descriptor(true);};
+    unsafe {
+        kernel_cs.set_x86_64_code_descriptor(true);
+    };
     kernel_cs.as_u64()
 }
 
 pub fn kernel_ds() -> u64 {
     let mut kernel_ds = GdtEntryBits::new();
-    kernel_ds.set_limit(0xFFFFF)
+    kernel_ds
+        .set_limit(0xFFFFF)
         .set_base(0)
         .set_present(true)
         .set_read_write(true)

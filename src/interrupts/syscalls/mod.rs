@@ -1,13 +1,12 @@
-
-use crate::{println, print};
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::Registers;
+use crate::{print, println};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct RegistersMini {
-    r9 : u64, // syscall argument 5
-    r8 : u64, // syscall argument 4
+    r9: u64,  // syscall argument 5
+    r8: u64,  // syscall argument 4
     r10: u64, // syscall argument 3
     rdx: u64, // syscall argument 2
     rsi: u64, // syscall argument 1
@@ -19,20 +18,17 @@ pub type SyscallFunc = extern "C" fn();
 
 const SYSCALL_NUMBER: u64 = 5;
 
-const SYSCALL_TABLE : [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
+const SYSCALL_TABLE: [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
     syscall_0_read,
     syscall_1_write,
     syscall_2_open,
     syscall_3_close,
-
-    syscall_not_implemented
+    syscall_not_implemented,
 ];
 
-
 #[naked]
-unsafe extern "C" fn convert_register_to_full( args: RegistersMini) -> Registers {
-    asm!("mov rax, rdi",
-    "ret");
+unsafe extern "C" fn convert_register_to_full(args: RegistersMini) -> Registers {
+    asm!("mov rax, rdi", "ret");
     loop {}
 }
 
@@ -56,7 +52,6 @@ extern "C" fn syscall_3_close(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
 
-
 extern "C" fn syscall_not_implemented(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
@@ -69,50 +64,49 @@ extern "C" fn syscall_dispatch(args: RegistersMini, isf: InterruptStackFrame) {
     }
 }
 
-
 #[naked]
 pub extern "C" fn naked_syscall_dispatch() {
     unsafe {
         asm!(
-            "cli",
-            "push rax",
-            "push rdi",
-            "push rsi",
-            "push rdx",
-            "push r10",
-            "push r8",
-            "push r9",
-            "push r15",
-            "push r14",
-            "push r13",
-            "push r12",
-            "push r11",
-            "push rbp",
-            "push rcx",
-            "push rbx",
-            "mov rdi, rsp",
-            "add rdi, 8*8",
-            "mov rsi, rsp",
-            "add rsi, 7*8",
-            "call {0}",
-            "pop rbx",
-            "pop rcx",
-            "pop rbp",
-            "pop r11",
-            "pop r12",
-            "pop r13",
-            "pop r14",
-            "pop r15",
-            "pop r9",
-            "pop r8",
-            "pop r10",
-            "pop rdx",
-            "pop rsi",
-            "pop rdi",
-            "pop rax",
-            "sti",
-            "iretq",
-              sym syscall_dispatch
-            );
+        "cli",
+        "push rax",
+        "push rdi",
+        "push rsi",
+        "push rdx",
+        "push r10",
+        "push r8",
+        "push r9",
+        "push r15",
+        "push r14",
+        "push r13",
+        "push r12",
+        "push r11",
+        "push rbp",
+        "push rcx",
+        "push rbx",
+        "mov rdi, rsp",
+        "add rdi, 8*8",
+        "mov rsi, rsp",
+        "add rsi, 7*8",
+        "call {0}",
+        "pop rbx",
+        "pop rcx",
+        "pop rbp",
+        "pop r11",
+        "pop r12",
+        "pop r13",
+        "pop r14",
+        "pop r15",
+        "pop r9",
+        "pop r8",
+        "pop r10",
+        "pop rdx",
+        "pop rsi",
+        "pop rdi",
+        "pop rax",
+        "sti",
+        "iretq",
+          sym syscall_dispatch
+        );
     }
 }
