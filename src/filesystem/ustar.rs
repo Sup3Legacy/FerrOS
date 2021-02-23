@@ -14,6 +14,54 @@ enum FileType {
     File = 0,
     Directory = 1,
 }
+/*
+- 2 octets de flags/autorisation (u:rwxs, g:rwxs, o:rwxs, opened, ...)
+- 100 octets de nom (on peut diminuer au besoin)
+- 1 octet de type
+- 8 octets (ie 64 bits) de user ID
+- 8 octets (ie 64 bits) de group ID
+- adresse du dossier parent?/ nom du dossier parent?
+*/
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct HeaderFlags {
+    user_owner : u8,
+    group_misc : u8
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+pub enum Type {
+    Dir,
+    File
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+pub enum FileMode {
+    Short,
+    Long
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct UGOID (u64);
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct Header {
+    file_type : Type, // 1 byte
+    flags : HeaderFlags, // 2 bytes
+    name : [u8; 100], // 100 bytes
+    user : UGOID, // 8 bytes
+    owner : UGOID, // 8 bytes
+    group : UGOID, // 8 bytes
+    parent_adress : u64, // 8 bytes
+    length : u64, // 8 bytes
+    mode : FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
+    blocks : [u64; 46]
+}
 
 
 /// Copied the norm, should decide our own impelmentation
