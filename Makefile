@@ -1,12 +1,12 @@
 
 all:
-	cargo run
+	cargo run -- -drive format=raw,file=disk.disk,index=2 -boot c
 
 clean:
 	cargo clean
 
 sound:
-	cargo run -- -soundhw pcspk
+	cargo run -- -soundhw pcspk -drive format=raw,file=disk.disk,index=2 -boot c
 
 count:
 	wc -l `find src -type f`
