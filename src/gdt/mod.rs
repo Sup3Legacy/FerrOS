@@ -1,3 +1,5 @@
+//! Everything needed to setup a GDT that does nothing, so we can use paging instead.
+
 use lazy_static::lazy_static;
 use x86_64::instructions::segmentation::set_cs;
 use x86_64::instructions::tables::load_tss;
@@ -17,6 +19,7 @@ pub struct Selectors {
 }
 
 lazy_static! {
+    /// Defines the InterruptDescriptorTable and all the interruption handlers.
     static ref GDT: (GlobalDescriptorTable, Selectors) = {
         let mut gdt = GlobalDescriptorTable::new();
         let code_selector = gdt.add_entry(Descriptor::SystemSegment(
@@ -39,6 +42,7 @@ lazy_static! {
 }
 
 lazy_static! {
+    /// Defines the InterruptDescriptorTable and all the interruption handlers
     static ref TSS: TaskStateSegment = {
         let mut tss = TaskStateSegment::new();
         tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
@@ -52,6 +56,7 @@ lazy_static! {
     };
 }
 
+/// Initializes the GDT to be useless, and start the kernel.
 pub fn init() {
     GDT.0.load();
     unsafe {
