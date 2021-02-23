@@ -125,7 +125,6 @@ impl ID {
         Self(new)
     }
 
-
     pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         for i in 0..PROCESS_MAX_NUMBER {

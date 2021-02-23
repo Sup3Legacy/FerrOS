@@ -27,7 +27,6 @@ pub enum FileNode {
     File(String, File),
 }
 
-
 pub struct FileSystem {
     root: FileNode,
 }
@@ -40,7 +39,6 @@ lazy_static! {
         root
     };
 }
-
 
 pub fn fetch_file(path: String) -> Result<(), FileSystemError> {
     let mut split_path = path.split("/");

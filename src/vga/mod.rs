@@ -10,10 +10,7 @@ pub mod video_mode;
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-
 // I suggest a code review : some bits seem irrelevant, or doubly implemented, or could be more efficient (by writing 0 to the whole array instead of element by element for instance).
-
-
 
 lazy_static! {
     /// The structure representing the screen. It is mapped in memory to the VGA text buffer (`0xb8000`)
@@ -38,7 +35,6 @@ macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
 }
-
 
 /// The cursor goes back to the beginning of the current line.
 pub fn write_back() {
@@ -181,7 +177,7 @@ impl Screen {
         };
         self.set_cursor();
     }
-    
+
     /// Moves the cursor given the information in the `Screen` struct.
     fn set_cursor(&mut self) {
         let pos = self.row_pos * BUFFER_WIDTH + self.col_pos;
@@ -215,7 +211,7 @@ impl Screen {
             }
         }
     }
-    
+
     /// This function wipes the last line of the screen.
     fn clear_bottom(&mut self) -> () {
         let blank = CHAR {
@@ -226,7 +222,7 @@ impl Screen {
             self.buffer.characters[(BUFFER_HEIGHT - 1) * BUFFER_WIDTH + col] = blank;
         }
     }
-        
+
     /// This function writes a string on the screen, starting at the current position of the cursor.
     ///
     /// # Arguments
@@ -253,7 +249,7 @@ impl Screen {
         self.set_color(old_color);
         println!("s = {}", s.bytes().len());
     }
-    
+
     /// Initializes a new screen, with a given color and buffer.
     fn _new(color: ColorCode, buffer: &'static mut BUFFER) -> Self {
         Screen {
@@ -263,7 +259,7 @@ impl Screen {
             buffer,
         }
     }
-        
+
     /// The function changes the color of the cursor (the color which the next characters will be printed in)
     ///
     /// # Arguments
@@ -271,7 +267,7 @@ impl Screen {
     pub fn set_color(&mut self, color: ColorCode) -> () {
         self.color = color;
     }
-    
+
     /// This function clears the screen.
     ///
     /// # Result
@@ -290,7 +286,7 @@ impl Screen {
         self.row_pos = 0;
         Ok(())
     }
-            
+
     /// This function writes a given string at a given position on the screen.
     ///
     /// # Arguments
@@ -323,7 +319,6 @@ impl fmt::Write for Screen {
         Ok(())
     }
 }
-
 
 // These should GTFO to a different test framework.
 #[test_case]
