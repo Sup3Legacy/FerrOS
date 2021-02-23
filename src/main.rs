@@ -20,7 +20,7 @@ extern crate vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
-
+mod filesystem;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
@@ -86,6 +86,13 @@ entry_point!(kernel_main);
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
     // Why is this not in the init function ?
+
+
+    // quelques tests de drive
+
+    filesystem::test::test();
+
+    // fin des tests
 
     // This enables the tests
     #[cfg(test)]
