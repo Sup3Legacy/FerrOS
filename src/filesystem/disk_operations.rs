@@ -75,7 +75,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     commandPort.write(0x20 as u8);
     let mut i = commandPort.read();
     let mut compte = 1;
-    while (i & 0x80) != 0{
+    while (i & 0x80) != 0 {
         i = commandPort.read();
         compte = 1 + compte;
         if compte % 1000000 == 0 {
@@ -94,7 +94,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     }
     let mut i = commandPort.read();
     let mut compte = 1;
-    while (i & 0x80) != 0  {
+    while (i & 0x80) != 0 {
         i = commandPort.read();
         compte = 1 + compte;
         if compte % 1000000 == 0 {
@@ -143,7 +143,7 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     }
     let mut i = commandPort.read();
     let mut compte = 1;
-    while (i & 0x80) != 0  {
+    while (i & 0x80) != 0 {
         i = commandPort.read();
         compte = 1 + compte;
         if compte % 1000000 == 0 {
