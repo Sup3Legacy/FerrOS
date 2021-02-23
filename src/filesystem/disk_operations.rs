@@ -68,11 +68,62 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     let mut _LBAhi = Port::new(port + 5);
     let mut commandPort = Port::new(port + 7);
     master_drive.write(0xE0 | ((lba >> 24) & 0x0F)); // outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
-    sectorcount.write(0 as u8);
+    sectorcount.write(1 as u8);
     _LBAlo.write(lba as u8);
     _LBAmid.write((lba >> 8) as u8);
     _LBAhi.write((lba >> 16) as u8);
     commandPort.write(0x20 as u8);
+    let mut i = commandPort.read();
+    let mut compte = 1;
+    while (i & 0x80) != 0{
+        i = commandPort.read();
+        compte = 1 + compte;
+        if compte % 1000000 == 0 {
+            println!("not finished 1 : {} en {}", i, compte);
+        }
+    }
+    //println!("finished : {} en {}", i, compte);
+    _LBAlo.read();
+    _LBAmid.read();
+    _LBAhi.read();
+    let mut next_port = Port::<u16>::new(port + 0);
+    for i in 0..256 {
+        let t = next_port.read();
+        // print!(" {:x?}", t);
+        (*table)[i] = t;
+    }
+    let mut i = commandPort.read();
+    let mut compte = 1;
+    while (i & 0x80) != 0  {
+        i = commandPort.read();
+        compte = 1 + compte;
+        if compte % 1000000 == 0 {
+            println!("not finished 2 : {} en {}", i, compte);
+        }
+    }
+    enable();
+}
+
+pub fn write_sector(table: &[u16; 256], lba: u32) -> () {
+    unsafe {
+        write(table, lba, DISK_PORT);
+    }
+}
+
+unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
+    disable();
+    let mut master_drive = Port::new(port + 6);
+    let mut sectorcount = Port::new(port + 2);
+    let mut _LBAlo = Port::new(port + 3);
+    let mut _LBAmid = Port::new(port + 4);
+    let mut _LBAhi = Port::new(port + 5);
+    let mut commandPort = Port::new(port + 7);
+    master_drive.write(0xE0 | ((lba >> 24) & 0x0F)); // outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
+    sectorcount.write(1 as u8);
+    _LBAlo.write(lba as u8);
+    _LBAmid.write((lba >> 8) as u8);
+    _LBAhi.write((lba >> 16) as u8);
+    commandPort.write(0x30 as u8);
     let mut i = commandPort.read();
     let mut compte = 1;
     while (i & 0x80) != 0 {
@@ -88,9 +139,16 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     _LBAhi.read();
     let mut next_port = Port::<u16>::new(port + 0);
     for i in 0..256 {
-        let t = next_port.read();
-        // print!(" {:x?}", t);
-        (*table)[i] = t;
+        next_port.write(table[i]);
+    }
+    let mut i = commandPort.read();
+    let mut compte = 1;
+    while (i & 0x80) != 0  {
+        i = commandPort.read();
+        compte = 1 + compte;
+        if compte % 1000000 == 0 {
+            println!("not finished 2 : {} en {}", i, compte);
+        }
     }
     enable();
 }

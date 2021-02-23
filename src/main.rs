@@ -89,7 +89,12 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     // quelques tests de drive
     filesystem::disk_operations::init();
-    filesystem::disk_operations::test_read();
+    let old = filesystem::disk_operations::read_sector(1);
+    println!("{:x?}", old[0]);
+    filesystem::disk_operations::write_sector(&[1; 256], 1);
+    println!("{:x?}", filesystem::disk_operations::read_sector(1)[0]);
+    filesystem::disk_operations::write_sector(&old, 1);
+    println!("{:x?}", filesystem::disk_operations::read_sector(1)[0]);
     // fin des tests
 
     // This enables the tests
