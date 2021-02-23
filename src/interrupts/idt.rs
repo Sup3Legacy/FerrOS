@@ -1,14 +1,16 @@
 use core::mem::size_of;
-use x86_64::instructions::{segmentation, 
+use x86_64::instructions::{
+    segmentation,
     tables::{lidt, DescriptorTablePointer},
 };
 //use x86_64::structures::gdt::SegmentSelector;
-use x86_64::{PrivilegeLevel, VirtAddr};
-use core::marker::PhantomData;
-use core::ops::{ Index, IndexMut};
-use core::fmt;
-use bitflags::bitflags;
 use bit_field::BitField;
+use bitflags::bitflags;
+use core::fmt;
+use core::marker::PhantomData;
+use core::ops::{Index, IndexMut};
+use x86_64::{PrivilegeLevel, VirtAddr};
+//use super::syscalls::SyscallFunc;
 
 const SYSCALL_POSITION: usize = 0x80;
 const SYSCALL_POSITION_1: usize = 0x7E;
@@ -41,9 +43,9 @@ pub struct Idt {
     reserved_21_29: [Entry<HandlerFunc>; 9], // reserved
     pub security_exception: Entry<HandlerFuncWithErrorCode>,
     interrupt_31: Entry<HandlerFunc>, // reserved
-    pub interrupt_32_: [Entry<HandlerFunc>; SYSCALL_POSITION-32],
+    pub interrupt_32_: [Entry<HandlerFunc>; SYSCALL_POSITION - 32],
     pub syscall: Entry<SyscallFunc>,
-    pub interrupt_post_syscall_: [Entry<HandlerFunc>; 255-SYSCALL_POSITION],
+    pub interrupt_post_syscall_: [Entry<HandlerFunc>; 255 - SYSCALL_POSITION],
 }
 
 impl Idt {
@@ -73,9 +75,9 @@ impl Idt {
             reserved_21_29: [Entry::missing(); 9],
             security_exception: Entry::missing(),
             interrupt_31: Entry::missing(),
-            interrupt_32_: [Entry::missing(); SYSCALL_POSITION-32],
+            interrupt_32_: [Entry::missing(); SYSCALL_POSITION - 32],
             syscall: Entry::missing(),
-            interrupt_post_syscall_: [Entry::missing(); 255-SYSCALL_POSITION],
+            interrupt_post_syscall_: [Entry::missing(); 255 - SYSCALL_POSITION],
         }
     }
 
@@ -87,7 +89,6 @@ impl Idt {
 
         unsafe { lidt(&ptr) };
     }
-
 }
 
 impl Index<usize> for Idt {
@@ -108,7 +109,7 @@ impl Index<usize> for Idt {
             9 => panic!("access not allowed! It is reserved"),
             _i @ 10..=14 => panic!("wrong function type"),
             15 => panic!("access not allowed! It is reserved"),
-            16 => & self.x87_floating_point,
+            16 => &self.x87_floating_point,
             17 => panic!("wrong function type"),
             18 => panic!("this function should be diverging"),
             19 => &self.simd_floating_point,
@@ -118,14 +119,13 @@ impl Index<usize> for Idt {
             31 => panic!("access not allowed! It is reserved"),
             i @ 32..=SYSCALL_POSITION_1 => &self.interrupt_32_[i - 32],
             SYSCALL_POSITION => panic!("wrong function type"),
-            i @ SYSCALL_POSITION_2..=255 => &self.interrupt_post_syscall_[i - SYSCALL_POSITION-1],
-            _i => panic!("no such entry")
+            i @ SYSCALL_POSITION_2..=255 => &self.interrupt_post_syscall_[i - SYSCALL_POSITION - 1],
+            _i => panic!("no such entry"),
         }
     }
 }
 
 impl IndexMut<usize> for Idt {
-
     #[inline]
     fn index_mut(&mut self, position: usize) -> &mut Self::Output {
         match position {
@@ -151,25 +151,28 @@ impl IndexMut<usize> for Idt {
             31 => panic!("access not allowed! It is reserved"),
             i @ 32..=SYSCALL_POSITION_1 => &mut self.interrupt_32_[i - 32],
             SYSCALL_POSITION => panic!("wrong function type"),
-            i @ SYSCALL_POSITION_2..=255 => &mut self.interrupt_post_syscall_[i - SYSCALL_POSITION-1],
-            _i => panic!("no such entry")
+            i @ SYSCALL_POSITION_2..=255 => {
+                &mut self.interrupt_post_syscall_[i - SYSCALL_POSITION - 1]
+            }
+            _i => panic!("no such entry"),
         }
     }
 }
 
 pub type HandlerFunc = extern "x86-interrupt" fn(&mut InterruptStackFrame);
-pub type HandlerFuncWithErrorCode = extern "x86-interrupt" fn(&mut InterruptStackFrame, error_code: u64);
+pub type HandlerFuncWithErrorCode =
+    extern "x86-interrupt" fn(&mut InterruptStackFrame, error_code: u64);
 pub type PageFaultHandler = extern "x86-interrupt" fn(&mut InterruptStackFrame, PageFaultErrorCode);
 pub type DivergingFunc = extern "x86-interrupt" fn(&mut InterruptStackFrame) -> !;
-pub type DivergingFuncWithErrorCode = extern "x86-interrupt" fn(&mut InterruptStackFrame, error_code: u64) -> !;
-pub type SyscallFunc = extern "C" fn() -> !;
+pub type DivergingFuncWithErrorCode =
+    extern "x86-interrupt" fn(&mut InterruptStackFrame, error_code: u64) -> !;
+pub type SyscallFunc = extern "C" fn();
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
 pub struct EntryOptions(u16);
 
 impl EntryOptions {
-
     #[inline]
     fn minimal() -> Self {
         //options.set_bits(9..12, 0b111);
@@ -178,7 +181,7 @@ impl EntryOptions {
 
     fn new() -> Self {
         let mut options = Self::minimal();
-        options.set_present(true);//.disable_interrupts(true);
+        options.set_present(true); //.disable_interrupts(true);
         options
     }
 
@@ -219,8 +222,6 @@ pub struct Entry<FunctionType> {
     reserved: u32,
     phantom: PhantomData<FunctionType>,
 }
-
-
 
 impl<FunctionType> Entry<FunctionType> {
     fn missing() -> Self {

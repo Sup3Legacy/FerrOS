@@ -145,7 +145,7 @@ extern "x86-interrupt" fn segment_not_present_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
-    panic!("SEGMENT NOT PRESENT");
+    panic!("SEGMENT NOT PRESENT {}", _error_code);
 }
 
 extern "x86-interrupt" fn stack_segment_fault_handler(

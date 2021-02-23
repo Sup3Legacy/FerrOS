@@ -52,7 +52,7 @@ pub fn _print(args: fmt::Arguments) {
     });
 }
 
-
+// /!\ pub fn _print_at(row: usize, col: usize, s: &str) {
 pub(crate) fn _print_at(row: usize, col: usize, s: &str) {
     //! Prints a string at a given position on the screen.
     //!

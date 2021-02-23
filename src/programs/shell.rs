@@ -1,5 +1,6 @@
 use core::str::SplitWhitespace;
 
+use crate::keyboard;
 use crate::keyboard::keyboard_interraction;
 use alloc::collections::BTreeMap;
 use alloc::{string::String, vec::Vec};
@@ -41,7 +42,7 @@ pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
 
 /// Help command
 ///
-/// `help [keyword]` prints the help string provided for the associated command. 
+/// `help [keyword]` prints the help string provided for the associated command.
 /// Prints error messages if invalid input.
 pub fn help(list: Vec<String>) -> Result<(), ShellErr> {
     match list.get(0) {
