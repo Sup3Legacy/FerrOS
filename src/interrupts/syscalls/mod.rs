@@ -24,10 +24,8 @@ pub struct RegistersMini {
     rax: u64, // syscall number
 }
 
-
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
-
 
 /// total number of syscalls
 const SYSCALL_NUMBER: u64 = 5;

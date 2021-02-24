@@ -1,17 +1,25 @@
 use super::disk_operations;
+use alloc::vec::Vec;
 use core::{mem::transmute, todo};
-use disk_operations::write_sector;
 use lazy_static::lazy_static;
-use spin::Mutex;
 
-const NUMBER_FILE: u32 = 128;
-const SHORT_MODE_LIMIT: u32 = 109;
+/// Max number of blocks usable in short mode
+const SHORT_MODE_LIMIT: u32 = 100;
 
 lazy_static! {
+    /// Main table of available tables
     static ref LBA_TABLE: LBATable = {
         disk_operations::init();
-        LBATable::from_u16_array(disk_operations::read_sector(1))
+        let mut res = LBATable::from_u16_array(disk_operations::read_sector(1));
+        res.data[0] = false;
+        res.data[1] = false;
+        res
     };
+}
+
+lazy_static! {
+    /// Index of lowest free sector. Useful to keep track of to avoid useless computations.
+    static ref LBA_TABLE_INDEX: u32 = 2;
 }
 
 #[repr(u8)]
@@ -41,7 +49,7 @@ pub struct HeaderFlags {
 #[derive(Debug, Clone, Copy)]
 pub enum Type {
     Dir = 0 as u8,
-    File = 2 as u8,
+    File = 1 as u8,
 }
 
 #[repr(u8)]
@@ -67,7 +75,15 @@ pub struct Header {
     parent_adress: u32, // 8 bytes
     length: u32,        // 8 bytes. In case of a header, it is the number of sub-items.
     mode: FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
-    blocks: [u32; 109],
+    padding: [u32; 9], // Padding to have a nice SHORT_MODE_LIMIT number
+    blocks: [u32; SHORT_MODE_LIMIT as usize],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct MemFile {
+    header: Header,
+    data: Vec<u16>,
 }
 
 #[repr(C)]
@@ -86,6 +102,21 @@ pub struct FileBlock {
 #[derive(Debug, Clone, Copy)]
 pub struct LBATable {
     data: [bool; 512],
+}
+
+impl MemFile {
+    pub fn write_to_disk(&self) -> () {
+        // Might want to Result<(), SomeError>
+        let mut file_header = self.header;
+        let length = file_header.length;
+        if length < SHORT_MODE_LIMIT * 256 {
+            // i.e. file short enough to use short mode
+            file_header.mode = FileMode::Short;
+        } else {
+            file_header.mode = FileMode::Long;
+            todo!()
+        }
+    }
 }
 
 impl U16Array for Header {

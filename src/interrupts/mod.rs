@@ -76,7 +76,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref KEYBOARD : spin::Mutex<u8> = spin::Mutex::new(1);
+    static ref KEYBOARD: spin::Mutex<u8> = spin::Mutex::new(1);
 }
 
 /// Loads the IDT into the kernel, starts the PIC and listens to the interruptions.

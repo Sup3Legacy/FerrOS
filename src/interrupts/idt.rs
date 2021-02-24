@@ -14,12 +14,10 @@ use core::ops::{Index, IndexMut};
 use x86_64::{PrivilegeLevel, VirtAddr};
 //use super::syscalls::SyscallFunc;
 
-
 /// Constant containing the syscall position, syscall - 1 and syscall + 1 (needs to be improved)
 const SYSCALL_POSITION: usize = 0x80;
 const SYSCALL_POSITION_1: usize = 0x7E;
 const SYSCALL_POSITION_2: usize = 0x81;
-
 
 /// Interrupt Descriptor Table : table to store every interrupts handler
 #[repr(C)]
@@ -194,7 +192,6 @@ pub type SyscallFunc = extern "C" fn();
 pub struct EntryOptions(u16);
 
 impl EntryOptions {
-
     #[inline]
     /// Some bits are must_be_1
     fn minimal() -> Self {
