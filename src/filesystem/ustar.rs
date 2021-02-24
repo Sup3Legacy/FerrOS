@@ -3,18 +3,22 @@ use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 use disk_operations::write_sector;
 use lazy_static::lazy_static;
+use spin::Mutex;
+use crate::{print, println};
 
 // Number of 512-sector segments
-const LBA_TABLES_COUNT: u32 = 2;
+const LBA_TABLES_COUNT: u32 = 4;
 
 /// Max number of blocks usable in short mode
 const SHORT_MODE_LIMIT: u32 = 100;
 
-lazy_static! {
-    /// Main table of available tables
-    static ref LBA_TABLE_GLOBAL: LBATableGlobal =
-        LBATableGlobal::load_from_disk();
-}
+pub static mut LBA_TABLE_GLOBAL: LBATableGlobal = LBATableGlobal {
+    index: 0,
+    data: [LBATable {
+        index: 1,
+        data: [true; 510],
+    }; LBA_TABLES_COUNT as usize],
+};
 
 static mut LBA_TABLE_INDEX: u32 = 2;
 
@@ -34,11 +38,11 @@ enum FileType {
 - adresse du dossier parent?/ nom du dossier parent?
 */
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct HeaderFlags {
-    user_owner: u8,
-    group_misc: u8,
+    pub user_owner: u8,
+    pub group_misc: u8,
 }
 
 #[repr(u8)]
@@ -55,39 +59,39 @@ pub enum FileMode {
     Long = 1 as u8,
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct UGOID(u64);
+pub struct UGOID(pub u64);
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Adress {
-    lba : u16,
-    block : u16 // Really only u8 needed
+    pub lba: u16,
+    pub block: u16, // Really only u8 needed
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct Header {
-    file_type: Type,    // 1 byte
-    flags: HeaderFlags, // 2 bytes
-    name: [u8; 32],     // 100 bytes
-    user: UGOID,        // 8 bytes
-    owner: UGOID,       // 8 bytes
-    group: UGOID,       // 8 bytes
-    parent_adress: u32, // 4 bytes
-    length: u32,        // 4 bytes. In case of a directory, it is the number of sub-items.
-    blocks_number: u32,
-    mode: FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
-    padding: [u32; 8], // Padding to have a nice SHORT_MODE_LIMIT number
-    blocks: [Adress; SHORT_MODE_LIMIT as usize],
+    pub file_type: Type,       // 1 byte
+    pub flags: HeaderFlags,    // 2 bytes
+    pub name: [u8; 32],        // 100 bytes
+    pub user: UGOID,           // 8 bytes
+    pub owner: UGOID,          // 8 bytes
+    pub group: UGOID,          // 8 bytes
+    pub parent_adress: Adress, // 4 bytes
+    pub length: u32,           // 4 bytes. In case of a directory, it is the number of sub-items.
+    pub blocks_number: u32,
+    pub mode: FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
+    pub padding: [u32; 10], // Padding to have a nice SHORT_MODE_LIMIT number
+    pub blocks: [Adress; SHORT_MODE_LIMIT as usize],
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone)]
 pub struct MemFile {
-    header: Header,
-    data: Vec<u16>,
+    pub header: Header,
+    pub data: Vec<u16>,
 }
 
 #[repr(C)]
@@ -96,23 +100,23 @@ pub struct DirBlock {
     subitems: [([u8; 28], Adress); 16],
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct FileBlock {
     data: [u16; 256],
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct LBATable {
-    index: u8,
-    data: [bool; 511],
+    index: u16,
+    data: [bool; 510],
 }
 
-#[repr(C)]
+#[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct LBATableGlobal {
-    index: u8,
+    index: u32,
     data: [LBATable; LBA_TABLES_COUNT as usize],
 }
 
@@ -142,45 +146,58 @@ impl LBATable {
 }
 
 impl LBATableGlobal {
-    fn init(&mut self) {
+    pub fn init(&mut self) {
         self.index = 0;
         for i in 0..LBA_TABLES_COUNT {
             self.data[i as usize].index = 1;
-            for j in 0..511 {
+            for j in 0..510 {
                 self.data[i as usize].data[j as usize] = true;
             }
         }
+        self.write_to_disk();
     }
     fn load_from_disk() -> Self {
         disk_operations::init();
-        let mut glob = [LBATable {index : 0, data : [true; 511]}; LBA_TABLES_COUNT as usize];
+        let mut glob = [LBATable {
+            index: 1,
+            data: [true; 510],
+        }; LBA_TABLES_COUNT as usize];
         // Load the LBA tables from disk
         for i in 0..LBA_TABLES_COUNT {
             glob[i as usize] = LBATable::from_u16_array(disk_operations::read_sector(512 * i + 1));
         }
-        Self {index : 0, data : glob}
+        Self {
+            index: 0,
+            data: glob,
+        }
     }
     fn write_to_disk(&self) {
         for i in 0..LBA_TABLES_COUNT {
             disk_operations::write_sector(&self.data[i as usize].to_u16_array(), 512 * i + 1);
         }
     }
-    fn get_index(&self) -> u8 {
+    fn get_index(&self) -> u32 {
         self.index
     }
-    fn get_lba_index(&self, lba : u32) -> u8 {
+    fn set_index(&mut self, index: u32) {
+        self.index = self.index + index;
+    }
+    fn set_lba_index(&mut self, lba: u32, index: u16) {
+        self.data[lba as usize].index =  index;
+    }
+    fn get_lba_index(&self, lba: u32) -> u16 {
         self.data[lba as usize].index
     }
-    fn is_available(&self, lba : u32, index : u32) -> bool {
+    fn is_available(&self, lba: u32, index: u32) -> bool {
         self.data[lba as usize].data[index as usize]
     }
-    fn mark_available(&mut self, lba : u32, index : u32){
+    fn mark_available(&mut self, lba: u32, index: u32) {
         self.data[lba as usize].data[index as usize] = true;
     }
-    fn mark_unavailable(&mut self, lba : u32, index : u32){
+    fn mark_unavailable(&mut self, lba: u32, index: u32) {
         self.data[lba as usize].data[index as usize] = false;
     }
-    fn is_lba_available(&self, lba : u32) -> bool {
+    fn is_lba_available(&self, lba: u32) -> bool {
         self.data[lba as usize].index != 0
     }
 }
@@ -199,7 +216,7 @@ fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
             arr[j] = data[index];
             index += 1;
         }
-        res[i] = arr;
+        res.push(arr);
     }
     res
 }
@@ -212,57 +229,90 @@ impl MemFile {
         if length < SHORT_MODE_LIMIT * 256 {
             file_header.mode = FileMode::Short;
             let mut block_adresses: Vec<Adress> = Vec::new();
-            for _ in 0..file_header.blocks_number {
-                block_adresses.push(Adress {lba : 0, block : 0});
-            }
             let mut indice = 0;
-            let mut current_lba = LBA_TABLE_GLOBAL.get_index() as usize;
-            let mut current_block = LBA_TABLE_GLOBAL.get_lba_index(current_lba as u32) as usize;
+            let blocks_number = file_header.blocks_number + 1;
             unsafe {
-                while indice < file_header.blocks_number {
+                let mut current_lba = LBA_TABLE_GLOBAL.get_index() as usize;
+                let mut current_block = LBA_TABLE_GLOBAL.get_lba_index(current_lba as u32) as usize;
+                while indice < blocks_number {
                     if LBA_TABLE_GLOBAL.is_lba_available(current_lba as u32) {
                         if LBA_TABLE_GLOBAL.is_available(current_lba as u32, current_block as u32) {
-                            block_adresses.push(Adress {lba : current_lba as u16, block : current_block as u16});
+                            block_adresses.push(Adress {
+                                lba: current_lba as u16,
+                                block: current_block as u16,
+                            });
+
+                            // Write back allocation informations
+                            LBA_TABLE_GLOBAL
+                                .mark_unavailable(current_lba as u32, (current_block) as u32);
                             indice += 1;
+                            LBA_TABLE_GLOBAL.data[current_lba as usize].index =
+                            if LBA_TABLE_GLOBAL.data[current_lba as usize].index < 510 {LBA_TABLE_GLOBAL.data[current_lba as usize].index + 1}
+                            else {0};
                         } else {
+                            LBA_TABLE_GLOBAL
+                                .set_lba_index(current_lba as u32, (current_block + 1) as u16);
                             current_block += 1;
                         }
                     } else {
+                        LBA_TABLE_GLOBAL.set_index((current_lba + 1) as u32);
                         current_lba += 1;
                     }
                 }
             }
-            let mut adresses = [Adress {lba : 0, block : 0}; SHORT_MODE_LIMIT as usize];
-            for i in 1..(file_header.blocks_number as usize) {
+            let mut adresses = [Adress { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
+            for i in 1..(blocks_number as usize) {
                 adresses[i - 1] = block_adresses[i];
             }
             file_header.blocks = adresses;
-            write_to_disk(file_header, (block_adresses[0].lba * 512 + block_adresses[0].block + 1) as u32);
-            let blocks_to_write = slice_vec(&self.data);
-            for i in 0..(file_header.blocks_number - 1) {
-                let file_block = FileBlock {
-                    data: blocks_to_write[i as usize],
-                };
-                write_to_disk(file_block, (block_adresses[(i + 1) as usize].lba * 512 + block_adresses[(i + 1) as usize].block + 1) as u32);
+            write_to_disk(
+                file_header,
+                (block_adresses[0].lba * 512 + block_adresses[0].block + 1) as u32,
+            );
+            unsafe {
+                let blocks_to_write = slice_vec(&self.data);
+                for i in 0..(blocks_number - 1) {
+                    let file_block = FileBlock {
+                        data: blocks_to_write[i as usize],
+                    };
+                    write_to_disk(
+                        file_block,
+                        (block_adresses[(i + 1) as usize].lba * 512
+                            + block_adresses[(i + 1) as usize].block
+                            + 1) as u32,
+                    );
+                }
             }
         } else {
             file_header.mode = FileMode::Long;
             todo!()
         }
-        LBA_TABLE_GLOBAL.write_to_disk();
+        unsafe {
+            LBA_TABLE_GLOBAL.write_to_disk();
+        }
     }
-    pub fn read_from_disk(lba: u32) -> Self {
-        let header: Header = read_from_disk(lba);
+    pub fn read_from_disk(adress: Adress) -> Self {
+        let header: Header = read_from_disk((adress.lba * 512 + adress.block + 2) as u32);
         let mut file = Self {
             header,
             data: Vec::new(),
         };
+        //println!("{:?}", header);
         if header.mode == FileMode::Short {
+            let length = header.length;
+            let mut compteur = 0;
             for i in 0..header.blocks_number {
                 let adress = header.blocks[i as usize];
-                let sector: FileBlock = read_from_disk((adress.lba * 512 + adress.block + 1) as u32);
+                let sector: FileBlock =
+                    read_from_disk((adress.lba * 512 + adress.block + 1) as u32);
                 for j in 0..256 {
-                    file.data.push(sector.data[j]);
+                    if compteur >= length {
+                        break;
+                    }
+                    unsafe {
+                        file.data.push(sector.data[j]);
+                    }
+                    compteur += 1;
                 }
             }
         } else {

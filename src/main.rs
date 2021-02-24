@@ -11,7 +11,10 @@
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
 
+use alloc::vec;
+use alloc::vec::Vec;
 use core::panic::PanicInfo;
+use filesystem::ustar::MemFile;
 // use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
@@ -20,13 +23,12 @@ extern crate vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
-mod filesystem;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, gdt, halt_loop, interrupts, keyboard, long_halt, memory, print,
-    println, serial, sound, task, test_panic, vga,
+    allocator, data_storage, filesystem, gdt, halt_loop, interrupts, keyboard, long_halt, memory,
+    print, println, serial, sound, task, test_panic, vga,
 };
 
 extern crate alloc;
@@ -89,12 +91,36 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     // quelques tests de drive
     filesystem::disk_operations::init();
-    let old = filesystem::disk_operations::read_sector(1);
-    println!("{:x?}", old[0]);
-    filesystem::disk_operations::write_sector(&[1; 256], 1);
-    println!("{:x?}", filesystem::disk_operations::read_sector(1)[0]);
-    filesystem::disk_operations::write_sector(&old, 1);
-    println!("{:x?}", filesystem::disk_operations::read_sector(1)[0]);
+    unsafe {
+        filesystem::ustar::LBA_TABLE_GLOBAL.init();
+    }
+    let head = filesystem::ustar::Header {
+        file_type: filesystem::ustar::Type::Dir,
+        flags: filesystem::ustar::HeaderFlags {
+            user_owner: 12,
+            group_misc: 12,
+        },
+        name: ['#' as u8; 32],
+        user: filesystem::ustar::UGOID(71),
+        owner: filesystem::ustar::UGOID(89),
+        group: filesystem::ustar::UGOID(21),
+        parent_adress: filesystem::ustar::Adress { lba: 0, block: 0 },
+        length: 413,
+        blocks_number: 2,
+        mode: filesystem::ustar::FileMode::Short,
+        padding: [999999999; 10],
+        blocks: [filesystem::ustar::Adress { lba: 0, block: 0 }; 100],
+    };
+    let mut data: Vec<u16> = vec![];
+    for i in 0..413 {
+        data.push(i / 256 + 1);
+    }
+    let file = filesystem::ustar::MemFile { header: head, data };
+    file.write_to_disk();
+    println!("{:?}", unsafe {
+        filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Adress { lba: 0, block: 0 })
+            .data
+    });
     // fin des tests
 
     // This enables the tests
