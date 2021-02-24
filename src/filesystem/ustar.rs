@@ -1,8 +1,10 @@
 use super::disk_operations;
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
+use disk_operations::write_sector;
 use lazy_static::lazy_static;
 
+const LBA_TABLE_POSITION: u32 = 1;
 /// Max number of blocks usable in short mode
 const SHORT_MODE_LIMIT: u32 = 100;
 
@@ -10,17 +12,14 @@ lazy_static! {
     /// Main table of available tables
     static ref LBA_TABLE: LBATable = {
         disk_operations::init();
-        let mut res = LBATable::from_u16_array(disk_operations::read_sector(1));
+        let mut res = LBATable::load_from_disk(LBA_TABLE_POSITION);
         res.data[0] = false;
         res.data[1] = false;
         res
     };
 }
 
-lazy_static! {
-    /// Index of lowest free sector. Useful to keep track of to avoid useless computations.
-    static ref LBA_TABLE_INDEX: u32 = 2;
-}
+static mut LBA_TABLE_INDEX: u32 = 2;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -46,21 +45,21 @@ pub struct HeaderFlags {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
     Dir = 0 as u8,
     File = 1 as u8,
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileMode {
     Short = 0 as u8,
     Long = 1 as u8,
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UGOID(u64);
 
 #[repr(C)]
@@ -74,8 +73,9 @@ pub struct Header {
     group: UGOID,       // 8 bytes
     parent_adress: u32, // 8 bytes
     length: u32,        // 8 bytes. In case of a header, it is the number of sub-items.
+    blocks_number : u32,
     mode: FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
-    padding: [u32; 9], // Padding to have a nice SHORT_MODE_LIMIT number
+    padding: [u32; 8], // Padding to have a nice SHORT_MODE_LIMIT number
     blocks: [u32; SHORT_MODE_LIMIT as usize],
 }
 
@@ -95,7 +95,7 @@ pub struct DirBlock {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct FileBlock {
-    data: [u8; 512],
+    data: [u16; 256],
 }
 
 #[repr(C)]
@@ -104,18 +104,107 @@ pub struct LBATable {
     data: [bool; 512],
 }
 
+impl LBATable {
+    fn init(&mut self) {
+        for i in 0..512 {
+            self.data[i] = true;
+        }
+        self.data[0] = false;
+        self.data[1] = false;
+    }
+    fn load_from_disk(lba: u32) -> Self {
+        LBATable::from_u16_array(disk_operations::read_sector(lba))
+    }
+    fn write_to_disk(&self) {
+        disk_operations::write_sector(&self.to_u16_array(), 1);
+    }
+    pub fn is_available(&self, i: u32) -> bool {
+        self.data[i as usize]
+    }
+    pub fn mark_available(&mut self, i: u32) {
+        self.data[i as usize] = true;
+    }
+    pub fn mark_unavailable(&mut self, i: u32) {
+        self.data[i as usize] = false;
+    }
+}
+
+fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
+    let n = data.len();
+    let block_number = n / 256 + (if n % 256 > 0 { 1 } else { 0 });
+    let mut res: Vec<[u16; 256]> = Vec::new();
+    let mut index = 0;
+    for i in 0..block_number {
+        let mut arr = [0 as u16; 256];
+        for j in 0..256 {
+            if index >= n {
+                break;
+            }
+            arr[j] = data[index];
+            index += 1;
+        }
+        res[i] = arr;
+    }
+    res
+}
+
 impl MemFile {
     pub fn write_to_disk(&self) -> () {
         // Might want to Result<(), SomeError>
         let mut file_header = self.header;
-        let length = file_header.length;
+        let length = file_header.length; // TODO : make sure it is also the length of self.data
         if length < SHORT_MODE_LIMIT * 256 {
-            // i.e. file short enough to use short mode
             file_header.mode = FileMode::Short;
+            let mut block_adresses: Vec<u32> = Vec::new();
+            for _ in 0..file_header.blocks_number {
+                block_adresses.push(0);
+            }
+            let mut indice = 0;
+            unsafe {
+                while indice < file_header.blocks_number {
+                    if LBA_TABLE.is_available(LBA_TABLE_INDEX) {
+                        block_adresses[indice as usize] = LBA_TABLE_INDEX;
+                        indice += 1;
+                    }
+                    LBA_TABLE_INDEX += 1;
+                }
+            }
+            let mut adresses = [0 as u32; SHORT_MODE_LIMIT as usize];
+            for i in 1..(file_header.blocks_number as usize) {
+                adresses[i - 1] = block_adresses[i];
+            }
+            file_header.blocks = adresses;
+            write_to_disk(file_header, block_adresses[0]);
+            let blocks_to_write = slice_vec(&self.data);
+            for i in 0..(file_header.blocks_number - 1) {
+                let file_block = FileBlock {
+                    data: blocks_to_write[i as usize],
+                };
+                write_to_disk(file_block, block_adresses[(i + 1) as usize]);
+            }
         } else {
             file_header.mode = FileMode::Long;
             todo!()
         }
+        LBA_TABLE.write_to_disk();
+    }
+    pub fn read_from_disk(lba: u32) -> Self {
+        let header: Header = read_from_disk(lba);
+        let mut file = Self {
+            header,
+            data: Vec::new(),
+        };
+        if header.mode == FileMode::Short {
+            for i in 0..header.blocks_number {
+                let sector : FileBlock = read_from_disk(header.blocks[i as usize]);
+                for j in 0..256 {
+                    file.data.push(sector.data[j]);
+                }
+            }
+        } else {
+            todo!()
+        }
+        file
     }
 }
 
