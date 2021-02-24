@@ -1,10 +1,10 @@
 use super::disk_operations;
+use crate::{print, println};
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 use disk_operations::write_sector;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use crate::{print, println};
 
 // Number of 512-sector segments
 const LBA_TABLES_COUNT: u32 = 4;
@@ -38,6 +38,12 @@ enum FileType {
 - adresse du dossier parent?/ nom du dossier parent?
 */
 
+/// Contains a file's flags.
+///
+/// * `user_owner` - 4 bits for the user's `rwxs` and 4 bits for the owner's one.
+/// * `group_misc` - 4 bits for the group's `rwxs` and the rest for `opened`, etc.
+///
+/// TO DO : extend this header, because there is some space left in [`Header::padding`]
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct HeaderFlags {
@@ -45,6 +51,9 @@ pub struct HeaderFlags {
     pub group_misc: u8,
 }
 
+/// Type of a chunk of data.
+///
+/// Currently only `directory` and `file` but some other things like `Pipe` might be added.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
@@ -52,6 +61,16 @@ pub enum Type {
     File = 1 as u8,
 }
 
+/// Specifies the mode of storage of the chunk of data.
+///
+/// * `Short` - When the chunk can be stored within `SHORT_MODE_LIMIT` sectors 
+///(that is the number of sectors whose adress can fit inside the header),
+/// We directly allocate these sectors and store their adresses inside the header.
+/// * `Long` - When the chunk is too big, we allocate some sectors
+/// which will hold all the adresses of the chunk's data's sectors.
+/// These intermediate sectors get their adresses stored inside the header.
+///
+/// We thus effectively have two size limits : around `50kB` and around `26MB`.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileMode {
@@ -59,10 +78,17 @@ pub enum FileMode {
     Long = 1 as u8,
 }
 
+/// A user's of group's or owner's ID. Might get replaced by a more general definition.
 #[repr(packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UGOID(pub u64);
 
+/// The adress of a sector on the disk.
+///
+/// *Fields*
+///
+/// * `lba` - the index of the `LBA` the sector belongs to.
+/// * `block` - its index within that `LBA`.
 #[repr(packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Adress {
@@ -70,6 +96,16 @@ pub struct Adress {
     pub block: u16, // Really only u8 needed
 }
 
+/// A chunk's header
+///
+/// *Fields$
+///
+/// * `file_type` - a [`Type`] indicating what type this chunk is ([`Type::Dir`] or [`Type::File`]).
+/// * `flags` - a [`HeaderFlags`] holding the different permission flags of that chunk.
+/// * `name` - the chunk's name on a 32-wide char array.
+/// * `user` - the user's ID
+/// * `owner - the owner's ID
+/// * `group` - the group's ID
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct Header {
@@ -183,7 +219,7 @@ impl LBATableGlobal {
         self.index = self.index + index;
     }
     fn set_lba_index(&mut self, lba: u32, index: u16) {
-        self.data[lba as usize].index =  index;
+        self.data[lba as usize].index = index;
     }
     fn get_lba_index(&self, lba: u32) -> u16 {
         self.data[lba as usize].index
@@ -247,8 +283,11 @@ impl MemFile {
                                 .mark_unavailable(current_lba as u32, (current_block) as u32);
                             indice += 1;
                             LBA_TABLE_GLOBAL.data[current_lba as usize].index =
-                            if LBA_TABLE_GLOBAL.data[current_lba as usize].index < 510 {LBA_TABLE_GLOBAL.data[current_lba as usize].index + 1}
-                            else {0};
+                                if LBA_TABLE_GLOBAL.data[current_lba as usize].index < 510 {
+                                    LBA_TABLE_GLOBAL.data[current_lba as usize].index + 1
+                                } else {
+                                    0
+                                };
                         } else {
                             LBA_TABLE_GLOBAL
                                 .set_lba_index(current_lba as u32, (current_block + 1) as u16);
