@@ -79,7 +79,7 @@ async fn task_2() {
 }
 
 entry_point!(kernel_main);
-// We use it to check a)t compile time that we are doing everything correctly with the arguments of `kernel_main`
+// We use it to check at compile time that we are doing everything correctly with the arguments of `kernel_main`
 
 /// # Entry point
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
