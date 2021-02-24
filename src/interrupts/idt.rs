@@ -1,3 +1,5 @@
+//! Our own implementation of Interruption Descriptor Table Structure (inspired by X86_64 lib's one)
+
 use core::mem::size_of;
 use x86_64::instructions::{
     segmentation,

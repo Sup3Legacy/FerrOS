@@ -1,10 +1,12 @@
+//! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
+
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::{Cr2, Cr3};
+
 mod idt;
 use idt::Idt as InterruptDescriptorTable;
 use idt::{InterruptStackFrame, PageFaultErrorCode};
-//use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
-//use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, KeyboardLayout, KeyCode, Modifiers};
+
 use crate::gdt;
 use crate::{print, println};
 use lazy_static::lazy_static;
@@ -12,7 +14,6 @@ use pic8259_simple::ChainedPics;
 use spin;
 
 mod syscalls;
-//use crate::keyboard_layout;
 
 #[derive(Clone, Debug, Copy)]
 #[repr(u8)]
@@ -76,12 +77,6 @@ lazy_static! {
 
 lazy_static! {
     static ref KEYBOARD : spin::Mutex<u8> = spin::Mutex::new(1);
-   /* static ref KEYBOARD : spin::Mutex<Keyboard<Fr104Key, ScancodeSet1>> =
-    spin::Mutex::new(
-        Keyboard::new(
-            Fr104Key, ScancodeSet1, HandleControl::Ignore
-        )
-    );*/
 }
 
 /// Loads the IDT into the kernel, starts the PIC and listens to the interruptions.
@@ -98,6 +93,7 @@ extern "x86-interrupt" fn divide_error_handler(_stack_frame: &mut InterruptStack
 } // Rust catches this before the CPU, but it's a safeguard for asm/extern code.
 
 // probably would not need to panic ?
+// This interruption should pause the current process until the father restarts it
 extern "x86-interrupt" fn debug_handler(_stack_frame: &mut InterruptStackFrame) {
     panic!("DEBUG");
 }
@@ -188,9 +184,8 @@ extern "x86-interrupt" fn security_exception_handler(
     panic!("SECURITY EXCEPTION");
 }
 
+// Should be entirely rewritten for multi-process handling
 extern "x86-interrupt" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame) {
-    //print!(".");
-    //println!("Timer {:#?}", _stack_frame);
     let stack_frame2 = unsafe { stack_frame.as_mut() };
     let (pf, cr_f) = Cr3::read();
     let state = crate::task::executor::Status {
@@ -210,16 +205,13 @@ extern "x86-interrupt" fn timer_interrupt_handler(stack_frame: &mut InterruptSta
     unsafe {
         Cr3::write(next.cr3.0, next.cr3.1);
     };
-    /*
-    println!("test1");
-    stack_frame2.instruction_pointer = VirtAddr::new(8); // cette ligne fait tout planter
-    println!("test2");*/
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
 
+/// Page fault handler, should verify wether killing the current process or allocating a new page !
 extern "x86-interrupt" fn page_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: PageFaultErrorCode,
@@ -230,22 +222,12 @@ extern "x86-interrupt" fn page_fault_handler(
     crate::halt_loop();
 }
 
+/// Keyboard interrupt handler
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
     let _keyboard = KEYBOARD.lock();
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
     crate::keyboard::add_scancode(scancode);
-
-    /* Character printing : useful for keyboard layout debug
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(key) => print!("{:?}", key),
-            }
-        }
-    }
-    */
 
     unsafe {
         PICS.lock()
@@ -253,7 +235,10 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
     }
 }
 
+/// Start position for external interrupts (such as keyboard)
 pub const PIC_1_OFFSET: u8 = 32;
+
+/// Unused data
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
 /// Models the two-chips chained programmable interrupt controller of the 8259/AT PIC
