@@ -104,12 +104,12 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         user: filesystem::ustar::UGOID(71),
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
-        parent_adress: filesystem::ustar::Adress { lba: 0, block: 0 },
+        parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
         length: 413,
         blocks_number: 2,
         mode: filesystem::ustar::FileMode::Short,
         padding: [999999999; 10],
-        blocks: [filesystem::ustar::Adress { lba: 0, block: 0 }; 100],
+        blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u16> = vec![];
     for i in 0..413 {
@@ -118,7 +118,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     let file = filesystem::ustar::MemFile { header: head, data };
     file.write_to_disk();
     println!("{:?}", unsafe {
-        filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Adress { lba: 0, block: 0 })
+        filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Address { lba: 0, block: 0 })
             .data
     });
     // fin des tests

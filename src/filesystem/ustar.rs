@@ -35,7 +35,7 @@ enum FileType {
 - 1 octet de type
 - 8 octets (ie 64 bits) de user ID
 - 8 octets (ie 64 bits) de group ID
-- adresse du dossier parent?/ nom du dossier parent?
+- addresse du dossier parent?/ nom du dossier parent?
 */
 
 /// Contains a file's flags.
@@ -64,11 +64,11 @@ pub enum Type {
 /// Specifies the mode of storage of the chunk of data.
 ///
 /// * `Short` - When the chunk can be stored within `SHORT_MODE_LIMIT` sectors 
-///(that is the number of sectors whose adress can fit inside the header),
-/// We directly allocate these sectors and store their adresses inside the header.
+///(that is the number of sectors whose address can fit inside the header),
+/// We directly allocate these sectors and store their addresses inside the header.
 /// * `Long` - When the chunk is too big, we allocate some sectors
-/// which will hold all the adresses of the chunk's data's sectors.
-/// These intermediate sectors get their adresses stored inside the header.
+/// which will hold all the addresses of the chunk's data's sectors.
+/// These intermediate sectors get their addresses stored inside the header.
 ///
 /// We thus effectively have two size limits : around `50kB` and around `26MB`.
 #[repr(u8)]
@@ -83,7 +83,7 @@ pub enum FileMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UGOID(pub u64);
 
-/// The adress of a sector on the disk.
+/// The address of a sector on the disk.
 ///
 /// *Fields*
 ///
@@ -91,7 +91,7 @@ pub struct UGOID(pub u64);
 /// * `block` - its index within that `LBA`.
 #[repr(packed)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Adress {
+pub struct Address {
     pub lba: u16,
     pub block: u16, // Really only u8 needed
 }
@@ -115,12 +115,12 @@ pub struct Header {
     pub user: UGOID,           // 8 bytes
     pub owner: UGOID,          // 8 bytes
     pub group: UGOID,          // 8 bytes
-    pub parent_adress: Adress, // 4 bytes
+    pub parent_address: Address, // 4 bytes
     pub length: u32,           // 4 bytes. In case of a directory, it is the number of sub-items.
     pub blocks_number: u32,
-    pub mode: FileMode, // If Short then we list all blocks. Else each block contains the adresses of the data blocks.
+    pub mode: FileMode, // If Short then we list all blocks. Else each block contains the addresses of the data blocks.
     pub padding: [u32; 10], // Padding to have a nice SHORT_MODE_LIMIT number
-    pub blocks: [Adress; SHORT_MODE_LIMIT as usize],
+    pub blocks: [Address; SHORT_MODE_LIMIT as usize],
 }
 
 #[repr(packed)]
@@ -133,7 +133,7 @@ pub struct MemFile {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct DirBlock {
-    subitems: [([u8; 28], Adress); 16],
+    subitems: [([u8; 28], Address); 16],
 }
 
 #[repr(packed)]
@@ -264,7 +264,7 @@ impl MemFile {
         let length = file_header.length; // TODO : make sure it is also the length of self.data
         if length < SHORT_MODE_LIMIT * 256 {
             file_header.mode = FileMode::Short;
-            let mut block_adresses: Vec<Adress> = Vec::new();
+            let mut block_addresses: Vec<Address> = Vec::new();
             let mut indice = 0;
             let blocks_number = file_header.blocks_number + 1;
             unsafe {
@@ -273,7 +273,7 @@ impl MemFile {
                 while indice < blocks_number {
                     if LBA_TABLE_GLOBAL.is_lba_available(current_lba as u32) {
                         if LBA_TABLE_GLOBAL.is_available(current_lba as u32, current_block as u32) {
-                            block_adresses.push(Adress {
+                            block_addresses.push(Address {
                                 lba: current_lba as u16,
                                 block: current_block as u16,
                             });
@@ -299,14 +299,14 @@ impl MemFile {
                     }
                 }
             }
-            let mut adresses = [Adress { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
+            let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
             for i in 1..(blocks_number as usize) {
-                adresses[i - 1] = block_adresses[i];
+                addresses[i - 1] = block_addresses[i];
             }
-            file_header.blocks = adresses;
+            file_header.blocks = addresses;
             write_to_disk(
                 file_header,
-                (block_adresses[0].lba * 512 + block_adresses[0].block + 1) as u32,
+                (block_addresses[0].lba * 512 + block_addresses[0].block + 1) as u32,
             );
             unsafe {
                 let blocks_to_write = slice_vec(&self.data);
@@ -316,8 +316,8 @@ impl MemFile {
                     };
                     write_to_disk(
                         file_block,
-                        (block_adresses[(i + 1) as usize].lba * 512
-                            + block_adresses[(i + 1) as usize].block
+                        (block_addresses[(i + 1) as usize].lba * 512
+                            + block_addresses[(i + 1) as usize].block
                             + 1) as u32,
                     );
                 }
@@ -330,8 +330,8 @@ impl MemFile {
             LBA_TABLE_GLOBAL.write_to_disk();
         }
     }
-    pub fn read_from_disk(adress: Adress) -> Self {
-        let header: Header = read_from_disk((adress.lba * 512 + adress.block + 2) as u32);
+    pub fn read_from_disk(address: Address) -> Self {
+        let header: Header = read_from_disk((address.lba * 512 + address.block + 2) as u32);
         let mut file = Self {
             header,
             data: Vec::new(),
@@ -341,9 +341,9 @@ impl MemFile {
             let length = header.length;
             let mut compteur = 0;
             for i in 0..header.blocks_number {
-                let adress = header.blocks[i as usize];
+                let address = header.blocks[i as usize];
                 let sector: FileBlock =
-                    read_from_disk((adress.lba * 512 + adress.block + 1) as u32);
+                    read_from_disk((address.lba * 512 + address.block + 1) as u32);
                 for j in 0..256 {
                     if compteur >= length {
                         break;

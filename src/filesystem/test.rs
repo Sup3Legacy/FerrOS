@@ -2,29 +2,29 @@ use crate::{print, println};
 use x86_64::instructions::interrupts::{disable, enable};
 use x86_64::instructions::port::Port;
 
-pub fn testOld() {
+pub fn test_old() {
     unsafe {
         let mut master_drive = Port::new(0x1F6);
         let mut control_port_base = Port::<u8>::new(0x3F7);
         println!("control port base : {}", control_port_base.read());
         let mut sectorcount = Port::new(0x1F2);
-        let mut _LBAlo = Port::new(0x1F3);
-        let mut _LBAmid = Port::new(0x1F4);
-        let mut _LBAhi = Port::new(0x1F5);
-        let mut commandPort = Port::new(0x1F7);
+        let mut lba_low = Port::new(0x1F3);
+        let mut lba_mid = Port::new(0x1F4);
+        let mut lba_high = Port::new(0x1F5);
+        let mut command_register = Port::new(0x1F7);
         disable();
         master_drive.write(0b10100000 as u8);
         sectorcount.write(0 as u8);
-        _LBAlo.write(0 as u8);
-        _LBAmid.write(0 as u8);
-        _LBAhi.write(0 as u8);
+        lba_low.write(0 as u8);
+        lba_mid.write(0 as u8);
+        lba_high.write(0 as u8);
         //        println!("command send");
 
-        commandPort.write(0xEC as u8);
-        let mut i = commandPort.read();
+        command_register.write(0xEC as u8);
+        let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
-            i = commandPort.read();
+            i = command_register.read();
             compte = 1 + compte;
             if compte % 100 == 0 {
                 println!("finished : {} en {}", i, compte);
@@ -33,9 +33,9 @@ pub fn testOld() {
         println!("finished : {} en {}", i, compte);
         println!(
             "status : {}, {}, {}",
-            _LBAlo.read(),
-            _LBAmid.read(),
-            _LBAhi.read()
+            lba_low.read(),
+            lba_mid.read(),
+            lba_high.read()
         );
         let mut next_port = Port::<u16>::new(0x1F0);
         let mut table: [u16; 512] = [0; 512];
@@ -65,23 +65,23 @@ pub fn testOld() {
         let mut control_port_base = Port::<u8>::new(0x377);
         println!("control port base : {}", control_port_base.read());
         let mut sectorcount = Port::new(0x172);
-        let mut _LBAlo = Port::new(0x173);
-        let mut _LBAmid = Port::new(0x174);
-        let mut _LBAhi = Port::new(0x175);
-        let mut commandPort = Port::new(0x177);
+        let mut lba_low = Port::new(0x173);
+        let mut lba_mid = Port::new(0x174);
+        let mut lba_high = Port::new(0x175);
+        let mut command_register = Port::new(0x177);
         disable();
         master_drive.write(0b10100000 as u8);
         sectorcount.write(0 as u8);
-        _LBAlo.write(0 as u8);
-        _LBAmid.write(0 as u8);
-        _LBAhi.write(0 as u8);
+        lba_low.write(0 as u8);
+        lba_mid.write(0 as u8);
+        lba_high.write(0 as u8);
         //        println!("command send");
 
-        commandPort.write(0xEC as u8);
-        let mut i = commandPort.read();
+        command_register.write(0xEC as u8);
+        let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
-            i = commandPort.read();
+            i = command_register.read();
             compte = 1 + compte;
             if compte % 100 == 0 {
                 println!("finished : {} en {}", i, compte);
@@ -90,9 +90,9 @@ pub fn testOld() {
         println!("finished : {} en {}", i, compte);
         println!(
             "status : {}, {}, {}",
-            _LBAlo.read(),
-            _LBAmid.read(),
-            _LBAhi.read()
+            lba_low.read(),
+            lba_mid.read(),
+            lba_high.read()
         );
         let mut next_port = Port::<u16>::new(0x170);
         let mut table: [u16; 512] = [0; 512];
@@ -128,23 +128,23 @@ pub fn test() {
         let mut control_port_base = Port::<u8>::new(0x377);
         println!("control port base : {}", control_port_base.read());
         let mut sectorcount = Port::new(0x172);
-        let mut _LBAlo = Port::new(0x173);
-        let mut _LBAmid = Port::new(0x174);
-        let mut _LBAhi = Port::new(0x175);
-        let mut commandPort = Port::new(0x177);
+        let mut lba_low = Port::new(0x173);
+        let mut lba_mid = Port::new(0x174);
+        let mut lba_high = Port::new(0x175);
+        let mut command_register = Port::new(0x177);
         disable();
         master_drive.write(0b10100000 as u8);
         sectorcount.write(0 as u8);
-        _LBAlo.write(0 as u8);
-        _LBAmid.write(0 as u8);
-        _LBAhi.write(0 as u8);
+        lba_low.write(0 as u8);
+        lba_mid.write(0 as u8);
+        lba_high.write(0 as u8);
         //        println!("command send");
 
-        commandPort.write(0xEC as u8);
-        let mut i = commandPort.read();
+        command_register.write(0xEC as u8);
+        let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
-            i = commandPort.read();
+            i = command_register.read();
             compte = 1 + compte;
             if compte % 100 == 0 {
                 println!("finished : {} en {}", i, compte);
@@ -153,9 +153,9 @@ pub fn test() {
         println!("finished : {} en {}", i, compte);
         println!(
             "status : {}, {}, {}",
-            _LBAlo.read(),
-            _LBAmid.read(),
-            _LBAhi.read()
+            lba_low.read(),
+            lba_mid.read(),
+            lba_high.read()
         );
         let mut next_port = Port::<u16>::new(0x170);
         let mut table: [u16; 512] = [0; 512];
@@ -191,22 +191,22 @@ pub fn read(table: [u16; 256], lba: u32, port: u16) {
         let mut master_drive = Port::new(port + 6);
         //     println!("control port base : {}", control_port_base.read());
         let mut sectorcount = Port::new(port + 2);
-        let mut _LBAlo = Port::new(port + 3);
-        let mut _LBAmid = Port::new(port + 4);
-        let mut _LBAhi = Port::new(port + 5);
-        let mut commandPort = Port::new(port + 7);
+        let mut lba_low = Port::new(port + 3);
+        let mut lba_mid = Port::new(port + 4);
+        let mut lba_high = Port::new(port + 5);
+        let mut command_register = Port::new(port + 7);
         master_drive.write(0xE0 | ((lba >> 24) & 0x0F)); // outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
         sectorcount.write(0 as u8);
-        _LBAlo.write(lba as u8);
-        _LBAmid.write((lba >> 8) as u8);
-        _LBAhi.write((lba >> 16) as u8);
+        lba_low.write(lba as u8);
+        lba_mid.write((lba >> 8) as u8);
+        lba_high.write((lba >> 16) as u8);
         //        println!("command send");
 
-        commandPort.write(0x20 as u8);
-        let mut i = commandPort.read();
+        command_register.write(0x20 as u8);
+        let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x80) != 0 {
-            i = commandPort.read();
+            i = command_register.read();
             compte = 1 + compte;
             if compte % 1000000 == 0 {
                 println!("not finished : {} en {}", i, compte);
@@ -215,9 +215,9 @@ pub fn read(table: [u16; 256], lba: u32, port: u16) {
         println!("finished : {} en {}", i, compte);
         println!(
             "status : {}, {}, {}",
-            _LBAlo.read(),
-            _LBAmid.read(),
-            _LBAhi.read()
+            lba_low.read(),
+            lba_mid.read(),
+            lba_high.read()
         );
         let mut next_port = Port::<u16>::new(port + 0);
         let mut table: [u16; 512] = [0; 512];
