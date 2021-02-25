@@ -8,6 +8,7 @@
 #![feature(abi_x86_interrupt)]
 #![feature(naked_functions)]
 #![feature(asm)]
+#![feature(const_btree_new)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;

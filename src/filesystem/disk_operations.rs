@@ -96,7 +96,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     lba_mid.read();
     lba_high.read();
     for i in 0..256 {
-        let t = data_register.read();  // reads all the data one by one. The loop is mandatory to give the drive the time to give the data
+        let t = data_register.read(); // reads all the data one by one. The loop is mandatory to give the drive the time to give the data
         (*table)[i] = t;
     }
 

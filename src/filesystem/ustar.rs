@@ -123,6 +123,15 @@ pub struct Header {
     pub blocks: [Address; SHORT_MODE_LIMIT as usize],
 }
 
+impl Header {
+    fn is_dir(&self) -> bool {
+        match self.file_type {
+            Type::Dir => true,
+            _ => false,
+        }
+    }
+}
+
 #[repr(packed)]
 #[derive(Debug, Clone)]
 pub struct MemFile {
@@ -134,6 +143,10 @@ pub struct MemFile {
 #[derive(Debug, Clone, Copy)]
 pub struct DirBlock {
     subitems: [([u8; 28], Address); 16],
+}
+
+impl DirBlock {
+    
 }
 
 #[repr(packed)]
@@ -167,8 +180,8 @@ impl LBATable {
     fn load_from_disk(lba: u32) -> Self {
         LBATable::from_u16_array(disk_operations::read_sector(lba))
     }
-    fn write_to_disk(&self) {
-        disk_operations::write_sector(&self.to_u16_array(), 1);
+    fn write_to_disk(&self, lba_index: u32) {
+        disk_operations::write_sector(&self.to_u16_array(), lba_index);
     }
     pub fn is_available(&self, i: u32) -> bool {
         self.data[i as usize]
@@ -209,7 +222,7 @@ impl LBATableGlobal {
     }
     fn write_to_disk(&self) {
         for i in 0..LBA_TABLES_COUNT {
-            disk_operations::write_sector(&self.data[i as usize].to_u16_array(), 512 * i + 1);
+            &self.data[i as usize].write_to_disk(512 * i + 1);
         }
     }
     fn get_index(&self) -> u32 {
