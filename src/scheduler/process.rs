@@ -1,9 +1,9 @@
 use super::PROCESS_MAX_NUMBER;
-use crate::data_storage::registers::Registers;
+//use crate::data_storage::registers::Registers;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
-use spin::Mutex;
+//use spin::Mutex;
 
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
@@ -11,30 +11,31 @@ extern "C" {
 
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
+/// It is based on the x86 structure of the TSS.
 ///
 /// # Fields
-/// * `id` - the id of the process (unique)
-/// * `pid` - its parent's (i.e. the process that spawned it) id
-/// * `priority` - the priority, used by the scheduler
-/// * `quantum` - tyhe number of consecutive quanta the process has already been running for
+/// * `pid` - the id of the process (unique)
+/// * `ppid` - its parent's (i.e. the process that spawned it) id
+/// * `priority` - the priority, used by the scheduler (not used for now)
+/// * `quantum` - the number of consecutive quanta the process has already been running for
 /// * `cr3` - pointer to its 1st order VM table. TO DO : replace it with a PhysFrame or PhysAddr
-/// * `state` - state of the process
+/// * `rip` - current value of the instruction pointer
+/// * `state` - state of the process (e.g. Zombie, Runnable...)
 /// * `children` - vec containing the processes it spawned.
-/// * `value` - return value
-/// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
+/// * `value` - return value -> move this to the extended Zombie state
+/// * `owner` - owner ID of the process (can be root or user) useful for syscalls
+///
+/// Note: registers and flags are stored on the stack when doing context switching
 #[derive(Debug)]
 #[repr(C)]
 pub struct Process {
-    id: ID,
+    rip: usize,
+    cr3: usize,
     pid: ID,
+    ppid: ID,
     priority: Priority,
     quantum: u64,
-    cr3: usize,
-    rsp: u64,
-    rip: u64,
-    registers: Registers,
     state: State,
-    //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
     children: Vec<ID>,
     value: usize,
     owner: u64,
@@ -43,14 +44,12 @@ pub struct Process {
 impl Process {
     pub fn create_new(parent: ID, priority: Priority, owner: u64) -> Self {
         Self {
-            id: ID::new(),
-            pid: parent,
+            pid: ID::new(),
+            ppid: parent,
             priority,
             quantum: 0 as u64,
             cr3: 42, // /!\
-            rsp: 0,  // /!\
             rip: 0,  // /!\
-            registers: Registers::new(),
             state: State::Runnable,
             children: Vec::new(),
             value: 0,
@@ -60,14 +59,12 @@ impl Process {
 
     pub fn missing() -> Self {
         Self {
-            id: ID(0),
             pid: ID(0),
+            ppid: ID(0),
             priority: Priority(0),
             quantum: 0 as u64,
             cr3: 0,
-            rsp: 0,
             rip: 0,
-            registers: Registers::new(),
             state: State::SlotAvailable,
             children: Vec::new(),
             value: 0,
@@ -77,8 +74,8 @@ impl Process {
 
     pub fn spawn(&mut self, priority: Priority) -> &ID {
         // -> &Mutex<Self> {
-        let child = Process::create_new(self.id, priority, self.owner);
-        self.children.push(child.id); //Mutex::new(child));
+        let child = Process::create_new(self.pid, priority, self.owner);
+        self.children.push(child.pid); //Mutex::new(child));
         &(self.children[self.children.len() - 1])
     }
 
@@ -87,6 +84,85 @@ impl Process {
             loop {}
         } // /!\
         launch_asm(f, 0);
+    }
+    
+
+    #[naked]
+    unsafe fn save_state() {
+        asm!(
+            "push rax", // save rax
+            "mov rax, [rsp+24]", // rax <- rip
+            "mov [{0}], rax", // store rip
+            "mov rax, cr3", // rax <- cr3
+            "mov [{0}+8], rax", // store cr3
+            "pop rax",
+            
+            "sub rsp, 8", // remove rip from the stack : we want to add it manually after
+            
+            // continue to save the other registers
+            "push rbx",
+            "push rcx",
+            "push rdx",
+            "push rbp",
+            "push rsp",
+            "push rsi",
+            "push rdi",
+            "push r8",
+            "push r9",
+            "push r10",
+            "push r11",
+            "push r12",
+            "push r13",
+            "push r14",
+            "push r15",
+            
+            // save the flags
+            "pushfq",
+            sym CURRENT_PROCESS,
+            options(noreturn)
+        );
+    }
+    
+    
+    
+    #[naked]
+    unsafe fn load_state() {
+        asm!(
+            // restore flags
+            "popfq",
+            
+            //restore registers
+            "pop r15",
+            "pop r14",
+            "pop r13",
+            "pop r12",
+            "pop r11",
+            "pop r10",
+            "pop r9",
+            "pop r8",
+            "pop rdi",
+            "pop rsi",
+            "pop rsp",
+            "pop rbp",
+            "pop rdx",
+            "pop rcx",
+            "pop rbx",
+            
+            //restore cr3 (paging)
+            "mov rax, [{0} + 8]", // cr3
+            "mov cr3, rax",
+            
+            // restore rip
+            "mov rax, [{0}]", // rip
+            "mov [rsp+8], rax",
+            
+            // restore rax
+            "pop rax",
+            
+            "ret",
+            sym CURRENT_PROCESS,
+            options(noreturn)
+        );
     }
 }
 
@@ -110,6 +186,7 @@ pub enum State {
 ///
 /// It's uniqueness throughout the system is ensured by the atomic `fetch_add` operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct ID(u64);
 
 impl ID {
