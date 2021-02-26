@@ -43,7 +43,7 @@ impl Path {
     }
 }
 
-pub struct Cache(BTreeMap<Path, ustar::Adress>);
+pub struct Cache(BTreeMap<Path, ustar::Address>);
 
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -58,5 +58,8 @@ pub fn open_file(path: Path, mode: OpenMode) -> &'static [u8] {
 }
 
 fn test() {
-    println!("{:?}", open_file(Path::from(String::from("test")), OpenMode::Read));
+    println!(
+        "{:?}",
+        open_file(Path::from(String::from("test")), OpenMode::Read)
+    );
 }

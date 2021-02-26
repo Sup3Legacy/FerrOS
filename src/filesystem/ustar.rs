@@ -63,7 +63,7 @@ pub enum Type {
 
 /// Specifies the mode of storage of the chunk of data.
 ///
-/// * `Short` - When the chunk can be stored within `SHORT_MODE_LIMIT` sectors 
+/// * `Short` - When the chunk can be stored within `SHORT_MODE_LIMIT` sectors
 ///(that is the number of sectors whose address can fit inside the header),
 /// We directly allocate these sectors and store their addresses inside the header.
 /// * `Long` - When the chunk is too big, we allocate some sectors
@@ -109,14 +109,14 @@ pub struct Address {
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct Header {
-    pub file_type: Type,       // 1 byte
-    pub flags: HeaderFlags,    // 2 bytes
-    pub name: [u8; 32],        // 100 bytes
-    pub user: UGOID,           // 8 bytes
-    pub owner: UGOID,          // 8 bytes
-    pub group: UGOID,          // 8 bytes
+    pub file_type: Type,         // 1 byte
+    pub flags: HeaderFlags,      // 2 bytes
+    pub name: [u8; 32],          // 100 bytes
+    pub user: UGOID,             // 8 bytes
+    pub owner: UGOID,            // 8 bytes
+    pub group: UGOID,            // 8 bytes
     pub parent_address: Address, // 4 bytes
-    pub length: u32,           // 4 bytes. In case of a directory, it is the number of sub-items.
+    pub length: u32,             // 4 bytes. In case of a directory, it is the number of sub-items.
     pub blocks_number: u32,
     pub mode: FileMode, // If Short then we list all blocks. Else each block contains the addresses of the data blocks.
     pub padding: [u32; 10], // Padding to have a nice SHORT_MODE_LIMIT number
@@ -145,9 +145,7 @@ pub struct DirBlock {
     subitems: [([u8; 28], Address); 16],
 }
 
-impl DirBlock {
-    
-}
+impl DirBlock {}
 
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
