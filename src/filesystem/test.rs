@@ -13,19 +13,19 @@ pub fn test_old() {
         let mut lba_high = Port::new(0x1F5);
         let mut command_register = Port::new(0x1F7);
         disable();
-        master_drive.write(0b10100000 as u8);
-        sectorcount.write(0 as u8);
-        lba_low.write(0 as u8);
-        lba_mid.write(0 as u8);
-        lba_high.write(0 as u8);
+        master_drive.write(0b10100000_u8);
+        sectorcount.write(0_u8);
+        lba_low.write(0_u8);
+        lba_mid.write(0_u8);
+        lba_high.write(0_u8);
         //        println!("command send");
 
-        command_register.write(0xEC as u8);
+        command_register.write(0xEC_u8);
         let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
             i = command_register.read();
-            compte = 1 + compte;
+            compte += 1;
             if compte % 100 == 0 {
                 println!("finished : {} en {}", i, compte);
             }
@@ -70,19 +70,19 @@ pub fn test_old() {
         let mut lba_high = Port::new(0x175);
         let mut command_register = Port::new(0x177);
         disable();
-        master_drive.write(0b10100000 as u8);
-        sectorcount.write(0 as u8);
-        lba_low.write(0 as u8);
-        lba_mid.write(0 as u8);
-        lba_high.write(0 as u8);
+        master_drive.write(0b10100000_u8);
+        sectorcount.write(0_u8);
+        lba_low.write(0_u8);
+        lba_mid.write(0_u8);
+        lba_high.write(0_u8);
         //        println!("command send");
 
-        command_register.write(0xEC as u8);
+        command_register.write(0xEC_u8);
         let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
             i = command_register.read();
-            compte = 1 + compte;
+            compte += 1;
             if compte % 100 == 0 {
                 println!("finished : {} en {}", i, compte);
             }
@@ -133,19 +133,19 @@ pub fn test() {
         let mut lba_high = Port::new(0x175);
         let mut command_register = Port::new(0x177);
         disable();
-        master_drive.write(0b10100000 as u8);
-        sectorcount.write(0 as u8);
-        lba_low.write(0 as u8);
-        lba_mid.write(0 as u8);
-        lba_high.write(0 as u8);
+        master_drive.write(0b10100000_u8);
+        sectorcount.write(0_u8);
+        lba_low.write(0_u8);
+        lba_mid.write(0_u8);
+        lba_high.write(0_u8);
         //        println!("command send");
 
-        command_register.write(0xEC as u8);
+        command_register.write(0xEC_u8);
         let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
             i = command_register.read();
-            compte = 1 + compte;
+            compte += 1;
             if compte % 100 == 0 {
                 println!("finished : {} en {}", i, compte);
             }
@@ -185,7 +185,7 @@ pub fn test() {
     }
 }
 
-pub fn read(table: [u16; 256], lba: u32, port: u16) {
+pub fn read(_table: [u16; 256], lba: u32, port: u16) {
     unsafe {
         disable();
         let mut master_drive = Port::new(port + 6);
@@ -196,18 +196,18 @@ pub fn read(table: [u16; 256], lba: u32, port: u16) {
         let mut lba_high = Port::new(port + 5);
         let mut command_register = Port::new(port + 7);
         master_drive.write(0xE0 | ((lba >> 24) & 0x0F)); // outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
-        sectorcount.write(0 as u8);
+        sectorcount.write(0_u8);
         lba_low.write(lba as u8);
         lba_mid.write((lba >> 8) as u8);
         lba_high.write((lba >> 16) as u8);
         //        println!("command send");
 
-        command_register.write(0x20 as u8);
+        command_register.write(0x20_u8);
         let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x80) != 0 {
             i = command_register.read();
-            compte = 1 + compte;
+            compte += 1;
             if compte % 1000000 == 0 {
                 println!("not finished : {} en {}", i, compte);
             }
@@ -229,7 +229,7 @@ pub fn read(table: [u16; 256], lba: u32, port: u16) {
             print!("{}", ((table[i] & 0xFF) as u8) as char);
             print!("{}", (((table[i] >> 8) & 0xFF) as u8) as char);
         }
-        println!("");
+        println!();
         enable();
     }
 }

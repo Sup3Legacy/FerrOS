@@ -1,10 +1,10 @@
 use super::disk_operations;
-use crate::{print, println};
+
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
-use disk_operations::write_sector;
-use lazy_static::lazy_static;
-use spin::Mutex;
+
+
+
 
 // Number of 512-sector segments
 const LBA_TABLES_COUNT: u32 = 4;
@@ -57,8 +57,8 @@ pub struct HeaderFlags {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
-    Dir = 0 as u8,
-    File = 1 as u8,
+    Dir = 0_u8,
+    File = 1_u8,
 }
 
 /// Specifies the mode of storage of the chunk of data.
@@ -74,8 +74,8 @@ pub enum Type {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileMode {
-    Short = 0 as u8,
-    Long = 1 as u8,
+    Short = 0_u8,
+    Long = 1_u8,
 }
 
 /// A user's of group's or owner's ID. Might get replaced by a more general definition.
@@ -220,14 +220,14 @@ impl LBATableGlobal {
     }
     fn write_to_disk(&self) {
         for i in 0..LBA_TABLES_COUNT {
-            &self.data[i as usize].write_to_disk(512 * i + 1);
+            self.data[i as usize].write_to_disk(512 * i + 1);
         }
     }
     fn get_index(&self) -> u32 {
         self.index
     }
     fn set_index(&mut self, index: u32) {
-        self.index = self.index + index;
+        self.index += index;
     }
     fn set_lba_index(&mut self, lba: u32, index: u16) {
         self.data[lba as usize].index = index;
@@ -254,8 +254,8 @@ fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
     let block_number = n / 256 + (if n % 256 > 0 { 1 } else { 0 });
     let mut res: Vec<[u16; 256]> = Vec::new();
     let mut index = 0;
-    for i in 0..block_number {
-        let mut arr = [0 as u16; 256];
+    for _i in 0..block_number {
+        let mut arr = [0_u16; 256];
         for j in 0..256 {
             if index >= n {
                 break;
@@ -269,7 +269,7 @@ fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
 }
 
 impl MemFile {
-    pub fn write_to_disk(&self) -> () {
+    pub fn write_to_disk(&self) {
         // Might want to Result<(), SomeError>
         let mut file_header = self.header;
         let length = file_header.length; // TODO : make sure it is also the length of self.data
@@ -374,41 +374,41 @@ impl MemFile {
 
 impl U16Array for Header {
     fn to_u16_array(&self) -> [u16; 256] {
-        return unsafe { transmute::<Header, [u16; 256]>(*self) };
+        unsafe { transmute::<Header, [u16; 256]>(*self) }
     }
 
     fn from_u16_array(array: [u16; 256]) -> Self {
-        return unsafe { transmute::<[u16; 256], Header>(array) };
+        unsafe { transmute::<[u16; 256], Header>(array) }
     }
 }
 
 impl U16Array for FileBlock {
     fn to_u16_array(&self) -> [u16; 256] {
-        return unsafe { transmute::<FileBlock, [u16; 256]>(*self) };
+        unsafe { transmute::<FileBlock, [u16; 256]>(*self) }
     }
 
     fn from_u16_array(array: [u16; 256]) -> Self {
-        return unsafe { transmute::<[u16; 256], FileBlock>(array) };
+        unsafe { transmute::<[u16; 256], FileBlock>(array) }
     }
 }
 
 impl U16Array for DirBlock {
     fn to_u16_array(&self) -> [u16; 256] {
-        return unsafe { transmute::<DirBlock, [u16; 256]>(*self) };
+        unsafe { transmute::<DirBlock, [u16; 256]>(*self) }
     }
 
     fn from_u16_array(array: [u16; 256]) -> Self {
-        return unsafe { transmute::<[u16; 256], DirBlock>(array) };
+        unsafe { transmute::<[u16; 256], DirBlock>(array) }
     }
 }
 
 impl U16Array for LBATable {
     fn to_u16_array(&self) -> [u16; 256] {
-        return unsafe { transmute::<LBATable, [u16; 256]>(*self) };
+        unsafe { transmute::<LBATable, [u16; 256]>(*self) }
     }
 
     fn from_u16_array(array: [u16; 256]) -> Self {
-        return unsafe { transmute::<[u16; 256], LBATable>(array) };
+        unsafe { transmute::<[u16; 256], LBATable>(array) }
     }
 }
 

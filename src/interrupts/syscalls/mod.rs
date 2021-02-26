@@ -41,7 +41,7 @@ const SYSCALL_TABLE: [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL
 
 /// highly dangerous function should use only when knowing what you are doing
 #[naked]
-unsafe extern "C" fn convert_register_to_full(args: RegistersMini) -> Registers {
+unsafe extern "C" fn convert_register_to_full(_args: RegistersMini) -> Registers {
     asm!("mov rax, rdi", "ret");
     loop {}
 }

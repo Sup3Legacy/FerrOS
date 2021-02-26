@@ -184,15 +184,15 @@ impl Screen {
         let mut port1 = Port::new(0x3D4);
         let mut port2 = Port::new(0x3D5);
         unsafe {
-            port1.write(0x0F as u8);
+            port1.write(0x0F_u8);
             port2.write((pos & 0xFF) as u8);
-            port1.write(0x0E as u8);
+            port1.write(0x0E_u8);
             port2.write(((pos >> 8) & 0xFF) as u8)
         }
     }
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
-    fn new_line(&mut self) -> () {
+    fn new_line(&mut self) {
         self.row_pos += 1 + (self.col_pos / BUFFER_WIDTH);
         self.col_pos = 0;
         while self.row_pos >= BUFFER_HEIGHT {
@@ -203,7 +203,7 @@ impl Screen {
     }
 
     /// This function scrolls the entire screen by one row upwards.
-    fn scroll_up(&mut self) -> () {
+    fn scroll_up(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 self.buffer.characters[(row - 1) * BUFFER_WIDTH + col] =
@@ -213,7 +213,7 @@ impl Screen {
     }
 
     /// This function wipes the last line of the screen.
-    fn clear_bottom(&mut self) -> () {
+    fn clear_bottom(&mut self) {
         let blank = CHAR {
             code: b' ',
             color: self.color,
@@ -242,7 +242,7 @@ impl Screen {
     /// # Arguments
     /// * `s : &str` - the string to print
     /// * `col : ColorCode` - the color in which the string will be printed
-    pub fn _write_string_color(&mut self, s: &str, col: ColorCode) -> () {
+    pub fn _write_string_color(&mut self, s: &str, col: ColorCode) {
         let old_color = self.color;
         self.set_color(col);
         self.write_string(s);
@@ -264,7 +264,7 @@ impl Screen {
     ///
     /// # Arguments
     /// * `color : ColorCode` - the color to be given to the cursor
-    pub fn set_color(&mut self, color: ColorCode) -> () {
+    pub fn set_color(&mut self, color: ColorCode) {
         self.color = color;
     }
 

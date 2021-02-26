@@ -14,7 +14,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use core::panic::PanicInfo;
-use filesystem::ustar::MemFile;
+
 // use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
@@ -100,7 +100,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             user_owner: 12,
             group_misc: 12,
         },
-        name: ['#' as u8; 32],
+        name: [b'#'; 32],
         user: filesystem::ustar::UGOID(71),
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),

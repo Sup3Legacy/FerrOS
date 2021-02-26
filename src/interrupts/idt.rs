@@ -209,9 +209,9 @@ impl EntryOptions {
     /// Change the present status
     pub fn set_present(&mut self, present: bool) -> &mut Self {
         if present {
-            self.0 = self.0 | (1 << 15);
+            self.0 |= 1 << 15;
         } else {
-            self.0 = self.0 & !(1 << 15);
+            self.0 &= !(1 << 15);
         }
         //self.0.set(15, present);
         self

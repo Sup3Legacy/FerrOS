@@ -37,7 +37,7 @@ impl Path {
         let sliced = self
             .to()
             .split('\\')
-            .map(|s| String::from(s))
+            .map(String::from)
             .collect::<Vec<String>>();
         sliced
     }
@@ -53,7 +53,7 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
-pub fn open_file(path: Path, mode: OpenMode) -> &'static [u8] {
+pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
     todo!();
 }
 

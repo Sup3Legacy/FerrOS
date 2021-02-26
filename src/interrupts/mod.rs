@@ -11,7 +11,7 @@ use crate::gdt;
 use crate::{print, println};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
-use spin;
+
 
 mod syscalls;
 

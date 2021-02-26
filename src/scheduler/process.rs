@@ -3,7 +3,7 @@ use crate::data_storage::registers::Registers;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
-use spin::Mutex;
+
 
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
@@ -46,7 +46,7 @@ impl Process {
             id: ID::new(),
             pid: parent,
             priority,
-            quantum: 0 as u64,
+            quantum: 0_u64,
             cr3: 42, // /!\
             rsp: 0,  // /!\
             rip: 0,  // /!\
@@ -63,7 +63,7 @@ impl Process {
             id: ID(0),
             pid: ID(0),
             priority: Priority(0),
-            quantum: 0 as u64,
+            quantum: 0_u64,
             cr3: 0,
             rsp: 0,
             rip: 0,
@@ -127,7 +127,7 @@ impl ID {
 
     pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        for i in 0..PROCESS_MAX_NUMBER {
+        for _i in 0..PROCESS_MAX_NUMBER {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
             match ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state {
                 State::SlotAvailable => return ID(new),

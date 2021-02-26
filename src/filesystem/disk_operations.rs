@@ -12,7 +12,7 @@ pub const KERNEL_DISK_PORT: u16 = 0x1F0;
 
 /// Function to test if we can read
 pub fn test_read() {
-    let mut a = [0 as u16; 256];
+    let mut a = [0_u16; 256];
     unsafe {
         read((&mut a) as *mut [u16; 256], 1, DISK_PORT);
         println!("{:x?}", a);
@@ -30,19 +30,19 @@ pub fn init() {
         let mut lba_high = Port::new(0x175);
         let mut drive_head_register = Port::new(0x176);
         let mut command_register = Port::new(0x177);
-        drive_head_register.write(0b10100000 as u8);
-        sectorcount_register.write(0 as u8);
-        lba_low.write(0 as u8);
-        lba_mid.write(0 as u8);
-        lba_high.write(0 as u8);
+        drive_head_register.write(0b10100000_u8);
+        sectorcount_register.write(0_u8);
+        lba_low.write(0_u8);
+        lba_mid.write(0_u8);
+        lba_high.write(0_u8);
         //        println!("command send");
 
-        command_register.write(0xEC as u8);
+        command_register.write(0xEC_u8);
         let mut i = command_register.read();
         let mut compte = 1;
         while (i & 0x8) == 0 && (i & 1) == 0 {
             i = command_register.read();
-            compte = 1 + compte;
+            compte += 1;
         }
         lba_low.read();
         lba_mid.read();
@@ -57,7 +57,7 @@ pub fn init() {
 
 /// function that from la sector of the disk outputs the data stored at the corresponding place (lba's count starts at 1!)
 pub fn read_sector(lba: u32) -> [u16; 256] {
-    let mut a = [0 as u16; 256];
+    let mut a = [0_u16; 256];
     unsafe {
         read((&mut a) as *mut [u16; 256], lba, DISK_PORT);
     }
@@ -75,18 +75,18 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     let mut drive_head_register = Port::new(port + 6);
     let mut command_register = Port::new(port + 7);
     drive_head_register.write(0xE0 | ((lba >> 24) & 0x0F)); // outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
-    sectorcount_register.write(1 as u8); // says that we want to read only one register
+    sectorcount_register.write(1_u8); // says that we want to read only one register
     lba_low.write(lba as u8);
     lba_mid.write((lba >> 8) as u8);
     lba_high.write((lba >> 16) as u8);
-    command_register.write(0x20 as u8); // give the READ SECTOR command
+    command_register.write(0x20_u8); // give the READ SECTOR command
 
     // waits for the disk to be ready for transfer
     let mut i = command_register.read();
     let mut compte = 1;
     while (i & 0x80) != 0 {
         i = command_register.read();
-        compte = 1 + compte;
+        compte += 1;
         if compte % 1000000 == 0 {
             println!("not finished 1 : {} en {}", i, compte); // to warn in case of infinite loops
         }
@@ -104,7 +104,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     let mut compte = 1;
     while (i & 0x80) != 0 {
         i = command_register.read();
-        compte = 1 + compte;
+        compte += 1;
         if compte % 1000000 == 0 {
             println!("not finished 2 : {} en {}", i, compte); // to warn in case of infinite loops
         }
@@ -113,7 +113,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
 }
 
 /// function that from la sector of the disk writes the given data at the corresponding place (lba's count starts at 1!)
-pub fn write_sector(table: &[u16; 256], lba: u32) -> () {
+pub fn write_sector(table: &[u16; 256], lba: u32) {
     unsafe {
         write(table, lba, DISK_PORT);
     }
@@ -130,11 +130,11 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     let mut drive_head_register = Port::new(port + 6);
     let mut command_register = Port::new(port + 7);
     drive_head_register.write(0xE0 | ((lba >> 24) & 0x0F)); // outb(0x1F6, 0xE0 | (slavebit << 4) | ((LBA >> 24) & 0x0F))
-    sectorcount_register.write(1 as u8); // says that we want to write only one register
+    sectorcount_register.write(1_u8); // says that we want to write only one register
     lba_low.write(lba as u8);
     lba_mid.write((lba >> 8) as u8);
     lba_high.write((lba >> 16) as u8);
-    command_register.write(0x30 as u8); // give the WRITE SECTOR command
+    command_register.write(0x30_u8); // give the WRITE SECTOR command
 
     // awaits the disk to be ready for data transfer
     let mut i = command_register.read();
@@ -153,7 +153,7 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     let mut compte = 1;
     while (i & 0x80) != 0 {
         i = command_register.read();
-        compte = 1 + compte;
+        compte += 1;
         if compte % 1000000 == 0 {
             println!("not finished 2 : {} en {}", i, compte); // to warn in case of infinite loops
         }

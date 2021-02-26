@@ -51,9 +51,9 @@ impl GdtEntryBits {
 
     pub fn set_accessed(&mut self, access: bool) -> &mut Self {
         if access {
-            self.attributes = self.attributes | 0x01
+            self.attributes |= 0x01
         } else {
-            self.attributes = self.attributes & !0x01
+            self.attributes &= !0x01
         }
         self
     }
@@ -61,9 +61,9 @@ impl GdtEntryBits {
     /// readable for code, writable for data
     pub fn set_read_write(&mut self, can_rw: bool) -> &mut Self {
         if can_rw {
-            self.attributes = self.attributes | 0x02
+            self.attributes |= 0x02
         } else {
-            self.attributes = self.attributes & !0x02
+            self.attributes &= !0x02
         }
         self
     }
@@ -71,9 +71,9 @@ impl GdtEntryBits {
     /// conforming for code, expand down data
     pub fn set_conforming_expand_down(&mut self, conforming: bool) -> &mut Self {
         if conforming {
-            self.attributes = self.attributes | 0x04
+            self.attributes |= 0x04
         } else {
-            self.attributes = self.attributes & !0x04
+            self.attributes &= !0x04
         }
         self
     }
@@ -81,9 +81,9 @@ impl GdtEntryBits {
     /// 1 for code, 0 for data
     pub fn is_code(&mut self, is_code: bool) -> &mut Self {
         if is_code {
-            self.attributes = self.attributes | 0x08
+            self.attributes |= 0x08
         } else {
-            self.attributes = self.attributes & !0x08
+            self.attributes &= !0x08
         }
         self
     }
@@ -96,18 +96,18 @@ impl GdtEntryBits {
 
     pub fn set_present(&mut self, present: bool) -> &mut Self {
         if present {
-            self.attributes = self.attributes | 0x80
+            self.attributes |= 0x80
         } else {
-            self.attributes = self.attributes & !0x80
+            self.attributes &= !0x80
         }
         self
     }
 
     pub fn set_available(&mut self, available: bool) -> &mut Self {
         if available {
-            self.granularity = self.granularity | 0x10
+            self.granularity |= 0x10
         } else {
-            self.granularity = self.granularity & !0x10
+            self.granularity &= !0x10
         }
         self
     }
@@ -115,9 +115,9 @@ impl GdtEntryBits {
     /// is used to indicate x86-64 code descriptor. * For data segments, this bit is reserved *
     pub unsafe fn set_x86_64_code_descriptor(&mut self, code_descriptor: bool) -> &mut Self {
         if code_descriptor {
-            self.granularity = self.granularity | 0x20
+            self.granularity |= 0x20
         } else {
-            self.granularity = self.granularity & !0x20
+            self.granularity &= !0x20
         }
         self
     }
@@ -125,9 +125,9 @@ impl GdtEntryBits {
     /// 32bit opcodes for code, uint32_t stack for data must be 0 is L is 1 !
     pub fn set_big(&mut self, big: bool) -> &mut Self {
         if big {
-            self.granularity = self.granularity | 0x40
+            self.granularity |= 0x40
         } else {
-            self.granularity = self.granularity & !0x40
+            self.granularity &= !0x40
         }
         self
     }
@@ -135,9 +135,9 @@ impl GdtEntryBits {
     /// 1 to use 4k page addressing, 0 for byte addressing
     pub fn set_gran(&mut self, gran: bool) -> &mut Self {
         if gran {
-            self.granularity = self.granularity | 0x80
+            self.granularity |= 0x80
         } else {
-            self.granularity = self.granularity & !0x80
+            self.granularity &= !0x80
         }
         self
     }
