@@ -3,16 +3,7 @@ use x86_64::structures::paging::OffsetPageTable;
 use x86_64::structures::paging::{FrameAllocator, /*Page, Mapper,*/ PhysFrame, Size4KiB};
 use x86_64::{registers::control::Cr3, structures::paging::PageTable, PhysAddr, VirtAddr};
 use crate::print;
-use lazy_static::lazy_static;
 // Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
-pub static mut PHYSICAL_OFFSET: u64 = 0;
-
-const MAX_PAGE_ALLOWED: usize = 65536;
-
-static mut NUMBER_TABLES: u64 = 0;
-
-static mut PAGE_AVAILABLE:[bool; MAX_PAGE_ALLOWED] = [false; MAX_PAGE_ALLOWED];
-
 
 unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
     //! Returns the virtual address of the level 4 page table, which is currently active (given by the CR3 register). The `physical_memory_offset` is needed as the model used is a `map_physical_memory` scheme.
@@ -31,45 +22,14 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 /// It is unsafe as the complete mapping has to be guaranteed by the caller.
 /// Must be called at least once to avoid `&mut` aliasing
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
-    PHYSICAL_OFFSET = physical_memory_offset.as_u64();
     let level_4_table = active_level_4_table(physical_memory_offset);
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
+/// A FrameAllocator that returns usable frames from the bootloader's memory map.
 pub struct BootInfoAllocator {
-    pages_available: [bool; MAX_PAGE_ALLOWED];
+    memory_map: &'static MemoryMap,
     next: usize,
-    maxi: usize,
-    level4_table: &'static PageTable,
-}
-
-impl BootInfoAllocator {
-    pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) -> Self {
-        let mut pages_available = [false; MAX_PAGE_ALLOWED];
-        let regions = self.memory_map.iter();
-        let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
-        let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
-        // transform to an iterator of frame start addresses
-        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
-        let maxi = 0;
-        let next = 0;
-        unsafe {
-            for i in frame_addresses {
-                NUMBER_TABLES += 1;
-                pages_available[(i >> 12) as usize] = true;
-                maxi = max(i >> 12, maxi);
-                next = min(i >> 12, next);
-            };
-            print!("Num tables : {}\n", NUMBER_TABLES);
-        }
-
-        BootInfoAllocator {
-            pages_available,
-            next,
-            maxi,
-            level4_table = active_level_4_table(physical_memory_offset),
-        }
-    }
 }
 
 /// Create a FrameAllocator from the passed memory map.
@@ -91,17 +51,6 @@ impl BootInfoAllocator {
         let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
         // transform to an iterator of frame start addresses
         let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
-        unsafe {
-            for i in frame_addresses {
-            NUMBER_TABLES += 1;
-            if (i >> 12) as usize >= MAX_PAGE_ALLOWED {
-                print!("Num tables : {}\n", NUMBER_TABLES);
-            }
-            PAGE_AVAILABLE[(i >> 12) as usize] = true;
-        };
-            print!("Num tables : {}\n", NUMBER_TABLES);
-        }
-        loop {};
         frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
     }
 }
@@ -140,4 +89,5 @@ fn translate_addr_inner(addr : VirtAddr, physical_memory_offset : VirtAddr) -> O
         };
     }
     Some(frame.start_address() + u64::from(addr.page_offset()))
-}*/
+}
+*/

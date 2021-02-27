@@ -121,6 +121,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Address { lba: 0, block: 0 })
             .data
     });
+    unsafe {
+        println!("OFFSET : {} ", memory::PHYSICAL_OFFSET);
+    }
+    use x86_64::registers::control::Cr0;
+    println!("{:?}", Cr0::read());
     // fin des tests
 
     // This enables the tests
