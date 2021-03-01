@@ -53,7 +53,8 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset) };
+    let mut frame_allocator =
+        unsafe { memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset) };
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
 
     // I/O Initialization
@@ -105,22 +106,24 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
         parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 413,
+        length: 1024 / 2, // /!\ in u16
         blocks_number: 2,
         mode: filesystem::ustar::FileMode::Short,
         padding: [999999999; 10],
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
-    let mut data: Vec<u16> = vec![];
-    for i in 0..413 {
-        data.push(i / 256 + 1);
+    let mut data: Vec<u8> = vec![];
+    for i in 0..1024 {
+        data.push(if i % 2 == 0 {(i / 512 + 1) as u8} else {0});
     }
     let file = filesystem::ustar::MemFile { header: head, data };
     file.write_to_disk();
+
     println!("{:?}", unsafe {
         filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Address { lba: 0, block: 0 })
             .data
     });
+
     unsafe {
         println!("OFFSET : {} ", memory::PHYSICAL_OFFSET);
     }

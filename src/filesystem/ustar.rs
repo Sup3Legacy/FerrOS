@@ -136,7 +136,7 @@ impl Header {
 #[derive(Debug, Clone)]
 pub struct MemFile {
     pub header: Header,
-    pub data: Vec<u16>,
+    pub data: Vec<u8>,
 }
 
 #[repr(C)]
@@ -249,18 +249,18 @@ impl LBATableGlobal {
     }
 }
 
-fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
+fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
     let n = data.len();
-    let block_number = n / 256 + (if n % 256 > 0 { 1 } else { 0 });
+    let block_number = n / 512 + (if n % 512 > 0 { 1 } else { 0 });
     let mut res: Vec<[u16; 256]> = Vec::new();
     let mut index = 0;
     for _i in 0..block_number {
         let mut arr = [0_u16; 256];
         for j in 0..256 {
-            if index >= n {
+            if 2 * index + 1 >= n {
                 break;
             }
-            arr[j] = data[index];
+            arr[j] = (((data[2 * index] as u16) & 0xff) << 8) + (data[2 * index + 1] as u16);
             index += 1;
         }
         res.push(arr);
@@ -360,7 +360,8 @@ impl MemFile {
                         break;
                     }
                     unsafe {
-                        file.data.push(sector.data[j]);
+                        file.data.push((sector.data[j] >> 8) as u8);
+                        file.data.push((sector.data[j] & 0xff) as u8);
                     }
                     compteur += 1;
                 }
