@@ -1,6 +1,7 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::todo;
 pub mod disk_operations;
 pub mod test;
 pub mod ustar;
@@ -14,7 +15,7 @@ use crate::{print, println};
 /// fetch a file from disk every time it is requested.
 static FILE_ADRESS_CACHE: FileCache = FileCache(BTreeMap::new());
 
-static DIR_CACHE : DirCache = DirCache(BTreeMap::new());
+static DIR_CACHE: DirCache = DirCache(BTreeMap::new());
 
 #[derive(Debug, PartialEq)]
 pub struct FileSystemError(String);
@@ -47,10 +48,36 @@ impl Path {
 }
 
 #[derive(Debug)]
-struct MemDir{
-    name : String,
-    address : ustar::Address,
-    files : BTreeMap<String, ustar::Address>,
+struct MemDir {
+    name: String,
+    address: ustar::Address,
+    files: BTreeMap<String, ustar::Address>,
+}
+
+impl MemDir {
+    fn from_address(address: ustar::Address) -> Self {
+        let file = ustar::MemFile::read_from_disk(address);
+        let data = file.data;
+        let len = data.len(); // length in u8 of the data segment of the directory
+        assert_eq!(file.header.file_type, ustar::Type::Dir); // Checks whether the blob is really a directory
+        assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
+        let mut files: BTreeMap<String, ustar::Address> = BTreeMap::new();
+        let number = len / 32; // number of sub_items of the dir
+        for i in 0..number {
+            let mut name = String::new();
+            let mut itter = 0;
+            while itter < 28 && data[32 * i + itter] != 0 {
+                name.push(data[32 * i + itter] as char);
+                itter += 1;
+            }
+            let temp_address = ustar::Address {
+                lba : (data[32 * i] << 8) as u16 + data[32 * i + 1] as u16, // TODO /!\ May be incorrent
+                block : (data[32 * i + 2] << 8) as u16 + data[32 * i + 3] as u16, // TODO /!\ May be incorrent
+            };
+            files.entry(name).or_insert(temp_address);
+        }
+        todo!()
+    }
 }
 
 #[derive(Debug)]
@@ -71,7 +98,7 @@ pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
     todo!();
 }
 
-pub fn write_file(_path: Path, _data : &'static [u8]) {
+pub fn write_file(_path: Path, _data: &'static [u8]) {
     todo!();
 }
 
