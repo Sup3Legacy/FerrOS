@@ -3,6 +3,7 @@ use x86_64::structures::paging::OffsetPageTable;
 use x86_64::structures::paging::{FrameAllocator, /*Page, Mapper,*/ PhysFrame, Size4KiB};
 use x86_64::{registers::control::Cr3, structures::paging::PageTable, PhysAddr, VirtAddr};
 use crate::print;
+use core::cmp::{max, min};
 use lazy_static::lazy_static;
 // Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
@@ -37,7 +38,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
 }
 
 pub struct BootInfoAllocator {
-    pages_available: [bool; MAX_PAGE_ALLOWED];
+    pages_available: [bool; MAX_PAGE_ALLOWED],
     next: usize,
     maxi: usize,
     level4_table: &'static PageTable,
@@ -46,13 +47,13 @@ pub struct BootInfoAllocator {
 impl BootInfoAllocator {
     pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) -> Self {
         let mut pages_available = [false; MAX_PAGE_ALLOWED];
-        let regions = self.memory_map.iter();
+        let regions = memory_map.iter();
         let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
         let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
         // transform to an iterator of frame start addresses
         let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
-        let maxi = 0;
-        let next = 0;
+        let mut maxi = 0;
+        let mut next = 0;
         unsafe {
             for i in frame_addresses {
                 NUMBER_TABLES += 1;
@@ -65,52 +66,33 @@ impl BootInfoAllocator {
 
         BootInfoAllocator {
             pages_available,
-            next,
-            maxi,
-            level4_table = active_level_4_table(physical_memory_offset),
+            next: next as usize,
+            maxi: maxi as usize,
+            level4_table: active_level_4_table(physical_memory_offset),
         }
     }
-}
 
-/// Create a FrameAllocator from the passed memory map.
-///
-/// This function is unsafe because the caller must guarantee that the passed
-/// memory map is valid. The main requirement is that all frames that are marked
-/// as `USABLE` in it are really unused.
-impl BootInfoAllocator {
-    pub unsafe fn init(memory_map: &'static MemoryMap) -> Self {
-        BootInfoAllocator {
-            memory_map,
-            next: 0,
-        }
-    }
-    /// Returns an iterator over the usable frames specified in the memory map.
-    fn usable_frames(&self) -> impl Iterator<Item = PhysFrame> {
-        let regions = self.memory_map.iter();
-        let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
-        let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
-        // transform to an iterator of frame start addresses
-        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
-        unsafe {
-            for i in frame_addresses {
-            NUMBER_TABLES += 1;
-            if (i >> 12) as usize >= MAX_PAGE_ALLOWED {
-                print!("Num tables : {}\n", NUMBER_TABLES);
+    pub fn allocate_4k_frame(&mut self) -> Option<PhysFrame> {
+        for _i in 0..MAX_PAGE_ALLOWED {
+            if self.pages_available[self.next] {
+                self.pages_available[self.next] = false;
+                self.next += 1;
+                return Some(PhysFrame::containing_address(PhysAddr::new(((self.next as u64) - 1) << 12)))
+            } else {
+                self.next += 1;
+                if self.next > self.maxi {
+                    self.next = 0;
+                }
             }
-            PAGE_AVAILABLE[(i >> 12) as usize] = true;
-        };
-            print!("Num tables : {}\n", NUMBER_TABLES);
         }
-        loop {};
-        frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
+        None
     }
 }
 
 unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
+    #[inline]
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
-        let frame = self.usable_frames().nth(self.next);
-        self.next += 1;
-        frame
+        self.allocate_4k_frame()
     }
 }
 
