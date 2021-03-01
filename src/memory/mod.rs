@@ -87,6 +87,12 @@ impl BootInfoAllocator {
         }
         None
     }
+
+    pub fn deallocate_4k_frame(&mut self, next: PhysFrame) -> Result<(),()> {
+        let next = next.start_address().as_u64();
+        self.pages_available[next as usize] = false;
+        return Ok(())
+    }
 }
 
 unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
