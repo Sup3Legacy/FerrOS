@@ -1,7 +1,7 @@
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::structures::paging::OffsetPageTable;
 use x86_64::structures::paging::{FrameAllocator, /*Page, Mapper,*/ PhysFrame, Size4KiB};
-use x86_64::{registers::control::Cr3, structures::paging::PageTable, PhysAddr, VirtAddr};
+use x86_64::{registers::control::Cr3, structures::paging::{PageTable, PageTableFlags}, PhysAddr, VirtAddr};
 use crate::print;
 use core::cmp::{max, min};
 use lazy_static::lazy_static;
@@ -34,6 +34,26 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
     PHYSICAL_OFFSET = physical_memory_offset.as_u64();
     let level_4_table = active_level_4_table(physical_memory_offset);
+    let mut compte = 0;
+    for i in 0..512 {
+        if level_4_table[i].is_unused() {
+            compte += 1
+        } else {
+            let addr = level_4_table[i].addr();
+            let virt = physical_memory_offset + addr.as_u64();
+            let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+            let level_3_table = &mut * page_table_ptr;
+            for i2 in 0..512 {
+                if !level_3_table[i2].is_unused() {
+                    print!("{} at {} with {:?}\n", i2, i, level_3_table[i].flags());
+                    //if 
+                }
+            }
+       }
+    }
+    print!("Nb Frame used : {}.\n", compte);
+    print!("Phys_offset : {:?}", physical_memory_offset);
+    loop {}
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
@@ -77,7 +97,11 @@ impl BootInfoAllocator {
             if self.pages_available[self.next] {
                 self.pages_available[self.next] = false;
                 self.next += 1;
-                return Some(PhysFrame::containing_address(PhysAddr::new(((self.next as u64) - 1) << 12)))
+                if let Ok(frame) = PhysFrame::from_start_address(PhysAddr::new(((self.next as u64) - 1) << 12)) {
+                    return Some(frame)
+                } else {
+                    return None
+                }
             } else {
                 self.next += 1;
                 if self.next > self.maxi {
@@ -86,6 +110,29 @@ impl BootInfoAllocator {
             }
         }
         None
+    }
+
+    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<&'static mut PageTable,()> {
+        if let Some(frame) = self.allocate_4k_frame() {
+            let phys = frame.start_address();
+            let virt = VirtAddr::new(phys.as_u64() + PHYSICAL_OFFSET);
+            let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+            let level_4_table = &mut *page_table_ptr;
+            for i in 0..512 {   
+                level_4_table[i].set_addr(self.level4_table[i].addr(), self.level4_table[i].flags());
+            }
+            Ok(level_4_table)
+        } else {
+            Err(())
+        }
+    } 
+
+    pub unsafe fn allocate_table_at_address(&mut self, table_4: &'static mut PageTable, addr: VirtAddr) -> Result<(),()> {
+        panic!("not implemented");
+    }
+
+    pub fn deallocate_level_4_page(&mut self, table_4: PageTable) -> Result<(),()> {
+        panic!("not implemented");
     }
 
     pub fn deallocate_4k_frame(&mut self, next: PhysFrame) -> Result<(),()> {
