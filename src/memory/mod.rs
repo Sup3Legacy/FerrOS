@@ -53,7 +53,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
     }
     print!("Nb Frame used : {}.\n", compte);
     print!("Phys_offset : {:?}", physical_memory_offset);
-    loop {}
+   // loop {}
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
@@ -112,16 +112,16 @@ impl BootInfoAllocator {
         None
     }
 
-    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<&'static mut PageTable,()> {
+    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysAddr,()> {
         if let Some(frame) = self.allocate_4k_frame() {
             let phys = frame.start_address();
             let virt = VirtAddr::new(phys.as_u64() + PHYSICAL_OFFSET);
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_4_table = &mut *page_table_ptr;
-            for i in 0..512 {   
+            for i in 0..512 {
                 level_4_table[i].set_addr(self.level4_table[i].addr(), self.level4_table[i].flags());
             }
-            Ok(level_4_table)
+            Ok(phys)
         } else {
             Err(())
         }
@@ -131,13 +131,63 @@ impl BootInfoAllocator {
         panic!("not implemented");
     }
 
-    pub fn deallocate_level_4_page(&mut self, table_4: PageTable) -> Result<(),()> {
-        panic!("not implemented");
+    pub unsafe fn deallocate_level_4_page(&mut self, table_4_addr: PhysAddr) -> Result<(),()> {
+        let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
+        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+        let table_4 = &mut *page_table_ptr;
+        for i in 0..512 {
+            if !table_4[i].is_unused() {
+                let flags = table_4[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.deallocate_level_3_page(&mut *page_table_ptr);
+                }
+            }
+        }
+        self.deallocate_4k_frame(table_4_addr)
     }
 
-    pub fn deallocate_4k_frame(&mut self, next: PhysFrame) -> Result<(),()> {
-        let next = next.start_address().as_u64();
-        self.pages_available[next as usize] = false;
+    unsafe fn deallocate_level_3_page(&mut self, table_3: &'static mut PageTable) {
+        for i in 0..512 {
+            if !table_3[i].is_unused() {
+                let flags = table_3[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.deallocate_level_2_page(&mut *page_table_ptr);
+                }
+            }
+        }
+    }
+
+    unsafe fn deallocate_level_2_page(&mut self, table_2: &'static mut PageTable) {
+        for i in 0..512 {
+            if !table_2[i].is_unused() {
+                let flags = table_2[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.deallocate_level_1_page(&mut *page_table_ptr);
+                }
+            }
+        }
+    }
+
+    unsafe fn deallocate_level_1_page(&mut self, table_1: &'static mut PageTable) {
+        for i in 0..512 {
+            if !table_1[i].is_unused() {
+                let flags = table_1[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    self.deallocate_4k_frame(table_1[i].addr());
+                }
+            }
+        }
+    }
+
+    pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) -> Result<(),()> {
+        let table_index = addr.as_u64();
+        self.pages_available[table_index as usize] = false;
         return Ok(())
     }
 }
