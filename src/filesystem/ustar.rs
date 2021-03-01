@@ -3,9 +3,6 @@ use super::disk_operations;
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
-
-
-
 // Number of 512-sector segments
 const LBA_TABLES_COUNT: u32 = 4;
 
@@ -269,7 +266,7 @@ fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
 }
 
 impl MemFile {
-    pub fn write_to_disk(&self) {
+    pub fn write_to_disk(&self) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = self.header;
         let length = file_header.length; // TODO : make sure it is also the length of self.data
@@ -332,13 +329,12 @@ impl MemFile {
                             + 1) as u32,
                     );
                 }
+                LBA_TABLE_GLOBAL.write_to_disk();
+                addresses[0]
             }
         } else {
             file_header.mode = FileMode::Long;
             todo!()
-        }
-        unsafe {
-            LBA_TABLE_GLOBAL.write_to_disk();
         }
     }
     pub fn read_from_disk(address: Address) -> Self {

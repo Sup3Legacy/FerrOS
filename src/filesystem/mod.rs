@@ -12,8 +12,11 @@ use crate::{print, println};
 ///
 /// For instance, we don't (at leat for now) store files, the filesystem has to
 /// fetch a file from disk every time it is requested.
-static FILE_ADRESS_CACHE: Cache = Cache(BTreeMap::new());
+static FILE_ADRESS_CACHE: FileCache = FileCache(BTreeMap::new());
 
+static DIR_CACHE : DirCache = DirCache(BTreeMap::new());
+
+#[derive(Debug, PartialEq)]
 pub struct FileSystemError(String);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -43,7 +46,18 @@ impl Path {
     }
 }
 
-pub struct Cache(BTreeMap<Path, ustar::Address>);
+#[derive(Debug)]
+struct MemDir{
+    name : String,
+    address : ustar::Address,
+    files : BTreeMap<String, ustar::Address>,
+}
+
+#[derive(Debug)]
+struct FileCache(BTreeMap<Path, ustar::Address>);
+
+#[derive(Debug)]
+struct DirCache(BTreeMap<Path, MemDir>);
 
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -54,6 +68,10 @@ pub enum OpenMode {
 }
 
 pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
+    todo!();
+}
+
+pub fn write_file(_path: Path, _data : &'static [u8]) {
     todo!();
 }
 

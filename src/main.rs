@@ -114,7 +114,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     };
     let mut data: Vec<u8> = vec![];
     for i in 0..1024 {
-        data.push(if i % 2 == 0 {(i / 512 + 1) as u8} else {0});
+        data.push(if i % 2 == 0 { (i / 512 + 1) as u8 } else { 0 });
     }
     let file = filesystem::ustar::MemFile { header: head, data };
     file.write_to_disk();
