@@ -40,13 +40,13 @@ impl Path {
     fn slice(&self) -> Vec<String> {
         let sliced = self
             .to()
-            .split('\\')
+            .split('/')
             .map(String::from)
             .collect::<Vec<String>>();
         sliced
     }
     fn push_str(&mut self, s: &String) {
-        self.0.push('\\');
+        self.0.push('/');
         self.0.push_str(&(*s))
     }
 }
