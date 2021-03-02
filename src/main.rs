@@ -61,10 +61,12 @@ pub fn init(_boot_info: &'static BootInfo) {
     keyboard::init();
     vga::init();
 
-    //filesystem::init();
+    
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
+
+    filesystem::init();
 }
 
 // test taks, to move out of here
@@ -99,7 +101,8 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             user_owner: 12,
             group_misc: 12,
         },
-        name: [b'#'; 32],
+        name: [ b'b', b'o', b'n', b'j', b'o', b'u', b'r', 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+        ],
         user: filesystem::ustar::UGOID(71),
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
@@ -117,10 +120,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     let file = filesystem::ustar::MemFile { header: head, data };
     file.write_to_disk();
 
+    /*
     println!("{:?}", unsafe {
         filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Address { lba: 0, block: 0 })
             .data
-    });
+    }); */
 
     unsafe {
         println!("OFFSET : {} ", memory::PHYSICAL_OFFSET);
