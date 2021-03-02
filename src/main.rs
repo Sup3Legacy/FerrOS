@@ -61,7 +61,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     keyboard::init();
     vga::init();
 
-    filesystem::init();
+    //filesystem::init();
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();

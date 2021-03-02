@@ -12,7 +12,7 @@ pub mod linked_list;
 /// The start adress of the kernel heap.
 pub const HEAP_START: usize = 0x4444_4444_0000;
 /// The size of the kernel heap. It is for now pretty small.
-pub const HEAP_SIZE: usize = 1000 * 1024;
+pub const HEAP_SIZE: usize = 100 * 1024;
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
