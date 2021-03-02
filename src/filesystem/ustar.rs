@@ -3,9 +3,6 @@ use super::disk_operations;
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
-
-
-
 // Number of 512-sector segments
 const LBA_TABLES_COUNT: u32 = 4;
 
@@ -57,8 +54,8 @@ pub struct HeaderFlags {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
-    Dir = 0_u8,
-    File = 1_u8,
+    Dir = 1_u8,
+    File = 2_u8,
 }
 
 /// Specifies the mode of storage of the chunk of data.
@@ -136,7 +133,7 @@ impl Header {
 #[derive(Debug, Clone)]
 pub struct MemFile {
     pub header: Header,
-    pub data: Vec<u16>,
+    pub data: Vec<u8>,
 }
 
 #[repr(C)]
@@ -249,18 +246,18 @@ impl LBATableGlobal {
     }
 }
 
-fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
+fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
     let n = data.len();
-    let block_number = n / 256 + (if n % 256 > 0 { 1 } else { 0 });
+    let block_number = n / 512 + (if n % 512 > 0 { 1 } else { 0 });
     let mut res: Vec<[u16; 256]> = Vec::new();
     let mut index = 0;
     for _i in 0..block_number {
         let mut arr = [0_u16; 256];
         for j in 0..256 {
-            if index >= n {
+            if 2 * index + 1 >= n {
                 break;
             }
-            arr[j] = data[index];
+            arr[j] = (((data[2 * index] as u16) & 0xff) << 8) + (data[2 * index + 1] as u16);
             index += 1;
         }
         res.push(arr);
@@ -269,7 +266,7 @@ fn slice_vec(data: &Vec<u16>) -> Vec<[u16; 256]> {
 }
 
 impl MemFile {
-    pub fn write_to_disk(&self) {
+    pub fn write_to_disk(&self) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = self.header;
         let length = file_header.length; // TODO : make sure it is also the length of self.data
@@ -332,13 +329,12 @@ impl MemFile {
                             + 1) as u32,
                     );
                 }
+                LBA_TABLE_GLOBAL.write_to_disk();
+                addresses[0]
             }
         } else {
             file_header.mode = FileMode::Long;
             todo!()
-        }
-        unsafe {
-            LBA_TABLE_GLOBAL.write_to_disk();
         }
     }
     pub fn read_from_disk(address: Address) -> Self {
@@ -360,7 +356,8 @@ impl MemFile {
                         break;
                     }
                     unsafe {
-                        file.data.push(sector.data[j]);
+                        file.data.push((sector.data[j] >> 8) as u8);
+                        file.data.push((sector.data[j] & 0xff) as u8);
                     }
                     compteur += 1;
                 }

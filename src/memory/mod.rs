@@ -59,7 +59,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
     }
     print!("Nb Frame used : {}.\n", compte);
     print!("Phys_offset : {:?}", physical_memory_offset);
-   // loop {}
+    // loop {}
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
