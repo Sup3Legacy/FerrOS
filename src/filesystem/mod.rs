@@ -49,6 +49,22 @@ impl Path {
         self.0.push('/');
         self.0.push_str(&(*s))
     }
+    fn get_parent(&self) -> Self {
+        let mut sliced = self.slice();
+        if sliced.len() == 0 {
+            Self::from(&self.to())
+        } else {
+            sliced.pop();
+            let mut res = String::new();
+            for elt in sliced.iter() {
+                res.push_str(elt);
+            }
+            Self::from(&res)
+        }
+    }
+    fn get_name(&self) -> String {
+        self.slice().get(0).unwrap_or(&String::from("")).clone()
+    }
 }
 
 #[derive(Debug)]
