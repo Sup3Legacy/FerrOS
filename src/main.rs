@@ -61,6 +61,8 @@ pub fn init(_boot_info: &'static BootInfo) {
     keyboard::init();
     vga::init();
 
+    filesystem::init();
+
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
 }
@@ -91,10 +93,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     // Why is this not in the init function ?
 
     // quelques tests de drive
-    filesystem::disk_operations::init();
-    unsafe {
-        filesystem::ustar::LBA_TABLE_GLOBAL.init();
-    }
     let head = filesystem::ustar::Header {
         file_type: filesystem::ustar::Type::Dir,
         flags: filesystem::ustar::HeaderFlags {

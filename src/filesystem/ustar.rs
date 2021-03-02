@@ -54,8 +54,8 @@ pub struct HeaderFlags {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
-    Dir = 0_u8,
-    File = 1_u8,
+    Dir = 1_u8,
+    File = 2_u8,
 }
 
 /// Specifies the mode of storage of the chunk of data.
