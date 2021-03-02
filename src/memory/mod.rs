@@ -1,3 +1,4 @@
+//! Crate for managing the paging: allocating and desallocating pages and editing page tables
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::structures::paging::OffsetPageTable;
 use x86_64::structures::paging::{FrameAllocator, /*Page, Mapper,*/ PhysFrame, Size4KiB};
@@ -5,16 +6,21 @@ use x86_64::{registers::control::Cr3, structures::paging::{PageTable, PageTableF
 use crate::print;
 use core::cmp::{max, min};
 use lazy_static::lazy_static;
-// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
+
+/// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
 
+/// Maximum number of pages allowed. Can hold 256MiB of RAM, must be increased to have a higher capacity 
 const MAX_PAGE_ALLOWED: usize = 65536;
 
+/// Number of allocatable tables
 static mut NUMBER_TABLES: u64 = 0;
 
+/// Structure of all available pages
 static mut PAGE_AVAILABLE:[bool; MAX_PAGE_ALLOWED] = [false; MAX_PAGE_ALLOWED];
 
-
+/// Read Cr3 to give the current level_4 table
+/// Should only be called one
 unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
     //! Returns the virtual address of the level 4 page table, which is currently active (given by the CR3 register). The `physical_memory_offset` is needed as the model used is a `map_physical_memory` scheme.
     //! Is unsafe because the caller has to guarantee that the virtual memory is completely mapped as a physical_memory_offset.
@@ -53,10 +59,13 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
     }
     print!("Nb Frame used : {}.\n", compte);
     print!("Phys_offset : {:?}", physical_memory_offset);
-    //loop {}
+    // loop {}
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
+
+/// Structure of the page allocator, holding the data of every page available.
+/// It can be improved in terms of place taken and performances
 pub struct BootInfoAllocator {
     pages_available: [bool; MAX_PAGE_ALLOWED],
     next: usize,
@@ -65,6 +74,9 @@ pub struct BootInfoAllocator {
 }
 
 impl BootInfoAllocator {
+
+    /// Creates a new allocator from the RAM map given by the bootloader
+    /// and the offset to the physical memory given also by the bootloader
     pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) -> Self {
         let mut pages_available = [false; MAX_PAGE_ALLOWED];
         let regions = memory_map.iter();
@@ -92,6 +104,7 @@ impl BootInfoAllocator {
         }
     }
 
+    /// Returns a new unallocated Frame and marks it as allocated.
     pub fn allocate_4k_frame(&mut self) -> Option<PhysFrame> {
         for _i in 0..MAX_PAGE_ALLOWED {
             if self.pages_available[self.next] {
@@ -112,36 +125,186 @@ impl BootInfoAllocator {
         None
     }
 
-    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<&'static mut PageTable,()> {
+    /// Creates a new level_4 table and taking into account the kernel adresses.
+    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysAddr,()> {
         if let Some(frame) = self.allocate_4k_frame() {
             let phys = frame.start_address();
             let virt = VirtAddr::new(phys.as_u64() + PHYSICAL_OFFSET);
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_4_table = &mut *page_table_ptr;
-            for i in 0..512 {   
+            for i in 0..512 {
                 level_4_table[i].set_addr(self.level4_table[i].addr(), self.level4_table[i].flags());
             }
-            Ok(level_4_table)
+            Ok(phys)
         } else {
             Err(())
         }
+    }
+
+    /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
+    /// You should mark it as USER_ACCESSIBLE and PRESENT !
+    pub unsafe fn add_entry_to_table(&mut self, table_4: &'static mut PageTable, virt: VirtAddr, flags: PageTableFlags) -> Result<(),()> {
+        let p_4 = virt.p4_index();
+        let entry = table_4[p_4].flags();
+        if flags.contains(PageTableFlags::PRESENT) {
+            if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                self.add_entry_to_table_3(&mut *page_table_ptr, virt, flags)
+            } else {
+                Err(())
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(physFrame) => {
+                    let addr = physFrame.start_address();
+                    table_4[p_4].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.add_entry_to_table_3(&mut *page_table_ptr, virt, flags)
+                },
+            }
+        }
     } 
 
-    pub unsafe fn allocate_table_at_address(&mut self, table_4: &'static mut PageTable, addr: VirtAddr) -> Result<(),()> {
-        panic!("not implemented");
+    /// Inner function of add_entry_to_table
+    unsafe fn add_entry_to_table_3(&mut self, table_3: &'static mut PageTable, virt: VirtAddr, flags: PageTableFlags) -> Result<(),()> {
+        let p_3 = virt.p3_index();
+        let entry = table_3[p_3].flags();
+        if flags.contains(PageTableFlags::PRESENT) {
+            if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                self.add_entry_to_table_2(&mut *page_table_ptr, virt, flags)
+            } else {
+                Err(())
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(physFrame) => {
+                    let addr = physFrame.start_address();
+                    table_3[p_3].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.add_entry_to_table_2(&mut *page_table_ptr, virt, flags)
+                },
+            }
+        }
+     }
+
+    /// Inner function of add_entry_to_table
+    unsafe fn add_entry_to_table_2(&mut self, table_2: &'static mut PageTable, virt: VirtAddr, flags: PageTableFlags) -> Result<(),()> {
+        let p_2 = virt.p2_index();
+        let entry = table_2[p_2].flags();
+        if flags.contains(PageTableFlags::PRESENT) {
+            if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                self.add_entry_to_table_1(&mut *page_table_ptr, virt, flags)
+            } else {
+                Err(())
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(physFrame) => {
+                    let addr = physFrame.start_address();
+                    table_2[p_2].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.add_entry_to_table_1(&mut *page_table_ptr, virt, flags)
+                },
+            }
+        }
+     }
+
+    /// Inner function of add_entry_to_table
+    pub unsafe fn add_entry_to_table_1(&mut self, table_1: &'static mut PageTable, virt: VirtAddr, flags: PageTableFlags) -> Result<(),()> {
+        let p_1 = virt.p1_index();
+        let entry = table_1[p_1].flags();
+        if flags.contains(PageTableFlags::PRESENT) {
+            Err(())
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(physFrame) => {
+                    let addr = physFrame.start_address();
+                    table_1[p_1].set_addr(addr, flags);
+                    Ok(())
+                },
+            }
+        }
+     }
+
+    /// Deallocator, from a given level 4 table, deallocates every thing the user had access to.
+    pub unsafe fn deallocate_level_4_page(&mut self, table_4_addr: PhysAddr) -> Result<(),()> {
+        let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
+        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+        let table_4 = &mut *page_table_ptr;
+        for i in 0..512 {
+            if !table_4[i].is_unused() {
+                let flags = table_4[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.deallocate_level_3_page(&mut *page_table_ptr);
+                }
+            }
+        }
+        self.deallocate_4k_frame(table_4_addr)
     }
 
-    pub fn deallocate_level_4_page(&mut self, table_4: PageTable) -> Result<(),()> {
-        panic!("not implemented");
+    /// Inner function of deallocate_level_4_page
+    unsafe fn deallocate_level_3_page(&mut self, table_3: &'static mut PageTable) {
+        for i in 0..512 {
+            if !table_3[i].is_unused() {
+                let flags = table_3[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.deallocate_level_2_page(&mut *page_table_ptr);
+                }
+            }
+        }
     }
 
-    pub fn deallocate_4k_frame(&mut self, next: PhysFrame) -> Result<(),()> {
-        let next = next.start_address().as_u64();
-        self.pages_available[next as usize] = false;
+    /// Inner function of deallocate_level_4_page
+    unsafe fn deallocate_level_2_page(&mut self, table_2: &'static mut PageTable) {
+        for i in 0..512 {
+            if !table_2[i].is_unused() {
+                let flags = table_2[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.deallocate_level_1_page(&mut *page_table_ptr);
+                }
+            }
+        }
+    }
+
+    /// Inner function of deallocate_level_4_page
+    unsafe fn deallocate_level_1_page(&mut self, table_1: &'static mut PageTable) {
+        for i in 0..512 {
+            if !table_1[i].is_unused() {
+                let flags = table_1[i].flags();
+                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                    self.deallocate_4k_frame(table_1[i].addr());
+                }
+            }
+        }
+    }
+
+    /// Can be used to deallocate a specific 4Ki frame
+    pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) -> Result<(),()> {
+        let table_index = addr.as_u64() >> 12;
+        self.pages_available[table_index as usize] = false;
         return Ok(())
     }
 }
 
+/// Implementation of the trait FrameAllocator for the global API
 unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
     #[inline]
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
