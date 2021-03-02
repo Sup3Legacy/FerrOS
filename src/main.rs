@@ -61,8 +61,6 @@ pub fn init(_boot_info: &'static BootInfo) {
     keyboard::init();
     vga::init();
 
-    
-
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
 
@@ -101,21 +99,24 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             user_owner: 12,
             group_misc: 12,
         },
-        name: [ b'b', b'o', b'n', b'j', b'o', b'u', b'r', 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+        name: [
+            b'b', b'o', b'n', b'j', b'o', b'u', b'r', 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+            0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+            0_u8, 0_u8, 0_u8, 0_u8,
         ],
         user: filesystem::ustar::UGOID(71),
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
         parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 1024 / 2, // /!\ in u16
-        blocks_number: 2,
+        length: 32 / 2 * 3, // /!\ in u16
+        blocks_number: 1,
         mode: filesystem::ustar::FileMode::Short,
         padding: [999999999; 10],
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
-    for i in 0..1024 {
-        data.push(if i % 2 == 0 { (i / 512 + 1) as u8 } else { 0 });
+    for i in 0..(2 * 32) {
+        data.push(3);
     }
     let file = filesystem::ustar::MemFile { header: head, data };
     file.write_to_disk();

@@ -4,7 +4,6 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
 
-
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
 }

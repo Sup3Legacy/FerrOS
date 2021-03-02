@@ -1,4 +1,3 @@
-
 use x86_64::instructions::port::Port;
 
 fn play_sound(frequence: u32) {

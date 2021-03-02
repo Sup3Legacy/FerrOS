@@ -1,5 +1,3 @@
-
-
 pub mod process;
 
 /// Maximum number of co-existing processes.

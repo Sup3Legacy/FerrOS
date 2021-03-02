@@ -1,6 +1,5 @@
 //! Crate that holds the structure repesenting the entry of a GDT
 
-
 /// Implementation of the structure
 #[repr(C)]
 pub struct GdtEntryBits {

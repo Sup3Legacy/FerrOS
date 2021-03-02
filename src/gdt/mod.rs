@@ -12,13 +12,12 @@ mod gdt_entry;
 /// Index of the stack for double fault handling
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
-
 /// Structure to store every selector/segment to modify them at will afterward.
 pub struct Selectors {
     code_selector: SegmentSelector, // kernel selector
-    tss_selector: SegmentSelector, // TSS selector
-    code_segment: SegmentSelector, // user code segment selector
-    data_segment: SegmentSelector, // user data segment selector
+    tss_selector: SegmentSelector,  // TSS selector
+    code_segment: SegmentSelector,  // user code segment selector
+    data_segment: SegmentSelector,  // user data segment selector
 }
 
 lazy_static! {

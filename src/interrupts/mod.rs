@@ -12,7 +12,6 @@ use crate::{print, println};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
-
 mod syscalls;
 
 #[derive(Clone, Debug, Copy)]

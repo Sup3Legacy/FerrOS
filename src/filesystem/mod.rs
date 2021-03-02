@@ -168,6 +168,9 @@ pub fn init() {
     let len = (file.header.length << 1) as usize; // x2 because header.length is in u16... Might change that
 
     // These assert_eq are only here for debugging purposes
+    assert_eq!(len as usize, data.len()); // length in u8 of the data segment of the directory
+    assert_eq!(file.header.file_type, ustar::Type::Dir); // Checks whether the blob is really a directory
+    assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
     let mut files: BTreeMap<String, ustar::Address> = BTreeMap::new();
     let number = len / 32; // number of sub_items of the dir
     for i in 0..number {

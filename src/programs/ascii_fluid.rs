@@ -80,7 +80,8 @@ pub fn main() -> ! {
                 let particles_distance = sqrt((squared as u16).into());
                 let particles_interaction = (particles_distance / 2.) - 1.;
                 if particles_interaction > 0. {
-                    density[particles_cursor as usize] += particles_interaction * particles_interaction;
+                    density[particles_cursor as usize] +=
+                        particles_interaction * particles_interaction;
                 }
             }
         }
