@@ -28,9 +28,8 @@ fn nosound() {
 }
 
 pub fn beep() {
-    unsafe {
-        play_sound(1000);
-    }
+    play_sound(1000);
+    
     crate::long_halt(3);
     nosound();
 }

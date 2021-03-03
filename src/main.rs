@@ -115,7 +115,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
-    for i in 0..(2 * 32) {
+    for _i in 0..(2 * 32) {
         data.push(3);
     }
     let file = filesystem::ustar::MemFile { header: head, data };
@@ -127,11 +127,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             .data
     }); */
 
-    unsafe {
-        println!("OFFSET : {} ", memory::PHYSICAL_OFFSET);
-    }
-    use x86_64::registers::control::Cr0;
-    println!("{:?}", Cr0::read());
     // fin des tests
 
     // This enables the tests
