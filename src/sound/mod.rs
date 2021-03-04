@@ -29,7 +29,7 @@ fn nosound() {
 
 pub fn beep() {
     play_sound(1000);
-    
+
     crate::long_halt(3);
     nosound();
 }

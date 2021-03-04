@@ -1,10 +1,11 @@
 use super::disk_operations;
 
+use crate::{print, println};
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
 // Number of 512-sector segments
-const LBA_TABLES_COUNT: u32 = 4;
+const LBA_TABLES_COUNT: u32 = 1;
 
 /// Max number of blocks usable in short mode
 const SHORT_MODE_LIMIT: u32 = 100;
@@ -12,7 +13,7 @@ const SHORT_MODE_LIMIT: u32 = 100;
 pub static mut LBA_TABLE_GLOBAL: LBATableGlobal = LBATableGlobal {
     index: 0,
     data: [LBATable {
-        index: 1,
+        index: 0,
         data: [true; 510],
     }; LBA_TABLES_COUNT as usize],
 };
@@ -221,7 +222,7 @@ impl LBATableGlobal {
             data: glob,
         }
     }
-    fn write_to_disk(&self) {
+    pub fn write_to_disk(&self) {
         for i in 0..LBA_TABLES_COUNT {
             self.data[i as usize].write_to_disk(512 * i + 1);
         }
@@ -271,87 +272,158 @@ fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
     res
 }
 
+/// returns a vector of fresh addresses. /!\ once they are returned, they are also marked as reserved by the filesystem!
+unsafe fn get_addresses(n: u32) -> Vec<Address> {
+    let mut indice = 0;
+    let mut res = Vec::new();
+    let mut current_lba = LBA_TABLE_GLOBAL.get_index() as usize;
+    let mut current_block = LBA_TABLE_GLOBAL.get_lba_index(current_lba as u32) as usize;
+    // /!\ Could loop forever if drive full
+    while indice < n {
+        if LBA_TABLE_GLOBAL.is_lba_available(current_lba as u32) {
+            if LBA_TABLE_GLOBAL.is_available(current_lba as u32, current_block as u32) {
+                res.push(Address {
+                    lba: current_lba as u16,
+                    block: current_block as u16,
+                });
+                // Write back allocation informations
+                LBA_TABLE_GLOBAL.mark_unavailable(current_lba as u32, (current_block) as u32);
+                indice += 1;
+                LBA_TABLE_GLOBAL.data[current_lba as usize].index =
+                    if LBA_TABLE_GLOBAL.data[current_lba as usize].index < 510 {
+                        LBA_TABLE_GLOBAL.data[current_lba as usize].index + 1
+                    } else {
+                        0
+                    };
+            } else {
+                LBA_TABLE_GLOBAL.set_lba_index(current_lba as u32, (current_block + 1) as u16);
+                current_block += 1;
+            }
+        } else {
+            LBA_TABLE_GLOBAL.set_index((current_lba + 1) as u32);
+            current_lba += 1;
+        }
+    }
+    LBA_TABLE_GLOBAL.write_to_disk();
+    res
+}
+
 impl MemFile {
     pub fn write_to_disk(&self) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = self.header;
         let length = file_header.length; // TODO : make sure it is also the length of self.data
-        if length < SHORT_MODE_LIMIT * 256 {
-            file_header.mode = FileMode::Short;
-            let mut block_addresses: Vec<Address> = Vec::new();
-            let mut indice = 0;
-            let blocks_number = file_header.blocks_number + 1;
-            unsafe {
-                let mut current_lba = LBA_TABLE_GLOBAL.get_index() as usize;
-                let mut current_block = LBA_TABLE_GLOBAL.get_lba_index(current_lba as u32) as usize;
-                while indice < blocks_number {
-                    if LBA_TABLE_GLOBAL.is_lba_available(current_lba as u32) {
-                        if LBA_TABLE_GLOBAL.is_available(current_lba as u32, current_block as u32) {
-                            block_addresses.push(Address {
-                                lba: current_lba as u16,
-                                block: current_block as u16,
-                            });
-
-                            // Write back allocation informations
-                            LBA_TABLE_GLOBAL
-                                .mark_unavailable(current_lba as u32, (current_block) as u32);
-                            indice += 1;
-                            LBA_TABLE_GLOBAL.data[current_lba as usize].index =
-                                if LBA_TABLE_GLOBAL.data[current_lba as usize].index < 510 {
-                                    LBA_TABLE_GLOBAL.data[current_lba as usize].index + 1
-                                } else {
-                                    0
-                                };
-                        } else {
-                            LBA_TABLE_GLOBAL
-                                .set_lba_index(current_lba as u32, (current_block + 1) as u16);
-                            current_block += 1;
-                        }
-                    } else {
-                        LBA_TABLE_GLOBAL.set_index((current_lba + 1) as u32);
-                        current_lba += 1;
-                    }
-                }
-            }
+        if file_header.mode == FileMode::Short {
+            //println!("Writing in short mode.");
+            let blocks_number = file_header.blocks_number;
+            let header_address: Address = unsafe { get_addresses(1)[0] };
+            let block_addresses: Vec<Address> = unsafe { get_addresses(blocks_number) };
             let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
-            for i in 1..(blocks_number as usize) {
-                addresses[i - 1] = block_addresses[i];
+            for i in 0..(blocks_number as usize) {
+                addresses[i] = block_addresses[i];
             }
             file_header.blocks = addresses;
             write_to_disk(
                 file_header,
-                (block_addresses[0].lba * 512 + block_addresses[0].block + 1) as u32,
+                (header_address.lba * 512 + header_address.block + 1) as u32,
             );
             unsafe {
                 let blocks_to_write = slice_vec(&self.data);
-                for i in 0..(blocks_number - 1) {
+                for i in 0..blocks_number {
                     let file_block = FileBlock {
                         data: blocks_to_write[i as usize],
                     };
                     write_to_disk(
                         file_block,
-                        (block_addresses[(i + 1) as usize].lba * 512
-                            + block_addresses[(i + 1) as usize].block
+                        (block_addresses[i as usize].lba * 512
+                            + block_addresses[i as usize].block
                             + 1) as u32,
                     );
                 }
                 LBA_TABLE_GLOBAL.write_to_disk();
-                addresses[0]
+                header_address
             }
         } else {
-            file_header.mode = FileMode::Long;
-            todo!()
+            //println!("Writing in long mode.");
+            let blocks_number = file_header.blocks_number;
+            let number_address_block = blocks_number / 128 + {
+                if blocks_number % 128 == 0 {
+                    0
+                } else {
+                    1
+                }
+            };
+            let header_address = unsafe { get_addresses(1)[0] };
+            let address_block_addresses: Vec<Address> =
+                unsafe { get_addresses(number_address_block) };
+            let data_addresses: Vec<Address> = unsafe { get_addresses(blocks_number) };
+
+            unsafe {
+                LBA_TABLE_GLOBAL.write_to_disk();
+            }
+
+            // This is the segment of addresses in the header
+            let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
+            for i in 0..(number_address_block as usize) {
+                addresses[i] = address_block_addresses[i];
+            }
+            file_header.blocks = addresses;
+            write_to_disk(
+                file_header,
+                (header_address.lba * 512 + header_address.block + 1) as u32,
+            );
+            // Here, header has been written.
+
+            // We now write all address blocks
+            let mut compteur = 0;
+            for i in 0..number_address_block {
+                // Fresh address-block
+                let mut block = LongFile {
+                    addresses: [Address { lba: 0, block: 0 }; 128 as usize],
+                };
+                // We fill this block with block addresses
+                for j in (i * 128)..((i + 1) * 128) {
+                    if compteur >= file_header.blocks_number {
+                        break;
+                    }
+                    block.addresses[(j % 128) as usize] = data_addresses[j as usize];
+                    compteur += 1;
+                }
+                // Then we write the address-block to the disk
+                write_to_disk(
+                    block,
+                    (address_block_addresses[i as usize].lba * 512
+                        + address_block_addresses[i as usize].block
+                        + 1) as u32,
+                );
+            }
+
+            // Now we write all data blocks
+            let blocks_to_write = slice_vec(&self.data);
+            for i in 0..blocks_number {
+                let file_block = FileBlock {
+                    data: blocks_to_write[i as usize],
+                };
+                write_to_disk(
+                    file_block,
+                    (data_addresses[i as usize].lba * 512 + data_addresses[i as usize].block + 1)
+                        as u32,
+                );
+            }
+            header_address
         }
     }
     pub fn read_from_disk(address: Address) -> Self {
-        let header: Header = read_from_disk((address.lba * 512 + address.block + 2) as u32);
+        let header: Header = read_from_disk((address.lba * 512 + address.block + 1) as u32); // /!\
+        let length = header.length;
+        //println!("{:?}", header);
         let mut file = Self {
             header,
             data: Vec::new(),
         };
-        //println!("{:?}", header);
+        println!("{:?}, {}", header.name, header.length);
         if header.mode == FileMode::Short {
-            let length = header.length;
+            //println!("Reading in short mode");
             let mut compteur = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
@@ -369,7 +441,7 @@ impl MemFile {
                 }
             }
         } else if header.mode == FileMode::Long {
-            let length = header.length;
+            //println!("Reading in long mode");
             let mut compteur = 0;
             let number_address_block = header.blocks_number / 128 + {
                 if header.blocks_number % 128 == 0 {
@@ -378,24 +450,25 @@ impl MemFile {
                     1
                 }
             };
-            let mut addresses = Vec::new();
+            let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
             for i in 0..number_address_block {
                 let address = header.blocks[i as usize];
                 let sector: LongFile =
                     read_from_disk((address.lba * 512 + address.block + 1) as u32);
-                for j in 0..256 {
+                for j in 0..128 {
                     if compteur >= length {
                         break;
                     }
-                    addresses.push(sector.addresses[j]);
+                    data_addresses.push(sector.addresses[j]);
                     compteur += 1;
                 }
             }
 
             // Read these data blocks
+            compteur = 0;
             for i in 0..header.blocks_number {
-                let address = addresses[i as usize];
+                let address = data_addresses[i as usize];
                 let sector: FileBlock =
                     read_from_disk((address.lba * 512 + address.block + 1) as u32);
                 for j in 0..256 {

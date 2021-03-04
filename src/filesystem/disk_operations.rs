@@ -61,7 +61,32 @@ pub fn read_sector(lba: u32) -> [u16; 256] {
     unsafe {
         read((&mut a) as *mut [u16; 256], lba, DISK_PORT);
     }
+    unsafe {
+        flush_cache(DISK_PORT);
+    }
     a
+}
+
+unsafe fn flush_cache(port: u16) {
+    disable();
+    let mut command_register = Port::new(port + 7);
+    let mut lba_low = Port::new(port + 3);
+    let mut lba_mid = Port::new(port + 4);
+    let mut lba_high = Port::new(port + 5);
+    lba_low.write(0 as u8);
+    lba_mid.write(0 as u8);
+    lba_high.write(0 as u8);
+    command_register.write(0xE7_u8); // give the READ SECTOR command
+    let mut i = command_register.read();
+    let mut compte = 1;
+    while (i & 0x80) != 0 {
+        i = command_register.read();
+        compte += 1;
+        if compte % 1000000 == 0 {
+            println!("not finished 1 : {} en {}", i, compte); // to warn in case of infinite loops
+        }
+    }
+    enable();
 }
 
 /// Read function that reads in any disk if the right port is given.
@@ -116,6 +141,9 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
 pub fn write_sector(table: &[u16; 256], lba: u32) {
     unsafe {
         write(table, lba, DISK_PORT);
+    }
+    unsafe {
+        flush_cache(DISK_PORT);
     }
 }
 

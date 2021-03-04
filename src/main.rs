@@ -13,6 +13,7 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
+use bit_field::BitArray;
 use core::panic::PanicInfo;
 
 // use os_test::println;  TODO
@@ -64,7 +65,13 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
 
-    filesystem::init();
+    filesystem::disk_operations::init();
+    unsafe {
+        // Initializes the LBA tables
+        filesystem::ustar::LBA_TABLE_GLOBAL.init();
+        filesystem::ustar::LBA_TABLE_GLOBAL.write_to_disk();
+    }
+    //filesystem::init();
 }
 
 // test taks, to move out of here
@@ -94,7 +101,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     // quelques tests de drive
     let head = filesystem::ustar::Header {
-        file_type: filesystem::ustar::Type::Dir,
+        file_type: filesystem::ustar::Type::File,
         flags: filesystem::ustar::HeaderFlags {
             user_owner: 12,
             group_misc: 12,
@@ -108,24 +115,60 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
         parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 32 / 2 * 3, // /!\ in u16
+        length: 142, // /!\ in u16
         blocks_number: 1,
         mode: filesystem::ustar::FileMode::Short,
         padding: [999999999; 10],
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
-    for _i in 0..(2 * 32) {
-        data.push(3);
+    for _i in 0..(2 * 142) {
+        data.push((_i % 512) as u8);
     }
     let file = filesystem::ustar::MemFile { header: head, data };
-    file.write_to_disk();
-
-    /*
+    let add_court = file.write_to_disk();
+    println!("{:?}", add_court);
     println!("{:?}", unsafe {
-        filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Address { lba: 0, block: 0 })
+        filesystem::ustar::MemFile::read_from_disk(add_court)
             .data
-    }); */
+            .len()
+    });
+    
+
+    let head = filesystem::ustar::Header {
+        file_type: filesystem::ustar::Type::File,
+        flags: filesystem::ustar::HeaderFlags {
+            user_owner: 12,
+            group_misc: 12,
+        },
+        name: [
+            b'b', b'o', b'n', b'j', b'o', b'u', b'r', 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+            0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
+            0_u8, 0_u8, 0_u8, 0_u8,
+        ],
+        user: filesystem::ustar::UGOID(71),
+        owner: filesystem::ustar::UGOID(89),
+        group: filesystem::ustar::UGOID(21),
+        parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
+        length: 38000_u32, // /!\ in u16
+        blocks_number: 147,
+        mode: filesystem::ustar::FileMode::Long,
+        padding: [999999999; 10],
+        blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
+    };
+    let mut data: Vec<u8> = vec![];
+    for _i in 0..(2 * 38000) {
+        data.push([1, 2, 3, 4][_i % 4]);
+    }
+    let file = filesystem::ustar::MemFile { header: head, data };
+    let add_long = file.write_to_disk();
+
+    println!("{:?}", add_long);
+    println!("{:?}", unsafe {
+        filesystem::ustar::MemFile::read_from_disk(add_long)
+            .data
+            .len()
+    });
 
     // fin des tests
 

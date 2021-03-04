@@ -92,7 +92,7 @@ impl BootInfoAllocator {
 
         let mut maxi = 0;
         let mut next = 0;
-        
+
         // Fill up the table with every addresses
         for i in frame_addresses {
             NUMBER_TABLES += 1;
@@ -112,13 +112,14 @@ impl BootInfoAllocator {
 
     /// Returns a new unallocated Frame and marks it as allocated.
     pub fn allocate_4k_frame(&mut self) -> Option<PhysAddr> {
-        for _i in 0..MAX_PAGE_ALLOWED { // doesn't use a loop to handle the case where everything is already allocated
+        for _i in 0..MAX_PAGE_ALLOWED {
+            // doesn't use a loop to handle the case where everything is already allocated
             if self.pages_available[self.next] {
                 self.pages_available[self.next] = false;
                 self.next += 1; // thus next should be decreased before usage
 
                 let phys = PhysAddr::new(((self.next as u64) - 1) << 12);
-                return Some(phys)
+                return Some(phys);
             } else {
                 self.next += 1;
                 if self.next > self.maxi {
@@ -132,13 +133,14 @@ impl BootInfoAllocator {
     /// Creates a new level_4 table and taking into account the kernel adresses.
     pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysAddr, ()> {
         if let Some(phys) = self.allocate_4k_frame() {
-           // let phys = frame.start_address();
+            // let phys = frame.start_address();
             let virt = VirtAddr::new(phys.as_u64() + PHYSICAL_OFFSET);
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_4_table = &mut *page_table_ptr;
             for i in 0..512 {
                 level_4_table[i]
-                    .set_addr(self.level4_table[i].addr(), self.level4_table[i].flags()); // copies the data from the kernels table
+                    .set_addr(self.level4_table[i].addr(), self.level4_table[i].flags());
+                // copies the data from the kernels table
             }
             Ok(phys)
         } else {
@@ -201,7 +203,7 @@ impl BootInfoAllocator {
             match self.allocate_4k_frame() {
                 None => Err(()),
                 Some(addr) => {
-                   // let addr = phys_frame.start_address();
+                    // let addr = phys_frame.start_address();
                     table_3[p_3].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -298,7 +300,10 @@ impl BootInfoAllocator {
     }
 
     /// Inner function of deallocate_level_4_page
-    unsafe fn deallocate_level_3_page(&mut self, table_3: &'static mut PageTable) -> Result<(),()> {
+    unsafe fn deallocate_level_3_page(
+        &mut self,
+        table_3: &'static mut PageTable,
+    ) -> Result<(), ()> {
         let mut failed = false;
         for i in 0..512 {
             if !table_3[i].is_unused() {
@@ -321,7 +326,10 @@ impl BootInfoAllocator {
     }
 
     /// Inner function of deallocate_level_4_page
-    unsafe fn deallocate_level_2_page(&mut self, table_2: &'static mut PageTable) -> Result<(),()>  {
+    unsafe fn deallocate_level_2_page(
+        &mut self,
+        table_2: &'static mut PageTable,
+    ) -> Result<(), ()> {
         let mut failed = false;
         for i in 0..512 {
             if !table_2[i].is_unused() {
@@ -344,7 +352,10 @@ impl BootInfoAllocator {
     }
 
     /// Inner function of deallocate_level_4_page
-    unsafe fn deallocate_level_1_page(&mut self, table_1: &'static mut PageTable) -> Result<(),()> {
+    unsafe fn deallocate_level_1_page(
+        &mut self,
+        table_1: &'static mut PageTable,
+    ) -> Result<(), ()> {
         let mut failed = false;
         for i in 0..512 {
             if !table_1[i].is_unused() {
@@ -377,15 +388,13 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
     #[inline]
     fn allocate_frame(&mut self) -> Option<PhysFrame> {
         match self.allocate_4k_frame() {
-            Some(addr) => {
-                match PhysFrame::from_start_address(addr) {
-                    Ok(frame) => Some(frame),
-                    Err(_) => None
-                }
+            Some(addr) => match PhysFrame::from_start_address(addr) {
+                Ok(frame) => Some(frame),
+                Err(_) => None,
             },
-            None => None
+            None => None,
         }
-       // PhysFrame::from_start_address(self.allocate_4k_frame())
+        // PhysFrame::from_start_address(self.allocate_4k_frame())
     }
 }
 
