@@ -164,6 +164,12 @@ pub struct LBATableGlobal {
     data: [LBATable; LBA_TABLES_COUNT as usize],
 }
 
+#[repr(packed)]
+#[derive(Debug, Clone, Copy)]
+pub struct LongFile {
+    pub addresses: [Address; 128],
+}
+
 impl LBATable {
     fn init(&mut self) {
         for i in 0..512 {
@@ -362,8 +368,49 @@ impl MemFile {
                     compteur += 1;
                 }
             }
+        } else if header.mode == FileMode::Long {
+            let length = header.length;
+            let mut compteur = 0;
+            let number_address_block = header.blocks_number / 128 + {
+                if header.blocks_number % 128 == 0 {
+                    0
+                } else {
+                    1
+                }
+            };
+            let mut addresses = Vec::new();
+            // Read all addresses of data blocks
+            for i in 0..number_address_block {
+                let address = header.blocks[i as usize];
+                let sector: LongFile =
+                    read_from_disk((address.lba * 512 + address.block + 1) as u32);
+                for j in 0..256 {
+                    if compteur >= length {
+                        break;
+                    }
+                    addresses.push(sector.addresses[j]);
+                    compteur += 1;
+                }
+            }
+
+            // Read these data blocks
+            for i in 0..header.blocks_number {
+                let address = addresses[i as usize];
+                let sector: FileBlock =
+                    read_from_disk((address.lba * 512 + address.block + 1) as u32);
+                for j in 0..256 {
+                    if compteur >= length {
+                        break;
+                    }
+                    unsafe {
+                        file.data.push((sector.data[j] >> 8) as u8);
+                        file.data.push((sector.data[j] & 0xff) as u8);
+                    }
+                    compteur += 1;
+                }
+            }
         } else {
-            todo!()
+            panic!("No mode selected in file");
         }
         file
     }
@@ -406,6 +453,16 @@ impl U16Array for LBATable {
 
     fn from_u16_array(array: [u16; 256]) -> Self {
         unsafe { transmute::<[u16; 256], LBATable>(array) }
+    }
+}
+
+impl U16Array for LongFile {
+    fn to_u16_array(&self) -> [u16; 256] {
+        unsafe { transmute::<LongFile, [u16; 256]>(*self) }
+    }
+
+    fn from_u16_array(array: [u16; 256]) -> Self {
+        unsafe { transmute::<[u16; 256], LongFile>(array) }
     }
 }
 
