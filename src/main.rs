@@ -97,7 +97,6 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-    // Why is this not in the init function ?
 
     // quelques tests de drive
     let head = filesystem::ustar::Header {
@@ -115,14 +114,14 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
         parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 142, // /!\ in u16
-        blocks_number: 1,
+        length: 286, // /!\ in u16
+        blocks_number: 2,
         mode: filesystem::ustar::FileMode::Short,
         padding: [999999999; 10],
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
-    for _i in 0..(2 * 142) {
+    for _i in 0..(2 * 286) {
         data.push((_i % 512) as u8);
     }
     let file = filesystem::ustar::MemFile { header: head, data };
@@ -133,7 +132,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             .data
             .len()
     });
-    
 
     let head = filesystem::ustar::Header {
         file_type: filesystem::ustar::Type::File,

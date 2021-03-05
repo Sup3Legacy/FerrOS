@@ -358,10 +358,6 @@ impl MemFile {
                 unsafe { get_addresses(number_address_block) };
             let data_addresses: Vec<Address> = unsafe { get_addresses(blocks_number) };
 
-            unsafe {
-                LBA_TABLE_GLOBAL.write_to_disk();
-            }
-
             // This is the segment of addresses in the header
             let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
             for i in 0..(number_address_block as usize) {
@@ -410,6 +406,10 @@ impl MemFile {
                         as u32,
                 );
             }
+            unsafe {
+                LBA_TABLE_GLOBAL.write_to_disk();
+            }
+
             header_address
         }
     }
