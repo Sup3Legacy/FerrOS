@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
 // Number of 512-sector segments
-const LBA_TABLES_COUNT: u32 = 1;
+const LBA_TABLES_COUNT: u32 = 4;
 
 /// Max number of blocks usable in short mode
 const SHORT_MODE_LIMIT: u32 = 100;
@@ -17,8 +17,6 @@ pub static mut LBA_TABLE_GLOBAL: LBATableGlobal = LBATableGlobal {
         data: [true; 510],
     }; LBA_TABLES_COUNT as usize],
 };
-
-static mut LBA_TABLE_INDEX: u32 = 2;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -183,7 +181,7 @@ impl LBATable {
         LBATable::from_u16_array(disk_operations::read_sector(lba))
     }
     fn write_to_disk(&self, lba_index: u32) {
-        disk_operations::write_sector(&self.to_u16_array(), lba_index);
+        disk_operations::write_sector(lba_index, &self.to_u16_array());
     }
     pub fn is_available(&self, i: u32) -> bool {
         self.data[i as usize]
@@ -286,6 +284,10 @@ unsafe fn get_addresses(n: u32) -> Vec<Address> {
                     lba: current_lba as u16,
                     block: current_block as u16,
                 });
+
+                if current_lba > 0 {
+                    println!("Allocated address : {}, {}", current_lba, current_block);
+                }
                 // Write back allocation informations
                 LBA_TABLE_GLOBAL.mark_unavailable(current_lba as u32, (current_block) as u32);
                 indice += 1;
@@ -304,7 +306,6 @@ unsafe fn get_addresses(n: u32) -> Vec<Address> {
             current_lba += 1;
         }
     }
-    LBA_TABLE_GLOBAL.write_to_disk();
     res
 }
 
@@ -414,7 +415,8 @@ impl MemFile {
         }
     }
     pub fn read_from_disk(address: Address) -> Self {
-        let header: Header = read_from_disk((address.lba * 512 + address.block + 1) as u32); // /!\
+        let header: Header =
+            read_from_disk(((address.lba as u32) * 512 + (address.block as u32) + 1)); // /!\
         let length = header.length;
         //println!("{:?}", header);
         let mut file = Self {
@@ -546,9 +548,11 @@ pub trait U16Array {
 }
 
 pub fn write_to_disk(data: impl U16Array, lba: u32) {
-    disk_operations::write_sector(&data.to_u16_array(), lba);
+    println!("writing at lba : {} = {}", lba, lba as u64);
+    disk_operations::write_sector(lba, &data.to_u16_array());
 }
 
 pub fn read_from_disk<T: U16Array>(lba: u32) -> T {
-    T::from_u16_array(disk_operations::read_sector(lba))
+    let res = disk_operations::read_sector(lba);
+    T::from_u16_array(res)
 }
