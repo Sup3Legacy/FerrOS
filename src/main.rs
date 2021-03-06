@@ -122,19 +122,16 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     };
     let mut data: Vec<u8> = vec![];
     for _i in 0..(2 * 286) {
-        data.push((1 + _i % 512) as u8);
+        data.push((_i % 512) as u8);
     }
     let file = filesystem::ustar::MemFile { header: head, data };
     let add_court = file.write_to_disk();
-
     println!("{:?}", add_court);
     println!("{:?}", unsafe {
         filesystem::ustar::MemFile::read_from_disk(add_court)
             .data
             .len()
     });
-
-    println!("LONG");
 
     let head = filesystem::ustar::Header {
         file_type: filesystem::ustar::Type::File,
@@ -151,15 +148,15 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
         parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 48630_u32, // /!\ in u16
-        blocks_number: 190,
+        length: 38000_u32, // /!\ in u16
+        blocks_number: 147,
         mode: filesystem::ustar::FileMode::Long,
         padding: [999999999; 10],
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
-    for _i in 0..(2 * 48630_u32) {
-        data.push((_i % 512) as u8);
+    for _i in 0..(2 * 38000) {
+        data.push([1, 2, 3, 4][_i % 4]);
     }
     let file = filesystem::ustar::MemFile { header: head, data };
     let add_long = file.write_to_disk();
