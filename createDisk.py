@@ -1,7 +1,7 @@
 #!/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
 disque = open("disk.img", "w")
 
-n = 50
+n = 400
 l1 = [0]*512
 l2 = []
 l2 = l2 + [0]*(512-len(l2))
