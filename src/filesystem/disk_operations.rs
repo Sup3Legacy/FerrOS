@@ -97,7 +97,10 @@ unsafe fn flush_cache(port: u16) {
 
 /// Read function that reads in any disk if the right port is given.
 unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
-    disable();
+    //disable();
+
+    wait_BSY(port);
+
     //println!("Reading from sector {}", lba);
     let lba = lba as u64;
     let mut data_register = Port::<u16>::new(port + 0);
@@ -121,13 +124,9 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     // waits for the disk to be ready for transfer
     let mut i = command_register.read();
     let mut compte = 1;
-    while (i & 0x80) != 0 || (i & 0b00001000_u8) == 0 {
-        i = command_register.read();
-        compte += 1;
-        if compte % 1000000 == 0 {
-            println!("not finished 1 : {} en {}", i, compte); // to warn in case of infinite loops
-        }
-    }
+    
+    wait_BSY(port);
+    wait_DRQ(port);
 
     for i in 0..256 {
         let t = data_register.read(); // reads all the data one by one. The loop is mandatory to give the drive the time to give the data
@@ -136,14 +135,10 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
 
     let mut i = command_register.read();
     let mut compte = 1;
-    while (i & 0x80) != 0 {
-        i = command_register.read();
-        compte += 1;
-        if compte % 1000000 == 0 {
-            println!("not finished 2 : {} en {}", i, compte); // to warn in case of infinite loops
-        }
-    }
-    enable(); // /!\ Should not to this if it was disabled before !
+    
+    wait_BSY(port);
+
+    //enable(); // /!\ Should not to this if it was disabled before !
 }
 
 /// function that from la sector of the disk writes the given data at the corresponding place (lba's count starts at 1!)
@@ -158,7 +153,10 @@ pub fn write_sector(table: &[u16; 256], lba: u32) {
 
 /// Write function that writes in any disk if the right port is given.
 unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
-    disable();
+    //disable();
+
+    wait_BSY(port);
+
     let lba = lba as u64;
     let mut data_register = Port::<u16>::new(port + 0);
     let mut sectorcount_register = Port::new(port + 2);
@@ -180,13 +178,10 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
 
     let mut i = command_register.read();
     let mut compte = 1;
-    while (i & 0x80) != 0 || (i & 0b00001000_u8) == 0 {
-        i = command_register.read();
-        compte += 1;
-        if compte % 1000000 == 0 {
-            println!("not finished 3 : {} en {}", i, compte); // to warn in case of infinite loops
-        }
-    }
+    
+    wait_BSY(port);
+    wait_DRQ(port);
+
     let mut delay = Port::new(0x80);
     for i in 0..256 {
         data_register.write(table[i]); // writes all the data one by one. The loop is mandatory to give the drive the time to accept the data
@@ -197,12 +192,30 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
 
     let mut i = command_register.read();
     let mut compte = 1;
-    while (i & 0x80) != 0 {
-        i = command_register.read();
-        compte += 1;
-        if compte % 1000000 == 0 {
-            println!("not finished 3 : {} en {}", i, compte); // to warn in case of infinite loops
-        }
+    
+    wait_BSY(port);
+
+    //enable(); // /!\ Should not to this if it was disabled before !
+}
+
+unsafe fn wait_BSY(port: u16) {
+    let mut port: Port<u16> = Port::new(port + 7);
+    while port.read() & 0x80 != 0 {}
+}
+
+unsafe fn wait_DRQ(port: u16) {
+    let mut port: Port<u16> = Port::new(port + 7);
+    while port.read() & 0x08 == 0 {}
+}
+
+unsafe fn flush_cache(port: u16) {
+    let mut device_head_register = Port::new(port + 6);
+    let mut command_register = Port::new(port + 7);
+    device_head_register.write(0x40_u8);
+    command_register.write(0xE7_u8); // give the READ SECTOR command
+
+    let mut status = command_register.read();
+    while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
+        status = command_register.read();
     }
-    enable(); // /!\ Should not to this if it was disabled before !
 }
