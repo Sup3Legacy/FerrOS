@@ -4,7 +4,10 @@ use crate::{print, println};
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
-// Number of 512-sector segments
+/// Number of 512-sector segments.
+/// 
+/// It should be replaced by an automatic detection of the number of segments,
+/// Using the informations given by the drive at initialization.
 const LBA_TABLES_COUNT: u32 = 4;
 
 /// Max number of blocks usable in short mode
@@ -18,14 +21,20 @@ pub static mut LBA_TABLE_GLOBAL: LBATableGlobal = LBATableGlobal {
     }; LBA_TABLES_COUNT as usize],
 };
 
-static mut LBA_TABLE_INDEX: u32 = 2;
-
+/// The type of data contained in the sector.
+///
+/// *Types*
+/// * `Available` - the sector is availabel (default state)
+/// * `File` - the sector contains data from a file
+/// * `Directory` - the sector contains data from a directory.
+///
+/// This should be moved into [`crate::filesystem::mod`], as the distinction `File`/`Dir` is irrelevant here.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
 enum FileType {
-    Available = 10,
-    File = 0,
-    Directory = 1,
+    Available = 0,
+    File = 1,
+    Directory = 2,
 }
 /*
 - 2 octets de flags/autorisation (u:rwxs, g:rwxs, o:rwxs, opened, ...)
@@ -122,6 +131,7 @@ pub struct Header {
 }
 
 impl Header {
+    /// Returns whether the header is of a directory. Pretty useless.
     fn is_dir(&self) -> bool {
         match self.file_type {
             Type::Dir => true,
@@ -130,6 +140,7 @@ impl Header {
     }
 }
 
+/// Memory representation of a raw file
 #[repr(packed)]
 #[derive(Debug, Clone)]
 pub struct MemFile {
@@ -137,6 +148,8 @@ pub struct MemFile {
     pub data: Vec<u8>,
 }
 
+/// Memory representation of a sector containing data of a directory.
+/// This data is a correspondance table `name`<->`Address`
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct DirBlock {
@@ -145,12 +158,16 @@ pub struct DirBlock {
 
 impl DirBlock {}
 
+/// Memory representation of a sector containing generic data (that of a file).
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct FileBlock {
     data: [u16; 256],
 }
 
+/// Memory representation of a LBA-Table.
+/// It contains its index of the first available sector
+/// as well as the occupation table of all its sectors
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct LBATable {
@@ -158,6 +175,8 @@ pub struct LBATable {
     data: [bool; 510],
 }
 
+/// Memory representation of the global LBA table.
+/// It is never written to/read from the disk directly, but simply constructed at boot-time.
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct LBATableGlobal {
@@ -165,6 +184,7 @@ pub struct LBATableGlobal {
     data: [LBATable; LBA_TABLES_COUNT as usize],
 }
 
+/// Memory representation of the address blocks of a blob stored in long-mode.
 #[repr(packed)]
 #[derive(Debug, Clone, Copy)]
 pub struct LongFile {
@@ -197,6 +217,8 @@ impl LBATable {
 }
 
 impl LBATableGlobal {
+    /// Initialization of the global LBA-table.
+    /// IT basically resets its index and all its LBA's index and occupation table.
     pub fn init(&mut self) {
         self.index = 0;
         for i in 0..LBA_TABLES_COUNT {
@@ -207,21 +229,31 @@ impl LBATableGlobal {
         }
         self.write_to_disk();
     }
+    /// Constructs the global LBA-table from disk.
+    ///
+    /// It simply reads all LBA-tables and store them.
     fn load_from_disk() -> Self {
         //disk_operations::init();
+        let mut index = LBA_TABLES_COUNT;
         let mut glob = [LBATable {
             index: 1,
             data: [true; 510],
         }; LBA_TABLES_COUNT as usize];
         // Load the LBA tables from disk
         for i in 0..LBA_TABLES_COUNT {
-            glob[i as usize] = LBATable::from_u16_array(disk_operations::read_sector(512 * i));
+            let new = LBATable::from_u16_array(disk_operations::read_sector(512 * i));
+            // update the global LBA-table's index if found the first non-full LBA.
+            if new.index != 510 && index == LBA_TABLES_COUNT {
+                index = i;
+            }
+            glob[i as usize] = new;
         }
         Self {
             index: 0,
             data: glob,
         }
     }
+    /// Rewrites the global LBA-table to the disk.
     pub fn write_to_disk(&self) {
         for i in 0..LBA_TABLES_COUNT {
             self.data[i as usize].write_to_disk(512 * i);
@@ -253,6 +285,8 @@ impl LBATableGlobal {
     }
 }
 
+/// Slices a `Vec<u8>` of binary data into a `Vec<[u16; 256]>`.
+/// This simplifies the conversion from data-blob to set of `256-u16` sectors.
 fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
     let n = data.len();
     let block_number = n / 512 + (if n % 512 > 0 { 1 } else { 0 });
@@ -272,7 +306,8 @@ fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
     res
 }
 
-/// returns a vector of fresh addresses. /!\ once they are returned, they are also marked as reserved by the filesystem!
+/// Returns a vector of fresh addresses. /!\ once they are returned, they are also marked as reserved by the filesystem!
+/// So one must avoid getting more addresses than needed (this could allocate all the disk with blank unused data). 
 unsafe fn get_addresses(n: u32) -> Vec<Address> {
     let mut indice = 0;
     let mut res = Vec::new();
@@ -310,6 +345,10 @@ unsafe fn get_addresses(n: u32) -> Vec<Address> {
 }
 
 impl MemFile {
+    /// Writes a `MemFile` to the disk and returns the address of its header.
+    /// It works by pre-allocating exactly the number of sectors needed and then populating them.
+    ///
+    /// The logic depends heavily on whether the file if short enough to fit in the `SHORT-MODE` or not.
     pub fn write_to_disk(&self) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = self.header;
