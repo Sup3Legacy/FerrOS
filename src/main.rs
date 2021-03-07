@@ -148,25 +148,39 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         owner: filesystem::ustar::UGOID(89),
         group: filesystem::ustar::UGOID(21),
         parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 38000_u32, // /!\ in u16
-        blocks_number: 147,
+        length: 165630_u32, // /!\ in u16
+        blocks_number: 647,
         mode: filesystem::ustar::FileMode::Long,
         padding: [999999999; 10],
         blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
-    for _i in 0..(2 * 38000) {
-        data.push([5, 6, 7, 8][_i % 4]);
+    for i in 0..(2 * 165630) {
+        data.push(
+            [
+                (i >> 2) & 0xFF,
+                (i >> 10) & 0xFF,
+                (i >> 18) & 0xFF,
+                (i >> 26) & 0xFF,
+            ][i & 3] as u8,
+        );
     }
     let file = filesystem::ustar::MemFile { header: head, data };
     let add_long = file.write_to_disk();
-
+    let res = filesystem::ustar::MemFile::read_from_disk(add_long).data;
     println!("{:?}", add_long);
-    println!("{:?}", unsafe {
-        filesystem::ustar::MemFile::read_from_disk(add_long)
-            .data
-            .len()
-    });
+    println!("{:?}", unsafe { res.len() });
+    for i in 0..(2 * 165630) {
+        assert_eq!(
+            res[i],
+            [
+                (i >> 2) & 0xFF,
+                (i >> 10) & 0xFF,
+                (i >> 18) & 0xFF,
+                (i >> 26) & 0xFF
+            ][i & 3] as u8
+        );
+    }
 
     // fin des tests
 

@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
 // Number of 512-sector segments
-const LBA_TABLES_COUNT: u32 = 1;
+const LBA_TABLES_COUNT: u32 = 4;
 
 /// Max number of blocks usable in short mode
 const SHORT_MODE_LIMIT: u32 = 100;
@@ -173,7 +173,7 @@ pub struct LongFile {
 
 impl LBATable {
     fn init(&mut self) {
-        for i in 0..512 {
+        for i in 0..510 {
             self.data[i] = true;
         }
         self.data[0] = false;
@@ -208,14 +208,14 @@ impl LBATableGlobal {
         self.write_to_disk();
     }
     fn load_from_disk() -> Self {
-        disk_operations::init();
+        //disk_operations::init();
         let mut glob = [LBATable {
             index: 1,
             data: [true; 510],
         }; LBA_TABLES_COUNT as usize];
         // Load the LBA tables from disk
         for i in 0..LBA_TABLES_COUNT {
-            glob[i as usize] = LBATable::from_u16_array(disk_operations::read_sector(512 * i + 1));
+            glob[i as usize] = LBATable::from_u16_array(disk_operations::read_sector(512 * i));
         }
         Self {
             index: 0,
@@ -224,7 +224,7 @@ impl LBATableGlobal {
     }
     pub fn write_to_disk(&self) {
         for i in 0..LBA_TABLES_COUNT {
-            self.data[i as usize].write_to_disk(512 * i + 1);
+            self.data[i as usize].write_to_disk(512 * i);
         }
     }
     fn get_index(&self) -> u32 {
@@ -249,7 +249,7 @@ impl LBATableGlobal {
         self.data[lba as usize].data[index as usize] = false;
     }
     fn is_lba_available(&self, lba: u32) -> bool {
-        self.data[lba as usize].index != 0
+        self.data[lba as usize].index != 510
     }
 }
 
@@ -293,7 +293,7 @@ unsafe fn get_addresses(n: u32) -> Vec<Address> {
                     if LBA_TABLE_GLOBAL.data[current_lba as usize].index < 510 {
                         LBA_TABLE_GLOBAL.data[current_lba as usize].index + 1
                     } else {
-                        0
+                        510
                     };
             } else {
                 LBA_TABLE_GLOBAL.set_lba_index(current_lba as u32, (current_block + 1) as u16);
@@ -302,6 +302,7 @@ unsafe fn get_addresses(n: u32) -> Vec<Address> {
         } else {
             LBA_TABLE_GLOBAL.set_index((current_lba + 1) as u32);
             current_lba += 1;
+            current_block = LBA_TABLE_GLOBAL.get_lba_index(LBA_TABLE_GLOBAL.index) as usize;
         }
     }
     LBA_TABLE_GLOBAL.write_to_disk();
@@ -325,7 +326,7 @@ impl MemFile {
             file_header.blocks = addresses;
             write_to_disk(
                 file_header,
-                (header_address.lba * 512 + header_address.block + 1) as u32,
+                (header_address.lba * 512 + header_address.block) as u32,
             );
             unsafe {
                 let blocks_to_write = slice_vec(&self.data);
@@ -366,7 +367,7 @@ impl MemFile {
             file_header.blocks = addresses;
             write_to_disk(
                 file_header,
-                (header_address.lba * 512 + header_address.block + 1) as u32,
+                (header_address.lba * 512 + header_address.block) as u32,
             );
             // Here, header has been written.
 
@@ -389,8 +390,7 @@ impl MemFile {
                 write_to_disk(
                     block,
                     (address_block_addresses[i as usize].lba * 512
-                        + address_block_addresses[i as usize].block
-                        + 1) as u32,
+                        + address_block_addresses[i as usize].block) as u32,
                 );
             }
 
@@ -402,7 +402,7 @@ impl MemFile {
                 };
                 write_to_disk(
                     file_block,
-                    (data_addresses[i as usize].lba * 512 + data_addresses[i as usize].block + 1)
+                    (data_addresses[i as usize].lba * 512 + data_addresses[i as usize].block)
                         as u32,
                 );
             }
@@ -414,7 +414,7 @@ impl MemFile {
         }
     }
     pub fn read_from_disk(address: Address) -> Self {
-        let header: Header = read_from_disk((address.lba * 512 + address.block + 1) as u32); // /!\
+        let header: Header = read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = header.length;
         //println!("{:?}", header);
         let mut file = Self {
@@ -427,8 +427,7 @@ impl MemFile {
             let mut compteur = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
-                let sector: FileBlock =
-                    read_from_disk((address.lba * 512 + address.block + 1) as u32);
+                let sector: FileBlock = read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
                     if compteur >= length {
                         break;
@@ -454,8 +453,7 @@ impl MemFile {
             // Read all addresses of data blocks
             for i in 0..number_address_block {
                 let address = header.blocks[i as usize];
-                let sector: LongFile =
-                    read_from_disk((address.lba * 512 + address.block + 1) as u32);
+                let sector: LongFile = read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..128 {
                     if compteur >= length {
                         break;
@@ -469,8 +467,7 @@ impl MemFile {
             compteur = 0;
             for i in 0..header.blocks_number {
                 let address = data_addresses[i as usize];
-                let sector: FileBlock =
-                    read_from_disk((address.lba * 512 + address.block + 1) as u32);
+                let sector: FileBlock = read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
                     if compteur >= length {
                         break;
