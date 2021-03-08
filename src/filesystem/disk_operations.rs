@@ -69,7 +69,7 @@ pub fn init() {
                 | ((data_table[103] as u64) << 48)
         );
 
-        wait_BSY(DISK_PORT);
+        wait_bsy(DISK_PORT);
         //  enable(); // /!\ Should not to this if it was disabled before !
     }
 }
@@ -90,7 +90,7 @@ pub fn read_sector(lba: u32) -> [u16; 256] {
 unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     //disable();
 
-    wait_BSY(port);
+    wait_bsy(port);
 
     //println!("Reading from sector {}", lba);
     let lba = lba as u64;
@@ -115,15 +115,15 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     command_register.write(0x24_u8); // give the READ SECTOR command
 
     // waits for the disk to be ready for transfer
-    wait_BSY(port);
-    wait_DRQ(port);
+    wait_bsy(port);
+    wait_drq(port);
 
     for i in 0..256 {
         let t = data_register.read(); // reads all the data one by one. The loop is mandatory to give the drive the time to give the data
         (*table)[i] = t;
     }
 
-    wait_BSY(port);
+    wait_bsy(port);
 
     //enable(); // /!\ Should not to this if it was disabled before !
 }
@@ -138,11 +138,11 @@ pub fn write_sector(table: &[u16; 256], lba: u32) {
     }
 }
 
-/// Write function that writes in any disk if the right port is given.
+/// Writes the array table to the given sector (`lba`) at disk given by `port`.
 unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     //disable();
 
-    wait_BSY(port);
+    wait_bsy(port);
 
     let lba = lba as u64;
 
@@ -165,8 +165,8 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     lba_high.write((lba >> 16) as u8);
     command_register.write(0x34_u8); // give the READ SECTOR command
 
-    wait_BSY(port);
-    wait_DRQ(port);
+    wait_bsy(port);
+    wait_drq(port);
 
     let mut delay = Port::new(0x80);
     for i in 0..256 {
@@ -176,17 +176,17 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
 
     command_register.write(0xE7);
 
-    wait_BSY(port);
+    wait_bsy(port);
 
     //enable(); // /!\ Should not to this if it was disabled before !
 }
 
-unsafe fn wait_BSY(port: u16) {
+unsafe fn wait_bsy(port: u16) {
     let mut port: Port<u16> = Port::new(port + 7);
     while port.read() & 0x80 != 0 {}
 }
 
-unsafe fn wait_DRQ(port: u16) {
+unsafe fn wait_drq(port: u16) {
     let mut port: Port<u16> = Port::new(port + 7);
     while port.read() & 0x08 == 0 {}
 }
@@ -198,7 +198,7 @@ unsafe fn flush_cache(port: u16) {
     command_register.write(0xE7_u8); // give the READ SECTOR command
 
     let mut status = command_register.read();
-    while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
+    while ((status & 0x80) == 0x80) && ((status & 0x01) != 0x01) {
         status = command_register.read();
     }
 }
