@@ -69,8 +69,8 @@ pub fn get_input(debut: &str, cache: bool) -> String {
         match { crate::keyboard::get_top_value() } {
             Ok(a) => match a {
                 keyboard_layout::KeyEvent::Character('\n') => {
-                    if stack.len() != 0 {
-                        println!("");
+                    if !stack.is_empty() {
+                        println!();
                         break stack;
                     }
                 }

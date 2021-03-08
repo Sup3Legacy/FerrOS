@@ -10,10 +10,7 @@ pub mod video_mode;
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-
 // I suggest a code review : some bits seem irrelevant, or doubly implemented, or could be more efficient (by writing 0 to the whole array instead of element by element for instance).
-
-
 
 lazy_static! {
     /// The structure representing the screen. It is mapped in memory to the VGA text buffer (`0xb8000`)
@@ -39,7 +36,6 @@ macro_rules! println {
     ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
 }
 
-
 /// The cursor goes back to the beginning of the current line.
 pub fn write_back() {
     SCREEN.lock().write_byte(b'\r');
@@ -52,8 +48,7 @@ pub fn _print(args: fmt::Arguments) {
     });
 }
 
-
-pub(crate) fn _print_at(row: usize, col: usize, s: &str) {
+pub fn _print_at(row: usize, col: usize, s: &str) {
     //! Prints a string at a given position on the screen.
     //!
     //! Example :
@@ -182,22 +177,22 @@ impl Screen {
         };
         self.set_cursor();
     }
-    
+
     /// Moves the cursor given the information in the `Screen` struct.
     fn set_cursor(&mut self) {
         let pos = self.row_pos * BUFFER_WIDTH + self.col_pos;
         let mut port1 = Port::new(0x3D4);
         let mut port2 = Port::new(0x3D5);
         unsafe {
-            port1.write(0x0F as u8);
+            port1.write(0x0F_u8);
             port2.write((pos & 0xFF) as u8);
-            port1.write(0x0E as u8);
+            port1.write(0x0E_u8);
             port2.write(((pos >> 8) & 0xFF) as u8)
         }
     }
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
-    fn new_line(&mut self) -> () {
+    fn new_line(&mut self) {
         self.row_pos += 1 + (self.col_pos / BUFFER_WIDTH);
         self.col_pos = 0;
         while self.row_pos >= BUFFER_HEIGHT {
@@ -208,7 +203,7 @@ impl Screen {
     }
 
     /// This function scrolls the entire screen by one row upwards.
-    fn scroll_up(&mut self) -> () {
+    fn scroll_up(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for col in 0..BUFFER_WIDTH {
                 self.buffer.characters[(row - 1) * BUFFER_WIDTH + col] =
@@ -216,9 +211,9 @@ impl Screen {
             }
         }
     }
-    
+
     /// This function wipes the last line of the screen.
-    fn clear_bottom(&mut self) -> () {
+    fn clear_bottom(&mut self) {
         let blank = CHAR {
             code: b' ',
             color: self.color,
@@ -227,7 +222,7 @@ impl Screen {
             self.buffer.characters[(BUFFER_HEIGHT - 1) * BUFFER_WIDTH + col] = blank;
         }
     }
-        
+
     /// This function writes a string on the screen, starting at the current position of the cursor.
     ///
     /// # Arguments
@@ -247,14 +242,14 @@ impl Screen {
     /// # Arguments
     /// * `s : &str` - the string to print
     /// * `col : ColorCode` - the color in which the string will be printed
-    pub fn _write_string_color(&mut self, s: &str, col: ColorCode) -> () {
+    pub fn _write_string_color(&mut self, s: &str, col: ColorCode) {
         let old_color = self.color;
         self.set_color(col);
         self.write_string(s);
         self.set_color(old_color);
         println!("s = {}", s.bytes().len());
     }
-    
+
     /// Initializes a new screen, with a given color and buffer.
     fn _new(color: ColorCode, buffer: &'static mut BUFFER) -> Self {
         Screen {
@@ -264,15 +259,15 @@ impl Screen {
             buffer,
         }
     }
-        
+
     /// The function changes the color of the cursor (the color which the next characters will be printed in)
     ///
     /// # Arguments
     /// * `color : ColorCode` - the color to be given to the cursor
-    pub fn set_color(&mut self, color: ColorCode) -> () {
+    pub fn set_color(&mut self, color: ColorCode) {
         self.color = color;
     }
-    
+
     /// This function clears the screen.
     ///
     /// # Result
@@ -291,7 +286,7 @@ impl Screen {
         self.row_pos = 0;
         Ok(())
     }
-            
+
     /// This function writes a given string at a given position on the screen.
     ///
     /// # Arguments
@@ -324,7 +319,6 @@ impl fmt::Write for Screen {
         Ok(())
     }
 }
-
 
 // These should GTFO to a different test framework.
 #[test_case]

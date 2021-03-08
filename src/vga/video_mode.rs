@@ -19,7 +19,7 @@ lazy_static! {
 /// Basic initialization function for the video-mode VGA handler.
 ///
 /// It contains some example code for lines as well as characters.
-pub fn init() -> () {
+pub fn init() {
     VIDEOMODE.set_mode(); // enables the video-mode (instead of the text mode)
     VIDEOMODE.draw_line((80, 60), (80, 420), Color16::White);
     VIDEOMODE.draw_line((80, 60), (540, 60), Color16::White);

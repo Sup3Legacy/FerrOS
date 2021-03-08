@@ -21,16 +21,16 @@ fn sqrt(x: f32) -> f32 {
 pub fn main() -> ! {
     let _x_sandbox_area_scan = 0;
     let _y_sandbox_area_scan = 0;
-    let mut x_pos = [0 as isize; 2 * HEIGHT * WIDTH];
-    let mut y_pos = [0 as isize; 2 * HEIGHT * WIDTH];
+    let mut x_pos = [0_isize; 2 * HEIGHT * WIDTH];
+    let mut y_pos = [0_isize; 2 * HEIGHT * WIDTH];
     let mut x_force = [0.; 2 * HEIGHT * WIDTH];
     let mut y_force = [0.; 2 * HEIGHT * WIDTH];
     let mut x_velocity = [0.; 2 * HEIGHT * WIDTH];
     let mut y_velocity = [0.; 2 * HEIGHT * WIDTH];
     let mut density = [0.; 2 * HEIGHT * WIDTH];
-    let mut wall_flag = [0 as usize; 2 * HEIGHT * WIDTH];
-    let mut total_of_particles = 0 as isize;
-    let mut screenbuffer = [[0 as u8; HEIGHT]; WIDTH];
+    let mut wall_flag = [0_usize; 2 * HEIGHT * WIDTH];
+    let mut total_of_particles = 0_isize;
+    let mut screenbuffer = [[0_u8; HEIGHT]; WIDTH];
 
     let mut particles_counter = 0;
 
@@ -80,8 +80,8 @@ pub fn main() -> ! {
                 let particles_distance = sqrt((squared as u16).into());
                 let particles_interaction = (particles_distance / 2.) - 1.;
                 if particles_interaction > 0. {
-                    density[particles_cursor as usize] = density[particles_cursor as usize]
-                        + particles_interaction * particles_interaction;
+                    density[particles_cursor as usize] +=
+                        particles_interaction * particles_interaction;
                 }
             }
         }
@@ -125,7 +125,7 @@ pub fn main() -> ! {
 
         for i in 0..WIDTH {
             for j in 0..HEIGHT {
-                screenbuffer[i][j] = 0 as u8;
+                screenbuffer[i][j] = 0_u8;
             }
         }
 

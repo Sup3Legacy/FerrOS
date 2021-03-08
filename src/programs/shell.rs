@@ -41,7 +41,7 @@ pub fn ascii(_: Vec<String>) -> Result<(), ShellErr> {
 
 /// Help command
 ///
-/// `help [keyword]` prints the help string provided for the associated command. 
+/// `help [keyword]` prints the help string provided for the associated command.
 /// Prints error messages if invalid input.
 pub fn help(list: Vec<String>) -> Result<(), ShellErr> {
     match list.get(0) {
@@ -85,7 +85,7 @@ lazy_static! {
 /// Entry function of the shell
 ///
 /// TODO : clean it and make it more general
-pub fn main_shell() -> () {
+pub fn main_shell() {
     let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
     println!();
     let _mpd = keyboard_interraction::get_input("mdp : ", true);
@@ -104,7 +104,7 @@ pub fn _main_loop() -> ! {
             Some(a) => match COMMANDS.get(a) {
                 Some(command) => {
                     let func = command.function;
-                    match func(it.map(|x| String::from(x)).collect::<Vec<String>>()) {
+                    match func(it.map(String::from).collect::<Vec<String>>()) {
                         Ok(()) => (),
                         _ => println!("{}", command.help),
                     }
