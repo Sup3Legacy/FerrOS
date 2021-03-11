@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use core::{mem::transmute, todo};
 
 /// Number of 512-sector segments.
-/// 
+///
 /// It should be replaced by an automatic detection of the number of segments,
 /// Using the informations given by the drive at initialization.
 const LBA_TABLES_COUNT: u32 = 4;
@@ -307,7 +307,7 @@ fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
 }
 
 /// Returns a vector of fresh addresses. /!\ once they are returned, they are also marked as reserved by the filesystem!
-/// So one must avoid getting more addresses than needed (this could allocate all the disk with blank unused data). 
+/// So one must avoid getting more addresses than needed (this could allocate all the disk with blank unused data).
 unsafe fn get_addresses(n: u32) -> Vec<Address> {
     let mut indice = 0;
     let mut res = Vec::new();
