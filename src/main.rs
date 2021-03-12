@@ -187,8 +187,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     // This enables the tests
     #[cfg(test)]
     test_main();
-
-    sound::beep();
     // Yet again, some ugly tests in main
     programs::shell::main_shell();
     println!();
