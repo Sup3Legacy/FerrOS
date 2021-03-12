@@ -4,7 +4,12 @@ use alloc::vec::Vec;
 use core::todo;
 pub mod disk_operations;
 pub mod test;
-pub mod ustar;
+pub mod drivers;
+pub mod vfs;
+pub mod partition;
+pub mod fsflags;
+
+use drivers::{ustar};
 
 use crate::{print, println};
 
