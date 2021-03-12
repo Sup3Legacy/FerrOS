@@ -1,5 +1,5 @@
-use core::sync::atomic::{AtomicU64, Ordering};
 use super::super::partition::Partition;
+use core::sync::atomic::{AtomicU64, Ordering};
 #[derive(Copy, Clone, Debug)]
 struct RamDiskID(u64);
 
@@ -25,7 +25,7 @@ impl Partition for RamDisk {
     fn read(&self) {
         todo!()
     }
-    
+
     fn write(&self) {
         todo!()
     }

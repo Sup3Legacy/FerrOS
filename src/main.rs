@@ -68,8 +68,8 @@ pub fn init(_boot_info: &'static BootInfo) {
     filesystem::disk_operations::init();
     unsafe {
         // Initializes the LBA tables
-        filesystem::ustar::LBA_TABLE_GLOBAL.init();
-        filesystem::ustar::LBA_TABLE_GLOBAL.write_to_disk();
+        filesystem::drivers::ustar::LBA_TABLE_GLOBAL.init();
+        filesystem::drivers::ustar::LBA_TABLE_GLOBAL.write_to_disk();
     }
     //filesystem::init();
 }
@@ -99,9 +99,9 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
 
     // quelques tests de drive
-    let head = filesystem::ustar::Header {
-        file_type: filesystem::ustar::Type::File,
-        flags: filesystem::ustar::HeaderFlags {
+    let head = filesystem::drivers::ustar::Header {
+        file_type: filesystem::drivers::ustar::Type::File,
+        flags: filesystem::drivers::ustar::HeaderFlags {
             user_owner: 12,
             group_misc: 12,
         },
@@ -110,32 +110,32 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
             0_u8, 0_u8, 0_u8, 0_u8,
         ],
-        user: filesystem::ustar::UGOID(71),
-        owner: filesystem::ustar::UGOID(89),
-        group: filesystem::ustar::UGOID(21),
-        parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
+        user: filesystem::drivers::ustar::UGOID(71),
+        owner: filesystem::drivers::ustar::UGOID(89),
+        group: filesystem::drivers::ustar::UGOID(21),
+        parent_address: filesystem::drivers::ustar::Address { lba: 0, block: 0 },
         length: 286, // /!\ in u16
         blocks_number: 2,
-        mode: filesystem::ustar::FileMode::Short,
+        mode: filesystem::drivers::ustar::FileMode::Short,
         padding: [999999999; 10],
-        blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
+        blocks: [filesystem::drivers::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
     for _i in 0..(2 * 286) {
         data.push((_i % 512) as u8);
     }
-    let file = filesystem::ustar::MemFile { header: head, data };
+    let file = filesystem::drivers::ustar::MemFile { header: head, data };
     let add_court = file.write_to_disk();
     println!("{:?}", add_court);
     println!("{:?}", unsafe {
-        filesystem::ustar::MemFile::read_from_disk(add_court)
+        filesystem::drivers::ustar::MemFile::read_from_disk(add_court)
             .data
             .len()
     });
 
-    let head = filesystem::ustar::Header {
-        file_type: filesystem::ustar::Type::File,
-        flags: filesystem::ustar::HeaderFlags {
+    let head = filesystem::drivers::ustar::Header {
+        file_type: filesystem::drivers::ustar::Type::File,
+        flags: filesystem::drivers::ustar::HeaderFlags {
             user_owner: 12,
             group_misc: 12,
         },
@@ -144,15 +144,15 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
             0_u8, 0_u8, 0_u8, 0_u8,
         ],
-        user: filesystem::ustar::UGOID(71),
-        owner: filesystem::ustar::UGOID(89),
-        group: filesystem::ustar::UGOID(21),
-        parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
+        user: filesystem::drivers::ustar::UGOID(71),
+        owner: filesystem::drivers::ustar::UGOID(89),
+        group: filesystem::drivers::ustar::UGOID(21),
+        parent_address: filesystem::drivers::ustar::Address { lba: 0, block: 0 },
         length: 165630_u32, // /!\ in u16
         blocks_number: 647,
-        mode: filesystem::ustar::FileMode::Long,
+        mode: filesystem::drivers::ustar::FileMode::Long,
         padding: [999999999; 10],
-        blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
+        blocks: [filesystem::drivers::ustar::Address { lba: 0, block: 0 }; 100],
     };
     let mut data: Vec<u8> = vec![];
     for i in 0..(2 * 165630) {
@@ -165,9 +165,9 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
             ][i & 3] as u8,
         );
     }
-    let file = filesystem::ustar::MemFile { header: head, data };
+    let file = filesystem::drivers::ustar::MemFile { header: head, data };
     let add_long = file.write_to_disk();
-    let res = filesystem::ustar::MemFile::read_from_disk(add_long).data;
+    let res = filesystem::drivers::ustar::MemFile::read_from_disk(add_long).data;
     println!("{:?}", add_long);
     println!("{:?}", unsafe { res.len() });
     for i in 0..(2 * 165630) {

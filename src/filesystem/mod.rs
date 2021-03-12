@@ -1,15 +1,17 @@
+use crate::data_storage::path::Path;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::todo;
-pub mod disk_operations;
-pub mod test;
 pub mod drivers;
-pub mod vfs;
-pub mod partition;
 pub mod fsflags;
+pub mod partition;
+pub mod test;
+pub mod vfs;
 
-use drivers::{ustar};
+// disk_operations here is only temporary.
+// TODO remove it and add interface in driver::ustar
+pub use drivers::{disk_operations, ustar};
 
 use crate::{print, println};
 
@@ -24,53 +26,6 @@ static mut DIR_CACHE: DirCache = DirCache(BTreeMap::new());
 
 #[derive(Debug, PartialEq)]
 pub struct FileSystemError(String);
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Path(String);
-
-impl Path {
-    fn new() -> Self {
-        Self(String::new())
-    }
-    fn from(s: &String) -> Self {
-        Self(s.into())
-    }
-    // We might wanna to avoid cloning string everywhere...
-    fn to(&self) -> String {
-        self.0.clone()
-    }
-    fn owned_to(self) -> String {
-        self.0
-    }
-    fn slice(&self) -> Vec<String> {
-        let sliced = self
-            .to()
-            .split('/')
-            .map(String::from)
-            .collect::<Vec<String>>();
-        sliced
-    }
-    fn push_str(&mut self, s: &String) {
-        self.0.push('/');
-        self.0.push_str(&(*s))
-    }
-    fn get_parent(&self) -> Self {
-        let mut sliced = self.slice();
-        if sliced.len() == 0 {
-            Self::from(&self.to())
-        } else {
-            sliced.pop();
-            let mut res = String::new();
-            for elt in sliced.iter() {
-                res.push_str(elt);
-            }
-            Self::from(&res)
-        }
-    }
-    fn get_name(&self) -> String {
-        self.slice().get(0).unwrap_or(&String::from("")).clone()
-    }
-}
 
 #[derive(Debug)]
 struct MemDir {
