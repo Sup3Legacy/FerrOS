@@ -132,7 +132,7 @@ pub fn write_file(_path: Path, _data: &'static [u8]) {
 
 pub fn init() {
     // Initializes the disk
-    disk_operations::init();
+    //disk_operations::init();
     unsafe {
         // Initializes the LBA tables
         ustar::LBA_TABLE_GLOBAL.init();

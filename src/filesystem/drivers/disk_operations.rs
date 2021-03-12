@@ -4,32 +4,31 @@ use crate::{print, println};
 use x86_64::instructions::interrupts::{disable, enable};
 use x86_64::instructions::port::Port;
 
-/// Base port for the disk index 2 for QEMU
-pub const DISK_PORT: u16 = 0x170;
+
 
 /// Base port for the kernel in QEMU
 pub const KERNEL_DISK_PORT: u16 = 0x1F0;
 
 /// Function to test if we can read
-pub fn test_read() {
+pub fn test_read(port : u16) {
     let mut a = [0_u16; 256];
     unsafe {
-        read((&mut a) as *mut [u16; 256], 1, DISK_PORT);
+        read((&mut a) as *mut [u16; 256], 1, port);
         println!("{:x?}", a);
     }
 }
 
 /// Initialise the disk by reading it's informations (should improve it by giving an output)
-pub fn init() {
+pub fn init(port : u16) {
     unsafe {
         // disable();
-        let mut data_register = Port::<u16>::new(0x170); // used to read write PIO data
-        let mut sectorcount_register = Port::new(0x172);
-        let mut lba_low = Port::new(0x173);
-        let mut lba_mid = Port::new(0x174);
-        let mut lba_high = Port::new(0x175);
-        let mut drive_head_register = Port::new(0x176);
-        let mut command_register = Port::new(0x177);
+        let mut data_register = Port::<u16>::new(port); // used to read write PIO data
+        let mut sectorcount_register = Port::new(port + 2);
+        let mut lba_low = Port::new(port + 3);
+        let mut lba_mid = Port::new(port + 4);
+        let mut lba_high = Port::new(port + 5);
+        let mut drive_head_register = Port::new(port + 6);
+        let mut command_register = Port::new(port + 7);
         drive_head_register.write(0b10100000_u8);
         sectorcount_register.write(0_u8);
         lba_low.write(0_u8);
@@ -69,19 +68,19 @@ pub fn init() {
                 | ((data_table[103] as u64) << 48)
         );
 
-        wait_bsy(DISK_PORT);
+        wait_bsy(port);
         //  enable(); // /!\ Should not to this if it was disabled before !
     }
 }
 
 /// function that from la sector of the disk outputs the data stored at the corresponding place (lba's count starts at 1!)
-pub fn read_sector(lba: u32) -> [u16; 256] {
+pub fn read_sector(lba: u32, port : u16) -> [u16; 256] {
     let mut a = [0_u16; 256];
     unsafe {
-        read((&mut a) as *mut [u16; 256], lba, DISK_PORT);
+        read((&mut a) as *mut [u16; 256], lba, port);
     }
     unsafe {
-        flush_cache(DISK_PORT);
+        flush_cache(port);
     }
     a
 }
@@ -129,12 +128,12 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
 }
 
 /// function that from la sector of the disk writes the given data at the corresponding place (lba's count starts at 1!)
-pub fn write_sector(table: &[u16; 256], lba: u32) {
+pub fn write_sector(table: &[u16; 256], lba: u32, port : u16) {
     unsafe {
-        write(table, lba, DISK_PORT);
+        write(table, lba, port);
     }
     unsafe {
-        flush_cache(DISK_PORT);
+        flush_cache(port);
     }
 }
 
