@@ -7,6 +7,7 @@ use super::partition::Partition;
 
 use crate::data_storage::path::Path;
 
+/// Root of the partition-tree
 struct PartitionTree {
     root: PartitionNode,
 }
@@ -16,11 +17,25 @@ enum PartitionNode {
     Leaf(Box<dyn Partition>),
 }
 
-struct VFS {
-    //partitions: BTreeMap<String, Box<dyn Partition>>,
+/// Main data structure of the FileSystem.
+/// The [`VFS`] is a key component in the virtualization of
+/// storage ressources. It can treansparently handle each and
+/// every type of partition (RAM-Disk, ustar on ATA drive, raw device)
+/// while having a global unified file-tree.
+///
+/// It holds a partition-tree :
+/// This tree stores the hierarchy of partition in the global filesystem.
+///
+/// For example, the `/proc/` folder can be mounted to a RAM-Disk for
+/// increased efficiency, while `/usr/`, `/bin/`, etc. get mounted
+/// to a physical drive for bulk storage capacity. 
+pub struct VFS {
+    /// partitions: BTreeMap<String, Box<dyn Partition>>,
     partitions: PartitionTree,
 }
 
+/// This immplementation takes care of all operations needed on the partition-tree, 
+/// such as the recursive search for the partition given a certain path.
 impl PartitionNode {
     /// Returns reference to partition containing the path's target
     pub fn get_partition(
@@ -44,6 +59,9 @@ impl PartitionNode {
     }
 }
 
+/// This should be the main interface of the filesystem.
+/// Still it will need some work besides this implementation,
+/// as we need to implement all structures of file descriptors, etc.
 impl VFS {
     /// Returns the index of file descriptor. -1 if error
     fn open(&'static mut self, path: Path) -> isize {
@@ -61,7 +79,8 @@ impl VFS {
         todo!()
     }
 
-    fn read(&self) {
+    /// Returns the amount of bytes that were read into the buffer
+    fn read(&self, buffer : *mut usize) -> usize {
         todo!()
     }
 

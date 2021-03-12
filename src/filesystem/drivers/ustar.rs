@@ -1,5 +1,5 @@
 use super::disk_operations;
-
+use super::super::partition::Partition;
 use crate::{print, println};
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
@@ -587,4 +587,28 @@ pub fn write_to_disk(data: impl U16Array, lba: u32) {
 
 pub fn read_from_disk<T: U16Array>(lba: u32) -> T {
     T::from_u16_array(disk_operations::read_sector(lba))
+}
+
+pub struct UsTar {}
+
+impl Partition for UsTar {
+    fn open(&self) -> () {
+        todo!()
+    }
+
+    fn close(&self) -> () {
+        todo!()
+    }
+
+    fn read(&self) -> () {
+        todo!()
+    }
+
+    fn write(&self) -> () {
+        todo!()
+    }
+
+    fn lseek(&self) -> () {
+        todo!()
+    }
 }
