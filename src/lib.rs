@@ -9,6 +9,7 @@
 #![feature(naked_functions)]
 #![feature(asm)]
 #![feature(const_btree_new)]
+#![feature(option_result_unwrap_unchecked)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;

@@ -4,13 +4,11 @@ use crate::{print, println};
 use x86_64::instructions::interrupts::{disable, enable};
 use x86_64::instructions::port::Port;
 
-
-
 /// Base port for the kernel in QEMU
 pub const KERNEL_DISK_PORT: u16 = 0x1F0;
 
 /// Function to test if we can read
-pub fn test_read(port : u16) {
+pub fn test_read(port: u16) {
     let mut a = [0_u16; 256];
     unsafe {
         read((&mut a) as *mut [u16; 256], 1, port);
@@ -19,7 +17,7 @@ pub fn test_read(port : u16) {
 }
 
 /// Initialise the disk by reading it's informations (should improve it by giving an output)
-pub fn init(port : u16) {
+pub fn init(port: u16) {
     unsafe {
         // disable();
         let mut data_register = Port::<u16>::new(port); // used to read write PIO data
@@ -74,7 +72,7 @@ pub fn init(port : u16) {
 }
 
 /// function that from la sector of the disk outputs the data stored at the corresponding place (lba's count starts at 1!)
-pub fn read_sector(lba: u32, port : u16) -> [u16; 256] {
+pub fn read_sector(lba: u32, port: u16) -> [u16; 256] {
     let mut a = [0_u16; 256];
     unsafe {
         read((&mut a) as *mut [u16; 256], lba, port);
@@ -128,7 +126,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
 }
 
 /// function that from la sector of the disk writes the given data at the corresponding place (lba's count starts at 1!)
-pub fn write_sector(table: &[u16; 256], lba: u32, port : u16) {
+pub fn write_sector(table: &[u16; 256], lba: u32, port: u16) {
     unsafe {
         write(table, lba, port);
     }

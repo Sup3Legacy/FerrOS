@@ -63,7 +63,9 @@ impl DoubleFile {
 }*/
 
 pub fn get_input(debut: &str, cache: bool) -> String {
+    println!(":D");
     let mut stack = String::new();
+    println!(":D :D");
     print!("{}", debut);
     loop {
         match { crate::keyboard::get_top_value() } {

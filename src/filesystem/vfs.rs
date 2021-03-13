@@ -5,6 +5,8 @@ use alloc::vec::Vec;
 
 use super::partition::Partition;
 
+use super::drivers::nopart::NoPart;
+
 use crate::data_storage::path::Path;
 
 /// Root of the partition-tree
@@ -28,13 +30,13 @@ enum PartitionNode {
 ///
 /// For example, the `/proc/` folder can be mounted to a RAM-Disk for
 /// increased efficiency, while `/usr/`, `/bin/`, etc. get mounted
-/// to a physical drive for bulk storage capacity. 
+/// to a physical drive for bulk storage capacity.
 pub struct VFS {
     /// partitions: BTreeMap<String, Box<dyn Partition>>,
-    partitions: PartitionTree,
+    partitions: Option<PartitionTree>,
 }
 
-/// This immplementation takes care of all operations needed on the partition-tree, 
+/// This immplementation takes care of all operations needed on the partition-tree,
 /// such as the recursive search for the partition given a certain path.
 impl PartitionNode {
     /// Returns reference to partition containing the path's target
@@ -64,9 +66,15 @@ impl PartitionNode {
 /// as we need to implement all structures of file descriptors, etc.
 impl VFS {
     /// Returns the index of file descriptor. -1 if error
-    fn open(&'static mut self, path: Path) -> isize {
+    pub fn open(&'static mut self, path: Path) -> isize {
         let sliced = path.slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
+        let res_partition = self
+            .partitions
+            .get_or_insert(PartitionTree {
+                root: PartitionNode::Leaf(Box::new(NoPart::new())),
+            })
+            .root
+            .get_partition(sliced, 0);
         // If the VFS couldn't find the corresponding partition, return -1
         if res_partition.is_err() {
             return -1;
@@ -75,20 +83,24 @@ impl VFS {
         todo!()
     }
 
-    fn close(&self) -> () {
+    pub fn close(&self) -> () {
         todo!()
     }
 
     /// Returns the amount of bytes that were read into the buffer
-    fn read(&self, buffer : *mut usize) -> usize {
+    pub fn read(&self, buffer: *mut usize) -> usize {
         todo!()
     }
 
-    fn write(&self) {
+    pub fn write(&self) {
         todo!()
     }
 
-    fn lseek(&self) -> () {
+    pub fn lseek(&self) -> () {
         todo!()
+    }
+
+    pub const fn new() -> Self {
+        Self { partitions: None }
     }
 }

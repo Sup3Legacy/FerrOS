@@ -1,8 +1,20 @@
 use super::super::partition::Partition;
 use super::disk_operations;
+use crate::data_storage::path::Path;
 use crate::{print, println};
+use alloc::collections::BTreeMap;
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
+
+/// Main cache for Path -> Adress conversion.
+/// Used to speed-up filesystem quarries while only allocating a small amount of data.
+///
+/// For instance, we don't (at least for now) store files, the filesystem has to
+/// fetch a file from disk every time it is requested.
+static mut FILE_ADRESS_CACHE: AddressCache = AddressCache(BTreeMap::new());
+
+static mut DIR_CACHE: DirCache = DirCache(BTreeMap::new());
 
 /// Number of 512-sector segments.
 ///
@@ -143,6 +155,13 @@ impl Header {
     }
 }
 
+#[derive(Debug)]
+struct MemDir {
+    name: String,
+    address: Address,
+    files: BTreeMap<String, Address>,
+}
+
 /// Memory representation of a raw file
 #[repr(packed)]
 #[derive(Debug, Clone)]
@@ -202,11 +221,11 @@ impl LBATable {
         self.data[0] = false;
         self.data[1] = false;
     }
-    fn load_from_disk(lba: u32) -> Self {
-        LBATable::from_u16_array(disk_operations::read_sector(lba))
+    fn load_from_disk(lba: u32, port: u16) -> Self {
+        LBATable::from_u16_array(disk_operations::read_sector(lba, port))
     }
-    fn write_to_disk(&self, lba_index: u32) {
-        disk_operations::write_sector(&self.to_u16_array(), lba_index);
+    fn write_to_disk(&self, lba_index: u32, port: u16) {
+        disk_operations::write_sector(&self.to_u16_array(), lba_index, port);
     }
     pub fn is_available(&self, i: u32) -> bool {
         self.data[i as usize]
@@ -222,7 +241,7 @@ impl LBATable {
 impl LBATableGlobal {
     /// Initialization of the global LBA-table.
     /// IT basically resets its index and all its LBA's index and occupation table.
-    pub fn init(&mut self) {
+    pub fn init(&mut self, port: u16) {
         self.index = 0;
         for i in 0..LBA_TABLES_COUNT {
             self.data[i as usize].index = 1;
@@ -230,12 +249,12 @@ impl LBATableGlobal {
                 self.data[i as usize].data[j as usize] = true;
             }
         }
-        self.write_to_disk();
+        self.write_to_disk(port);
     }
     /// Constructs the global LBA-table from disk.
     ///
     /// It simply reads all LBA-tables and store them.
-    fn load_from_disk() -> Self {
+    fn load_from_disk(port: u16) -> Self {
         //disk_operations::init();
         let mut index = LBA_TABLES_COUNT;
         let mut glob = [LBATable {
@@ -244,7 +263,7 @@ impl LBATableGlobal {
         }; LBA_TABLES_COUNT as usize];
         // Load the LBA tables from disk
         for i in 0..LBA_TABLES_COUNT {
-            let new = LBATable::from_u16_array(disk_operations::read_sector(512 * i));
+            let new = LBATable::from_u16_array(disk_operations::read_sector(512 * i, port));
             // update the global LBA-table's index if found the first non-full LBA.
             if new.index != 510 && index == LBA_TABLES_COUNT {
                 index = i;
@@ -257,9 +276,9 @@ impl LBATableGlobal {
         }
     }
     /// Rewrites the global LBA-table to the disk.
-    pub fn write_to_disk(&self) {
+    pub fn write_to_disk(&self, port: u16) {
         for i in 0..LBA_TABLES_COUNT {
-            self.data[i as usize].write_to_disk(512 * i);
+            self.data[i as usize].write_to_disk(512 * i, port);
         }
     }
     fn get_index(&self) -> u32 {
@@ -287,6 +306,12 @@ impl LBATableGlobal {
         self.data[lba as usize].index != 510
     }
 }
+
+#[derive(Debug)]
+struct AddressCache(BTreeMap<Path, Address>);
+
+#[derive(Debug)]
+struct DirCache(BTreeMap<Path, MemDir>);
 
 /// Slices a `Vec<u8>` of binary data into a `Vec<[u16; 256]>`.
 /// This simplifies the conversion from data-blob to set of `256-u16` sectors.
@@ -412,7 +437,7 @@ impl UsTar {
                         .get_lba_index(self.lba_table_global.index) as usize;
             }
         }
-        self.lba_table_global.write_to_disk();
+        self.lba_table_global.write_to_disk(self.port);
         res
     }
 
@@ -420,7 +445,7 @@ impl UsTar {
     /// It works by pre-allocating exactly the number of sectors needed and then populating them.
     ///
     /// The logic depends heavily on whether the file if short enough to fit in the `SHORT-MODE` or not.
-    pub fn write_memfile_to_disk(&self, memfile: &MemFile) -> Address {
+    pub fn write_memfile_to_disk(&mut self, memfile: &MemFile) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = memfile.header;
         let length = file_header.length; // TODO : make sure it is also the length of self.data
@@ -451,7 +476,7 @@ impl UsTar {
                             + 1) as u32,
                     );
                 }
-                LBA_TABLE_GLOBAL.write_to_disk();
+                self.lba_table_global.write_to_disk(self.port);
                 header_address
             }
         } else {
@@ -517,7 +542,7 @@ impl UsTar {
                 );
             }
             unsafe {
-                LBA_TABLE_GLOBAL.write_to_disk();
+                self.lba_table_global.write_to_disk(self.port);
             }
 
             header_address
@@ -538,7 +563,8 @@ impl UsTar {
             let mut compteur = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
-                let sector: FileBlock = self.read_from_disk((address.lba * 512 + address.block) as u32);
+                let sector: FileBlock =
+                    self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
                     if compteur >= length {
                         break;
@@ -564,7 +590,8 @@ impl UsTar {
             // Read all addresses of data blocks
             for i in 0..number_address_block {
                 let address = header.blocks[i as usize];
-                let sector: LongFile = self.read_from_disk((address.lba * 512 + address.block) as u32);
+                let sector: LongFile =
+                    self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..128 {
                     if compteur >= length {
                         break;
@@ -578,7 +605,8 @@ impl UsTar {
             compteur = 0;
             for i in 0..header.blocks_number {
                 let address = data_addresses[i as usize];
-                let sector: FileBlock = self.read_from_disk((address.lba * 512 + address.block) as u32);
+                let sector: FileBlock =
+                    self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
                     if compteur >= length {
                         break;
@@ -594,6 +622,78 @@ impl UsTar {
             panic!("No mode selected in file");
         }
         file
+    }
+
+    fn memdir_from_address(&mut self, address: Address) -> MemDir {
+        let file = self.read_memfile_from_disk(address);
+        let data = file.data;
+        let len = (file.header.length << 1) as usize; // x2 because header.length is in u16... Might change that
+
+        // These assert_eq are only here for debugging purposes
+        assert_eq!(len as usize, data.len()); // length in u8 of the data segment of the directory
+        assert_eq!(file.header.file_type, Type::Dir); // Checks whether the blob is really a directory
+        assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
+        let mut files: BTreeMap<String, Address> = BTreeMap::new();
+        let number = len / 32; // number of sub_items of the dir
+        for i in 0..number {
+            let mut name = String::new();
+            let mut itter = 0;
+            while itter < 28 && data[32 * i + itter] != 0 {
+                name.push(data[32 * i + itter] as char);
+                itter += 1;
+            }
+            let temp_address = Address {
+                lba: ((data[32 * i] as u16) << 8) + (data[32 * i + 1] as u16), // TODO /!\ May be incorrect
+                block: ((data[32 * i + 2] as u16) << 8) + (data[32 * i + 3] as u16), // TODO /!\ May be incorrect
+            };
+            files.entry(name).or_insert(temp_address);
+        }
+        // Acquire the name of the directory
+        let mut name = String::new();
+        let mut itter = 0;
+        while itter < 32 && file.header.name[itter] != 0 {
+            name.push(file.header.name[itter] as char);
+            itter += 1;
+        }
+        MemDir {
+            name,
+            address,
+            files,
+        }
+    }
+
+    /// Fetches a `MemFile` from a `Path`.
+    /// It uses both caches to speed-up search
+    /// and mutate them on-the-fly to speed-up
+    /// future searches even more.
+    pub unsafe fn fetch_data(&mut self, path: Path) -> MemFile {
+        if let Some(add) = FILE_ADRESS_CACHE.0.get(&path) {
+            self.read_memfile_from_disk(*add)
+        } else {
+            let mut decomp = path.slice().into_iter();
+            let mut current_path = Path::new();
+            let mut current_dir = DIR_CACHE.0.get_mut(&current_path).unwrap();
+            while let Some(a) = DIR_CACHE.0.get_mut(&current_path) {
+                current_dir = a;
+                if let Some(next_dir) = decomp.next() {
+                    current_path.push_str(&next_dir);
+                }
+            }
+            // At this point, we just came onto a directory that isn't already in cache.
+            while let Some(next_dir) = decomp.next() {
+                current_path.push_str(&next_dir);
+                let next_address = current_dir.files.get_mut(&next_dir).unwrap();
+                let current_dir = self.memdir_from_address(*next_address);
+                DIR_CACHE
+                    .0
+                    .insert(Path::from(&current_path.to()), current_dir);
+                FILE_ADRESS_CACHE
+                    .0
+                    .insert(Path::from(&current_path.to()), *next_address);
+            }
+            // This time, it should fall in the if because we cached all directories
+            self.fetch_data(path)
+        }
     }
 
     pub fn write_to_disk(&self, data: impl U16Array, lba: u32) {

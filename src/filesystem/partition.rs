@@ -1,13 +1,12 @@
-
 // Each storage element (be it an ATA disk or  a virtual system)
-/// needs to implement this trait in order to get integrated into the 
+/// needs to implement this trait in order to get integrated into the
 /// VFS.
 pub trait Partition {
     /// Opens a file from the given partition. It returns -1 (error)
     /// or he number of a file descriptor.
     fn open(&self) -> ();
 
-    /// Closes the file represented by the file descriptor given as 
+    /// Closes the file represented by the file descriptor given as
     /// argument.
     /// returns -1 if the execution fails, e.g. if the file hadd already
     /// been closed

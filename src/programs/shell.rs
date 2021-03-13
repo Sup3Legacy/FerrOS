@@ -86,7 +86,9 @@ lazy_static! {
 ///
 /// TODO : clean it and make it more general
 pub fn main_shell() {
+    println!(":( :( :( :(");
     let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
+    println!(":( :( :( :( :(");
     println!();
     let _mpd = keyboard_interraction::get_input("mdp : ", true);
     _main_loop();

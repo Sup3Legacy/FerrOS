@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 #[derive(Copy, Clone, Debug)]
 struct RamDiskID(u64);
 
-/// Just an ID, because why not keeping track of all the RAM-Disk 
+/// Just an ID, because why not keeping track of all the RAM-Disk
 /// existing at any given time.
 impl RamDiskID {
     fn new() -> Self {
