@@ -5,7 +5,6 @@ use crate::data_storage::screen::Coord;
 
 use super::Color;
 
-
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +26,7 @@ pub struct CHAR {
 
 /// This is the structure holding the layer index
 /// of a process.
-/// A higher layer index means the virtual screen will be 
+/// A higher layer index means the virtual screen will be
 /// displayed more on the foreground.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VirtualScreenLayer(usize);
@@ -35,15 +34,15 @@ pub struct VirtualScreenLayer(usize);
 /// This is the virtual screen assigned to a process
 #[derive(Debug, Clone)]
 pub struct VirtualScreen {
-    width : usize,
-    height : usize,
-    col_pos : usize,
-    row_pos : usize,
-    position : Coord,
-    color : ColorCode,
-    layer : VirtualScreenLayer,
+    width: usize,
+    height: usize,
+    col_pos: usize,
+    row_pos: usize,
+    position: Coord,
+    color: ColorCode,
+    layer: VirtualScreenLayer,
     /// First coordinate is the row
-    buffer : Vec<Vec<CHAR>>,
+    buffer: Vec<Vec<CHAR>>,
 }
 
 impl VirtualScreen {
@@ -99,8 +98,7 @@ impl VirtualScreen {
     fn scroll_up(&mut self) {
         for row in 1..self.height {
             for col in 0..self.width {
-                self.buffer[row - 1][col] =
-                    self.buffer[row][col];
+                self.buffer[row - 1][col] = self.buffer[row][col];
             }
         }
     }
@@ -144,11 +142,8 @@ impl VirtualScreen {
     }
 
     /// Initializes a new screen, with a given color and buffer.
-    fn new(color: ColorCode, position : Coord, size : Coord, layer : VirtualScreenLayer) -> Self {
-        let blank = CHAR {
-            code: b' ',
-            color,
-        };
+    fn new(color: ColorCode, position: Coord, size: Coord, layer: VirtualScreenLayer) -> Self {
+        let blank = CHAR { code: b' ', color };
         let col_size = size.get_col();
         let row_size = size.get_row();
         let mut buffer = Vec::new();
@@ -167,7 +162,7 @@ impl VirtualScreen {
             width: col_size,
             height: row_size,
             position,
-            layer, 
+            layer,
         }
     }
 
