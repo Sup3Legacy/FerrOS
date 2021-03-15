@@ -26,6 +26,8 @@ fn init_vfs() {}
 #[derive(Debug, PartialEq)]
 pub struct FileSystemError(String);
 
+/// TO DO remove and use maybe use more general enum
+/// found in [`fsflags`]
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum OpenMode {
@@ -34,6 +36,10 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
+/// Main interface of the filesystem.
+///
+/// Every interaction of a user-program with hardware and/or
+/// its stdin/stdout/stderr goes through this abstracted interface.
 pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
     todo!();
 }

@@ -1,7 +1,7 @@
 use super::super::partition::Partition;
-use core::sync::atomic::{AtomicU64, Ordering};
 use crate::data_storage::path::Path;
 use alloc::collections::BTreeMap;
+use core::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Copy, Clone, Debug)]
 struct RamDiskID(u64);
@@ -26,8 +26,8 @@ impl RamDiskID {
 /// to the VFS and can be used for certain latency- and throughput-critical
 /// operations as a process' `stdin`, `stdout` and `stderr`.
 pub struct RamDisk {
-    id : RamDiskID,
-    files : BTreeMap<Path, [u8; 256]>, // TODO generalize MemFile structure
+    id: RamDiskID,
+    files: BTreeMap<Path, [u8; 256]>, // TODO generalize MemFile structure
 }
 
 /// This interfaces enables a RAM-Disk to get used alongside every other device.
