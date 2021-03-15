@@ -1,28 +1,8 @@
 //! Part of the OS responsible for handling syscalls
 
 use super::idt::InterruptStackFrame;
-use crate::data_storage::registers::Registers;
+use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::{print, println};
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-/// interface structure for syscalls
-/// * r9,  syscall argument 5
-/// * r8,  syscall argument 4
-/// * r10, syscall argument 3
-/// * rdx, syscall argument 2
-/// * rsi, syscall argument 1
-/// * rdi, syscall argument 0
-/// * rax, syscall number
-pub struct RegistersMini {
-    r9: u64,  // syscall argument 5
-    r8: u64,  // syscall argument 4
-    r10: u64, // syscall argument 3
-    rdx: u64, // syscall argument 2
-    rsi: u64, // syscall argument 1
-    rdi: u64, // syscall argument 0
-    rax: u64, // syscall number
-}
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();

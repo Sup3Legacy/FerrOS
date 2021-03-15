@@ -1,5 +1,8 @@
 use super::super::partition::Partition;
 use core::sync::atomic::{AtomicU64, Ordering};
+use crate::data_storage::path::Path;
+use alloc::collections::BTreeMap;
+
 #[derive(Copy, Clone, Debug)]
 struct RamDiskID(u64);
 
@@ -14,12 +17,18 @@ impl RamDiskID {
 }
 
 /// A RAM-Disk is a data structure stored in RAM
-/// (as opposed to a ras peripheral or a disk drive)
+/// (as opposed to a raw peripheral or a disk drive)
+///
+/// We simply store each file as a <TO DO> and keep track of it
+/// via a BTreeMap, addressed by it's path
 ///
 /// Thanks to the `Partition` trait, its behaviour is totally transparent
 /// to the VFS and can be used for certain latency- and throughput-critical
 /// operations as a process' `stdin`, `stdout` and `stderr`.
-pub struct RamDisk {}
+pub struct RamDisk {
+    id : RamDiskID,
+    files : BTreeMap<Path, [u8; 256]>, // TODO generalize MemFile structure
+}
 
 /// This interfaces enables a RAM-Disk to get used alongside every other device.
 impl Partition for RamDisk {
