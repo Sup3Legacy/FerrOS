@@ -3,11 +3,9 @@ use x86_64::{addr::VirtAddrNotValid, instructions::port::Port};
 
 use crate::data_storage::screen::Coord;
 
-use super::Color;
-
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct ColorCode(u8);
 
@@ -17,7 +15,7 @@ pub struct ColorCode(u8);
 /// # Fields
 /// * `code` - ASCII code of the character
 /// * `color` - color code of the character, 8-bit integer
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub struct CHAR {
     code: u8,
@@ -28,11 +26,11 @@ pub struct CHAR {
 /// of a process.
 /// A higher layer index means the virtual screen will be
 /// displayed more on the foreground.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VirtualScreenLayer(usize);
 
 /// This is the virtual screen assigned to a process
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct VirtualScreen {
     width: usize,
     height: usize,

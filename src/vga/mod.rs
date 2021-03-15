@@ -5,6 +5,7 @@ use spin::Mutex;
 use x86_64::instructions::interrupts;
 use x86_64::instructions::port::Port;
 
+pub mod mainscreen;
 pub mod video_mode;
 pub mod virtual_screen;
 
