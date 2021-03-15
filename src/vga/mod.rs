@@ -6,6 +6,7 @@ use x86_64::instructions::interrupts;
 use x86_64::instructions::port::Port;
 
 pub mod video_mode;
+pub mod virtual_screen;
 
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
