@@ -61,6 +61,10 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
+    initdebugln!();
+    println!("Ceci est simplement un debug :)");
+    warningln!("Ceci est un warning :|");
+    errorln!("Ceci est une erreur :(");
     println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
@@ -98,10 +102,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     test_main();
     // Yet again, some ugly tests in main
     println!(":( :( :(");
-    initdebugln!();
-    println!("Ceci est simplement un debug :)");
-    warningln!("Ceci est un warning :|");
-    errorln!("Ceci est une erreur :(");
     programs::shell::main_shell();
     println!();
     for i in 0..5 {
