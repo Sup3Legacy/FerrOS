@@ -1,17 +1,63 @@
 use super::PROCESS_MAX_NUMBER;
 use crate::data_storage::registers::Registers;
+use crate::interrupts::idt::InterruptStackFrameValue;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
-use crate::interrupts::idt::InterruptStackFrameValue;
-use x86_64::{PhysAddr, VirtAddr};
 use x86_64::registers::control::Cr3Flags;
+use x86_64::{PhysAddr, VirtAddr};
 
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
 
-    pub fn leave_context(rsp : u64);
+    /// Old function definition
+    pub fn _leave_context(rsp: u64);
 }
+
+#[naked]
+pub unsafe extern "C" fn leave_context(_rsp: u64) {
+    asm!(
+        "mov rsp, rdi",
+        "pop rbx",
+        "pop rcx",
+        "pop rbp",
+        "pop r11",
+        "pop r12",
+        "pop r13",
+        "pop r14",
+        "pop r15",
+        "pop r9",
+        "pop r8",
+        "pop r10",
+        "pop rdx",
+        "pop rsi",
+        "pop rdi",
+        "pop rax",
+        "sti",
+        "iretq", options(noreturn,),
+    )
+}
+
+/*
+    mov rsp, rdi
+    pop rbx
+    pop rcx
+    pop rbp
+    pop r11
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    pop r9
+    pop r8
+    pop r10
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    sti
+    iretq
+*/
 
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
@@ -71,7 +117,7 @@ impl Process {
             priority: Priority(0),
             quantum: 0_u64,
             cr3: PhysAddr::zero(),
-            cr3f: Cr3Flags::empty(), 
+            cr3f: Cr3Flags::empty(),
             rsp: VirtAddr::zero(),
             //stack_frame: InterruptStackFrameValue::empty(),
             //registers: Registers::new(),
@@ -183,7 +229,6 @@ lazy_static! {
 }
 pub static mut CURRENT_PROCESS: Process = Process::missing();
 
-
-pub unsafe fn gives_switch(counter : u64) -> (&'static Process, &'static mut Process) {
-    return (&CURRENT_PROCESS, &mut CURRENT_PROCESS)
+pub unsafe fn gives_switch(counter: u64) -> (&'static Process, &'static mut Process) {
+    return (&CURRENT_PROCESS, &mut CURRENT_PROCESS);
 }

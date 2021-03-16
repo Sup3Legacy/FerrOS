@@ -1,6 +1,6 @@
-    global leave_context
 
     section .text
+    .globl leave_context
 leave_context:
     mov rsp, rdi
     pop rbx
