@@ -268,6 +268,161 @@ impl BootInfoAllocator {
         }
     }
 
+
+    pub unsafe fn copy_table_entries(&mut self, table_4: PhysAddr) -> Result<PhysAddr, ()> {
+        let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
+        let table4: *mut PageTable = virt.as_mut_ptr();
+        match self.copy_table_4(&mut *table4) {
+            Ok(phys) => return Ok(phys),
+            Err(()) => return Err(()),
+        }
+    }
+
+    /// Function to copy a table of level 4 in order to allow fork operations
+    unsafe fn copy_table_4(
+        &mut self,
+        table_4: &'static PageTable,
+    ) -> Result<PhysAddr, ()> {
+        if let Some(new_table_addr) = self.allocate_4k_frame() {
+            let virt_table = VirtAddr::new(new_table_addr.as_u64() + PHYSICAL_OFFSET);
+            let new_table: *mut PageTable = virt_table.as_mut_ptr();
+            for index in 0..512 {
+                let flags = table_4[index].flags();
+                if flags.contains(PageTableFlags::PRESENT) {
+                    if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                        let virt = VirtAddr::new(table_4[index].addr().as_u64() + PHYSICAL_OFFSET);
+                        let level_3: *mut PageTable = virt.as_mut_ptr();
+                        if let Ok(level_3_addr) = self.copy_table_2(&mut *level_3) {
+                            (*new_table)[index].set_addr(level_3_addr, flags);
+                        } else {
+                            for i in index..512 {
+                                (*new_table)[i].set_flags(PageTableFlags::empty());
+                            }
+                            return Err(());
+                        }
+                    } else {
+                        (*new_table)[index].set_addr(table_4[index].addr(), flags);
+                    }
+                } else {
+                    (*new_table)[index].set_flags(flags);
+                }
+            }
+            return Ok(new_table_addr);
+        } else {
+            return Err(())
+        }
+    }
+    
+    /// Function to copy a table of level 3 in order to allow fork operations
+    unsafe fn copy_table_3(
+        &mut self,
+        table_3: &'static PageTable,
+    ) -> Result<PhysAddr, ()> {
+        if let Some(new_table_addr) = self.allocate_4k_frame() {
+            let virt_table = VirtAddr::new(new_table_addr.as_u64() + PHYSICAL_OFFSET);
+            let new_table: *mut PageTable = virt_table.as_mut_ptr();
+            for index in 0..512 {
+                let flags = table_3[index].flags();
+                if flags.contains(PageTableFlags::PRESENT) {
+                    if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                        let virt = VirtAddr::new(table_3[index].addr().as_u64() + PHYSICAL_OFFSET);
+                        let level_2: *mut PageTable = virt.as_mut_ptr();
+                        if let Ok(level_2_addr) = self.copy_table_2(&mut *level_2) {
+                            (*new_table)[index].set_addr(level_2_addr, flags);
+                        } else {
+                            for i in index..512 {
+                                (*new_table)[i].set_flags(PageTableFlags::empty());
+                            }
+                            return Err(());
+                        }
+                    } else {
+                        (*new_table)[index].set_addr(table_3[index].addr(), flags);
+                    }
+                } else {
+                    (*new_table)[index].set_flags(flags);
+                }
+            }
+            return Ok(new_table_addr);
+        } else {
+            return Err(())
+        }
+    }
+
+    /// Function to copy a table of level 2 in order to allow fork operations
+    unsafe fn copy_table_2(
+        &mut self,
+        table_2: &'static PageTable,
+    ) -> Result<PhysAddr, ()> {
+        if let Some(new_table_addr) = self.allocate_4k_frame() {
+            let virt_table = VirtAddr::new(new_table_addr.as_u64() + PHYSICAL_OFFSET);
+            let new_table: *mut PageTable = virt_table.as_mut_ptr();
+            for index in 0..512 {
+                let flags = table_2[index].flags();
+                if flags.contains(PageTableFlags::PRESENT) {
+                    if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                        let virt = VirtAddr::new(table_2[index].addr().as_u64() + PHYSICAL_OFFSET);
+                        let level_1: *mut PageTable = virt.as_mut_ptr();
+                        if let Ok(level_1_addr) = self.copy_table_1(&mut *level_1) {
+                            (*new_table)[index].set_addr(level_1_addr, flags);
+                        } else {
+                            for i in index..512 {
+                                (*new_table)[i].set_flags(PageTableFlags::empty());
+                            }
+                            return Err(());
+                        }
+                    } else {
+                        (*new_table)[index].set_addr(table_2[index].addr(), flags);
+                    }
+                } else {
+                    (*new_table)[index].set_flags(flags);
+                }
+            }
+            return Ok(new_table_addr);
+        } else {
+            return Err(())
+        }
+    }
+
+    /// Function to copy a table of level 1 in order to allow fork operations
+    unsafe fn copy_table_1(
+        &mut self,
+        table_1: &'static PageTable,
+    ) -> Result<PhysAddr, ()> {
+        if let Some(new_table_addr) = self.allocate_4k_frame() {
+            let virt_table = VirtAddr::new(new_table_addr.as_u64() + PHYSICAL_OFFSET);
+            let new_table: *mut PageTable = virt_table.as_mut_ptr();
+            for index in 0..512 {
+                let flags = table_1[index].flags();
+                if flags.contains(PageTableFlags::PRESENT) {
+                    if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
+                        if let Some(mut data_table) = self.allocate_4k_frame() {
+                            let virt = VirtAddr::new(table_1[index].addr().as_u64() + PHYSICAL_OFFSET);
+                            let old_table: *mut [u64; 64] = virt.as_mut_ptr();
+                            let virt_next = VirtAddr::new(data_table.as_u64() + PHYSICAL_OFFSET);
+                            let next_table: *mut [u64; 64] = virt_next.as_mut_ptr();
+                            for i in 0..64 {
+                                (*next_table)[i] = (*old_table)[i];
+                            }
+                            (*new_table)[index].set_addr(data_table, flags);
+                        } else {
+                            for i in index..512 {
+                                (*new_table)[i].set_flags(PageTableFlags::empty());
+                            }
+                            return Err(());
+                        }
+                    } else {
+                        (*new_table)[index].set_addr(table_1[index].addr(), flags);
+                    }
+                } else {
+                    (*new_table)[index].set_flags(flags);
+                }
+            }
+            return Ok(new_table_addr);
+        } else {
+            return Err(())
+        }
+    }
+
     /// Deallocator, from a given level 4 table, deallocates every thing the user had access to.
     pub unsafe fn deallocate_level_4_page(&mut self, table_4_addr: PhysAddr) -> Result<(), ()> {
         let mut failed = false;

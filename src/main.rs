@@ -96,7 +96,7 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-
+    //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]
     test_main();
