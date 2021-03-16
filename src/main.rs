@@ -28,8 +28,8 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, filesystem, gdt, halt_loop, interrupts, keyboard, long_halt, memory,
-    print, println, serial, sound, task, test_panic, vga,
+    allocator, data_storage, errorln, filesystem, gdt, halt_loop, initdebugln, interrupts,
+    keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga, warningln,
 };
 
 extern crate alloc;
@@ -61,6 +61,10 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
+    initdebugln!();
+    println!("Ceci est simplement un debug :)");
+    warningln!("Ceci est un warning :|");
+    errorln!("Ceci est une erreur :(");
     println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
