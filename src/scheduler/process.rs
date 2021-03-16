@@ -9,6 +9,8 @@ use x86_64::registers::control::Cr3Flags;
 
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
+
+    pub fn leave_context(rsp : u64);
 }
 
 /// Main structure of a process.

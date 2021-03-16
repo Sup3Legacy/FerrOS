@@ -281,6 +281,7 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         
             PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+        process::leave_context(VirtAddr::from_ptr(stack_frame).as_u64() + 8* 6);
         return;
     } else {
         COUNTER += 1;
