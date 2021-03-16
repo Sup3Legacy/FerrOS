@@ -28,9 +28,8 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, filesystem, gdt, halt_loop, interrupts, keyboard, long_halt, memory,
-    print, println, serial, sound, task, test_panic, vga,
-    warningln, errorln, initdebugln,
+    allocator, data_storage, errorln, filesystem, gdt, halt_loop, initdebugln, interrupts,
+    keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga, warningln,
 };
 
 extern crate alloc;

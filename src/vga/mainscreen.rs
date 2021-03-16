@@ -59,7 +59,10 @@ impl MainScreen {
                         // written part of the screen (that is written from a vScreen
                         // with a higher layer). This is because we draw vScreens by order
                         // of decreasing layer.
-                        if i + row_origin < BUFFER_HEIGHT && j + col_origin < BUFFER_WIDTH && !self.alpha[i + row_origin][j + col_origin]{
+                        if i + row_origin < BUFFER_HEIGHT
+                            && j + col_origin < BUFFER_WIDTH
+                            && !self.alpha[i + row_origin][j + col_origin]
+                        {
                             self.buffer[i + row_origin][j + col_origin] = vScreen.get_char(i, j);
                             self.alpha[i + row_origin][j + col_origin] = true;
                         }

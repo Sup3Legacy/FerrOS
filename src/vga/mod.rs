@@ -26,8 +26,6 @@ lazy_static! {
     });
 }
 
-
-
 /// The cursor goes back to the beginning of the current line.
 pub fn write_back() {
     SCREEN.lock().write_byte(b'\r');

@@ -19,8 +19,6 @@ pub fn _print(args: ::core::fmt::Arguments) {
         .expect("Printing to serial failed");
 }
 
-
-
 /// Prints to the host through the serial interface.
 #[macro_export]
 macro_rules! print {
@@ -56,5 +54,7 @@ macro_rules! errorln {
 
 #[macro_export]
 macro_rules! initdebugln {
-    () => ($crate::print!("\n ===== FerrOS debug interface =====\n"));
+    () => {
+        $crate::print!("\n ===== FerrOS debug interface =====\n")
+    };
 }

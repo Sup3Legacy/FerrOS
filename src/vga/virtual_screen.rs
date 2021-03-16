@@ -45,7 +45,7 @@ pub struct VirtualScreen {
 }
 
 impl VirtualScreen {
-    pub fn get_char(&self, row : usize, col : usize) -> CHAR {
+    pub fn get_char(&self, row: usize, col: usize) -> CHAR {
         self.buffer[row][col]
     }
     pub fn get_size(&self) -> Coord {
