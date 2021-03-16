@@ -81,7 +81,7 @@ pub struct Process {
     quantum: u64,
     pub cr3: PhysAddr,
     pub cr3f: Cr3Flags,
-    pub rsp: VirtAddr, // every registers are saved on the stack
+    pub rsp: u64, // every registers are saved on the stack
     //pub stack_frame: InterruptStackFrameValue,
     //pub registers: Registers,
     state: State,
@@ -100,7 +100,7 @@ impl Process {
             quantum: 0_u64,
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
-            rsp: VirtAddr::zero(),
+            rsp: 0,
             //stack_frame: InterruptStackFrameValue::empty(),
             //registers: Registers::new(),
             state: State::Runnable,
@@ -118,7 +118,7 @@ impl Process {
             quantum: 0_u64,
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
-            rsp: VirtAddr::zero(),
+            rsp: 0,
             //stack_frame: InterruptStackFrameValue::empty(),
             //registers: Registers::new(),
             state: State::SlotAvailable,

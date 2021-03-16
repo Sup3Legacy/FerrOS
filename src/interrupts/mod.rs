@@ -269,21 +269,14 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         old.cr3f = cr3f;
         Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
         
-        let mut rsp_store;
+        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15*8;
         
-        asm!("mov {0}, rsp",
-            out(reg) rsp_store);
-        old.rsp = VirtAddr::new(rsp_store);
-        
-        rsp_store = next.rsp.as_u64();
-        asm!("mov rsp, {0}",
-            in(reg) rsp_store);
-        
-            PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-        print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
-        println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
-        process::leave_context(VirtAddr::from_ptr(stack_frame).as_u64() - 15*8);
+
+        PICS.lock()
+        .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+        //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
+        //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
+        process::leave_context(next.rsp);
         loop {};
         return;
     } else {
