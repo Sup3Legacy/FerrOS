@@ -44,6 +44,15 @@ pub struct VirtualScreen {
 }
 
 impl VirtualScreen {
+    pub fn get_char(&self, row : usize, col : usize) -> CHAR {
+        self.buffer[row][col]
+    }
+    pub fn get_size(&self) -> Coord {
+        Coord::new(self.width, self.height)
+    }
+    pub fn get_position(&self) -> Coord {
+        self.position
+    }
     /// Writes a byte on the screen.
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
