@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use x86_64::{addr::VirtAddrNotValid, instructions::port::Port};
 
 use crate::data_storage::screen::Coord;
-use crate::{debug, debugln};
+use crate::{print, println};
 
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.
@@ -210,11 +210,11 @@ impl VirtualScreen {
         let old_row = self.row_pos;
         let old_col = self.col_pos;
         if row >= self.height {
-            debugln!("Row out of bounds");
+            println!("Row out of bounds");
             return;
         }
         if col >= self.width {
-            debugln!("Col out of bounds");
+            println!("Col out of bounds");
             return;
         }
         self.row_pos = row;

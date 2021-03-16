@@ -30,7 +30,7 @@ use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, filesystem, gdt, halt_loop, interrupts, keyboard, long_halt, memory,
     print, println, serial, sound, task, test_panic, vga,
-    debug, debugln, warningln, errorln, initdebugln,
+    warningln, errorln, initdebugln,
 };
 
 extern crate alloc;
@@ -100,7 +100,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     // Yet again, some ugly tests in main
     println!(":( :( :(");
     initdebugln!();
-    debugln!("Ceci est simplement un debug :)");
+    println!("Ceci est simplement un debug :)");
     warningln!("Ceci est un warning :|");
     errorln!("Ceci est une erreur :(");
     programs::shell::main_shell();

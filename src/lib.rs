@@ -55,14 +55,14 @@ where
     T: Fn(),
 {
     fn run(&self) {
-        debug!("{}...\t", core::any::type_name::<T>());
+        print!("{}...\t", core::any::type_name::<T>());
         self();
-        debugln!("\x1B[32m[ok]\x1B[0m");
+        println!("\x1B[32m[ok]\x1B[0m");
     }
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
-    debugln!("Running {} tests.", tests.len());
+    println!("Running {} tests.", tests.len());
     for test in tests {
         test.run();
     }
@@ -70,7 +70,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 }
 
 pub fn test_panic(_info: &PanicInfo) -> ! {
-    debugln!("[failed]\nError: {}\n", _info);
+    println!("[failed]\nError: {}\n", _info);
     exit_qemu(QemuExitCode::Failed);
     loop {}
 }

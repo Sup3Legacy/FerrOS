@@ -5,6 +5,8 @@ use spin::Mutex;
 use x86_64::instructions::interrupts;
 use x86_64::instructions::port::Port;
 
+use crate::{print, println};
+
 pub mod mainscreen;
 pub mod video_mode;
 pub mod virtual_screen;
@@ -24,19 +26,7 @@ lazy_static! {
     });
 }
 
-/// Crate-wide `print` macro. It enables any program to write to the VGA interface
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));
-}
 
-/// Crate-wide `println` macro.
-/// It replaces the standard println, so it can display on VGA
-#[macro_export]
-macro_rules! println {
-    () => (print!("\n"));
-    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
-}
 
 /// The cursor goes back to the beginning of the current line.
 pub fn write_back() {
@@ -344,3 +334,19 @@ fn check_print_output() {
         assert_eq!(char::from(screen_char.code), c);
     }
 }
+
+/*
+/// Crate-wide `print` macro. It enables any program to write to the VGA interface
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga::_print(format_args!($($arg)*)));
+}
+
+/// Crate-wide `println` macro.
+/// It replaces the standard println, so it can display on VGA
+#[macro_export]
+macro_rules! println {
+    () => (print!("\n"));
+    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
+}
+*/
