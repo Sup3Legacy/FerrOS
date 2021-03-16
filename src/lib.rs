@@ -9,6 +9,7 @@
 #![feature(naked_functions)]
 #![feature(asm)]
 #![feature(const_btree_new)]
+#![feature(option_result_unwrap_unchecked)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
@@ -54,14 +55,14 @@ where
     T: Fn(),
 {
     fn run(&self) {
-        serial_print!("{}...\t", core::any::type_name::<T>());
+        print!("{}...\t", core::any::type_name::<T>());
         self();
-        serial_println!("\x1B[32m[ok]\x1B[0m");
+        println!("\x1B[32m[ok]\x1B[0m");
     }
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
-    serial_println!("Running {} tests.", tests.len());
+    println!("Running {} tests.", tests.len());
     for test in tests {
         test.run();
     }
@@ -69,7 +70,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
 }
 
 pub fn test_panic(_info: &PanicInfo) -> ! {
-    serial_println!("[failed]\nError: {}\n", _info);
+    println!("[failed]\nError: {}\n", _info);
     exit_qemu(QemuExitCode::Failed);
     loop {}
 }

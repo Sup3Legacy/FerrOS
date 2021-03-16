@@ -22,6 +22,8 @@ vga= "*"
 bitflags = "*"
 bit_field = "*"
 elf_rs = "*"
+priority-queue = "*"
+hashbrown = "*"
 # ferr_os-librust = { git = "https://github.com/Sup3Legacy/FerrOS-librust" }
 
 [dependencies.lazy_static]
@@ -50,7 +52,10 @@ features = ["alloc"]
 test-timeout = 60  # Number of seconds before timeout.
 run-args = [
     "-drive", "format=raw,file=disk.img,index=2",
-    "-boot", "c"
+    "-boot", "c",
+    "-soundhw", "pcspk",
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
+    "-serial", "stdio",  # Redirect the output of the serial port to stdout.
 ]
 test-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.

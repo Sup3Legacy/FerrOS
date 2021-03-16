@@ -28,8 +28,8 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, filesystem, gdt, halt_loop, interrupts, keyboard, long_halt, memory,
-    print, println, serial, sound, task, test_panic, vga,
+    allocator, data_storage, errorln, filesystem, gdt, halt_loop, initdebugln, interrupts,
+    keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga, warningln,
 };
 
 extern crate alloc;
@@ -61,16 +61,15 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
+    initdebugln!();
+    println!("Ceci est simplement un debug :)");
+    warningln!("Ceci est un warning :|");
+    errorln!("Ceci est une erreur :(");
+    println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
-
-    filesystem::disk_operations::init();
-    unsafe {
-        // Initializes the LBA tables
-        filesystem::ustar::LBA_TABLE_GLOBAL.init();
-        filesystem::ustar::LBA_TABLE_GLOBAL.write_to_disk();
-    }
+    println!(":( :(");
     //filesystem::init();
 }
 
@@ -98,98 +97,11 @@ entry_point!(kernel_main);
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
 
-    // quelques tests de drive
-    let head = filesystem::ustar::Header {
-        file_type: filesystem::ustar::Type::File,
-        flags: filesystem::ustar::HeaderFlags {
-            user_owner: 12,
-            group_misc: 12,
-        },
-        name: [
-            b'b', b'o', b'n', b'j', b'o', b'u', b'r', 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
-            0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
-            0_u8, 0_u8, 0_u8, 0_u8,
-        ],
-        user: filesystem::ustar::UGOID(71),
-        owner: filesystem::ustar::UGOID(89),
-        group: filesystem::ustar::UGOID(21),
-        parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 286, // /!\ in u16
-        blocks_number: 2,
-        mode: filesystem::ustar::FileMode::Short,
-        padding: [999999999; 10],
-        blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
-    };
-    let mut data: Vec<u8> = vec![];
-    for _i in 0..(2 * 286) {
-        data.push((_i % 512) as u8);
-    }
-    let file = filesystem::ustar::MemFile { header: head, data };
-    let add_court = file.write_to_disk();
-    println!("{:?}", add_court);
-    println!("{:?}", unsafe {
-        filesystem::ustar::MemFile::read_from_disk(add_court)
-            .data
-            .len()
-    });
-
-    let head = filesystem::ustar::Header {
-        file_type: filesystem::ustar::Type::File,
-        flags: filesystem::ustar::HeaderFlags {
-            user_owner: 12,
-            group_misc: 12,
-        },
-        name: [
-            b'b', b'o', b'n', b'j', b'o', b'u', b'r', b' ', b'n', b'2', 0_u8, 0_u8, 0_u8, 0_u8,
-            0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8,
-            0_u8, 0_u8, 0_u8, 0_u8,
-        ],
-        user: filesystem::ustar::UGOID(71),
-        owner: filesystem::ustar::UGOID(89),
-        group: filesystem::ustar::UGOID(21),
-        parent_address: filesystem::ustar::Address { lba: 0, block: 0 },
-        length: 165630_u32, // /!\ in u16
-        blocks_number: 647,
-        mode: filesystem::ustar::FileMode::Long,
-        padding: [999999999; 10],
-        blocks: [filesystem::ustar::Address { lba: 0, block: 0 }; 100],
-    };
-    let mut data: Vec<u8> = vec![];
-    for i in 0..(2 * 165630) {
-        data.push(
-            [
-                (i >> 2) & 0xFF,
-                (i >> 10) & 0xFF,
-                (i >> 18) & 0xFF,
-                (i >> 26) & 0xFF,
-            ][i & 3] as u8,
-        );
-    }
-    let file = filesystem::ustar::MemFile { header: head, data };
-    let add_long = file.write_to_disk();
-    let res = filesystem::ustar::MemFile::read_from_disk(add_long).data;
-    println!("{:?}", add_long);
-    println!("{:?}", unsafe { res.len() });
-    for i in 0..(2 * 165630) {
-        assert_eq!(
-            res[i],
-            [
-                (i >> 2) & 0xFF,
-                (i >> 10) & 0xFF,
-                (i >> 18) & 0xFF,
-                (i >> 26) & 0xFF
-            ][i & 3] as u8
-        );
-    }
-
-    // fin des tests
-
     // This enables the tests
     #[cfg(test)]
     test_main();
-
-    sound::beep();
     // Yet again, some ugly tests in main
+    println!(":( :( :(");
     programs::shell::main_shell();
     println!();
     for i in 0..5 {

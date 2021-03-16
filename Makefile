@@ -1,5 +1,5 @@
 all:
-	cargo run -- -drive format=raw,file=disk.disk,index=2 -boot c
+	cargo run -- -boot c
 
 clean:
 	cargo clean
