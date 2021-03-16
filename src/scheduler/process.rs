@@ -33,7 +33,7 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         "pop rsi",
         "pop rdi",
         "pop rax",
-        "sti",
+        //"sti",
         "iretq", options(noreturn,),
     )
 }

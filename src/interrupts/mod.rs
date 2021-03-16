@@ -281,7 +281,10 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         
             PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-        process::leave_context(VirtAddr::from_ptr(stack_frame).as_u64() + 8* 6);
+        print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
+        println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
+        process::leave_context(VirtAddr::from_ptr(stack_frame).as_u64() - 15*8);
+        loop {};
         return;
     } else {
         COUNTER += 1;
