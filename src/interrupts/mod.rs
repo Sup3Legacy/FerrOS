@@ -189,6 +189,7 @@ extern "x86-interrupt" fn double_fault_handler(
     error_code: u64,
 ) -> ! {
     println!("ERROR : {:#?}", error_code);
+    println!("saved rsp : {:#?}", unsafe { process::CURRENT_PROCESS.rsp });
     panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }
 
@@ -267,8 +268,20 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         old.cr3 = cr3.start_address();
         old.cr3f = cr3f;
         Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-        //println!("there {:#?}", v);
-        //stack_frame_2.instruction_pointer = VirtAddr::zero();
+        
+        let mut rsp_store;
+        
+        asm!("mov {0}, rsp",
+            out(reg) rsp_store);
+        old.rsp = VirtAddr::new(rsp_store);
+        
+        rsp_store = next.rsp.as_u64();
+        asm!("mov rsp, {0}",
+            in(reg) rsp_store);
+        
+            PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+        return;
     } else {
         COUNTER += 1;
     }

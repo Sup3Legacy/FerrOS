@@ -33,7 +33,7 @@ pub struct Process {
     quantum: u64,
     pub cr3: PhysAddr,
     pub cr3f: Cr3Flags,
-    pub rsp: VirtAddr,
+    pub rsp: VirtAddr, // every registers are saved on the stack
     //pub stack_frame: InterruptStackFrameValue,
     //pub registers: Registers,
     state: State,
@@ -179,7 +179,7 @@ lazy_static! {
         Process::missing()
     ];
 }
-static mut CURRENT_PROCESS: Process = Process::missing();
+pub static mut CURRENT_PROCESS: Process = Process::missing();
 
 
 pub unsafe fn gives_switch(counter : u64) -> (&'static Process, &'static mut Process) {
