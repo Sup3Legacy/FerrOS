@@ -5,6 +5,8 @@ use priority_queue::PriorityQueue;
 
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
 
+use crate::{debug, debugln};
+
 /// Height of the screen
 const BUFFER_HEIGHT: usize = 25;
 
@@ -64,7 +66,7 @@ impl MainScreen {
                     }
                 }
             } else {
-                // Should not happen. Should maybe log error
+                debugln!("MainScreen : could not map ID to vScreen : {:?}", vScreenID);
             }
             self.roll_queue.push(vScreenID, _layer);
         }
