@@ -42,7 +42,7 @@ use alloc::string::String;
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    println!("{}", _info);
+    errorln!("{}", _info);
     halt_loop();
 }
 
