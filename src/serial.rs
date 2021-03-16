@@ -30,8 +30,29 @@ macro_rules! debug {
 /// Prints to the host through the serial interface, appending a newline.
 #[macro_export]
 macro_rules! debugln {
-    () => ($crate::debug!("\n"));
-    ($fmt:expr) => ($crate::debug!(concat!($fmt, "\n")));
+    () => ($crate::debug!("Info\n"));
+    ($fmt:expr) => ($crate::debug!(concat!("Info: ", $fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::debug!(
-        concat!($fmt, "\n"), $($arg)*));
+        concat!("Info: ", $fmt, "\n"), $($arg)*));
+}
+
+#[macro_export]
+macro_rules! warningln {
+    () => ($crate::debug!("\x1B[33mWarning \x1B[0m\n"));
+    ($fmt:expr) => ($crate::debug!(concat!("\x1B[33mWarning: ", $fmt, "\x1B[0m\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::debug!(
+        concat!("\x1B[33mWarning: ", $fmt, "\n"), $($arg)*));
+}
+
+#[macro_export]
+macro_rules! errorln {
+    () => ($crate::debug!("\x1B[91mERROR \x1B[0m\n"));
+    ($fmt:expr) => ($crate::debug!(concat!("\x1B[91mERROR: ", $fmt, "\x1B[0m\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::debug!(
+        concat!("\x1B[91mERROR: ", $fmt, "\n"), $($arg)*));
+}
+
+#[macro_export]
+macro_rules! initdebugln {
+    () => ($crate::debug!("\n ===== FerrOS debug interface =====\n"));
 }
