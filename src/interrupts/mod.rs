@@ -252,14 +252,14 @@ extern "x86-interrupt" fn security_exception_handler(
 
 // Should be entirely rewritten for multi-process handling
 unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame, registers: &mut Registers) {
-    print!(".");
+    //print!(".");
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
     //println!("r12:{} r11:{} rbp:{} rcx:{} rbx:{}", registers.r12, registers.r11, registers.rbp, registers.rcx, registers.rbx);
     if (COUNTER == QUANTUM) {
         COUNTER = 0;
-        println!("{:#?}", stack_frame);
+        //println!("{:#?}", stack_frame);
         let mut stack_frame_2 =  stack_frame.as_mut();
         //println!("entered");
         let (next, mut old) = process::gives_switch(COUNTER);
