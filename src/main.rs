@@ -49,6 +49,10 @@ fn panic(_info: &PanicInfo) -> ! {
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
+    initdebugln!();
+    println!("Ceci est simplement un debug :)");
+    warningln!("Ceci est un warning :|");
+    errorln!("Ceci est une erreur :(");
     gdt::init();
 
     // Memory allocation Initialization
@@ -61,10 +65,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
-    initdebugln!();
-    println!("Ceci est simplement un debug :)");
-    warningln!("Ceci est un warning :|");
-    errorln!("Ceci est une erreur :(");
+
     println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O

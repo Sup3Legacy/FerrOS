@@ -56,6 +56,7 @@ run-args = [
     "-soundhw", "pcspk",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
     "-serial", "stdio",  # Redirect the output of the serial port to stdout.
+    "-cpu", "max,+ssse3,+sse4.1,+sse4.2", #,+avx512f,+avx512vl
 ]
 test-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
@@ -63,3 +64,4 @@ test-args = [
     "-display", "none"  # Hide the display in test mode.
 ]
 test-success-exit-code = 33
+

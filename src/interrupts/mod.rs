@@ -47,8 +47,8 @@ macro_rules! saveRegisters {
             unsafe {
                 asm!(
                 "cli",
-                "sub rsp, 16",
-                "movdqu [rsp], xmm0",
+                "sub rsp, 32",
+                "vmovapd [rsp], ymm0",
                 "push rax",
                 "push rdi",
                 "push rsi",
@@ -67,7 +67,7 @@ macro_rules! saveRegisters {
                 "mov rsi, rsp",
                 "add rsi, rsp",
                 "mov rdi, rsp",
-                "add rdi, 17*8",
+                "add rdi, 15*8 + 32",
                 "call {0}",
                 "pop rbx",
                 "pop rcx",
@@ -84,8 +84,8 @@ macro_rules! saveRegisters {
                 "pop rsi",
                 "pop rdi",
                 "pop rax",
-                "movdqu xmm0, [rsp]",
-                "add rsp, 16",
+                "vmovapd ymm0, [rsp]",
+                "add rsp, 32",
                 "sti",
                 "iretq",
                   sym $name
@@ -273,7 +273,7 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         old.cr3f = cr3f;
         Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
         
-        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15*8 - 8*2;
+        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15*8 - 32;
         
         println!("Tick");
         PICS.lock()
