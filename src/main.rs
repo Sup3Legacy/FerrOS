@@ -30,6 +30,7 @@ use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, errorln, filesystem, gdt, halt_loop, initdebugln, interrupts,
     keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga, warningln,
+    hardware,
 };
 
 extern crate alloc;
@@ -53,6 +54,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     println!("Ceci est simplement un debug :)");
     warningln!("Ceci est un warning :|");
     errorln!("Ceci est une erreur :(");
+    println!("{:?}", unsafe {hardware::clock::Time::get()});
     gdt::init();
 
     // Memory allocation Initialization
@@ -71,6 +73,8 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
+    hardware::power::shutdown();
+    errorln!("Ousp");
     //filesystem::init();
 }
 
