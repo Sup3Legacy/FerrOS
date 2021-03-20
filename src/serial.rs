@@ -30,7 +30,7 @@ macro_rules! print {
 /// Prints to the host through the serial interface, appending a newline.
 #[macro_export]
 macro_rules! println {
-    () => ($crate::print!("Info\n"));
+    () => ($crate::print!("\nInfo\n"));
     ($fmt:expr) => ($crate::print!(concat!("Info: ", $fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(
         concat!("Info: ", $fmt, "\n"), $($arg)*));
@@ -38,10 +38,10 @@ macro_rules! println {
 
 #[macro_export]
 macro_rules! warningln {
-    () => ($crate::debug!("\x1B[33mWarning \x1B[0m\n"));
+    () => ($crate::print!("\x1B[33mWarning \x1B[0m\n"));
     ($fmt:expr) => ($crate::print!(concat!("\x1B[33mWarning: ", $fmt, "\x1B[0m\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(
-        concat!("\x1B[33mWarning: ", $fmt, "\n"), $($arg)*));
+        concat!("\x1B[33mWarning: ", $fmt, "\x1B[0m\n"), $($arg)*));
 }
 
 #[macro_export]
@@ -49,7 +49,15 @@ macro_rules! errorln {
     () => ($crate::print!("\x1B[91mERROR \x1B[0m\n"));
     ($fmt:expr) => ($crate::print!(concat!("\x1B[91mERROR: ", $fmt, "\x1B[0m\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(
-        concat!("\x1B[91mERROR: ", $fmt, "\n"), $($arg)*));
+        concat!("\x1B[91mERROR: ", $fmt, "\x1B[0m\n"), $($arg)*));
+}
+
+#[macro_export]
+macro_rules! debug {
+    () => ($crate::print!("\x1B[92mDebug \x1B[0m\n"));
+    ($fmt:expr) => ($crate::print!(concat!("\x1B[92mDebug: ", $fmt, "\x1B[0m\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(
+        concat!("\x1B[92mDebug: ", $fmt, "\x1B[0m\n"), $($arg)*));
 }
 
 #[macro_export]

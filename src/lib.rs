@@ -18,6 +18,7 @@ pub mod allocator;
 pub mod data_storage;
 pub mod filesystem;
 pub mod gdt;
+pub mod hardware;
 pub mod interrupts;
 pub mod keyboard;
 pub mod memory;

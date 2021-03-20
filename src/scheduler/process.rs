@@ -1,12 +1,66 @@
 use super::PROCESS_MAX_NUMBER;
 use crate::data_storage::registers::Registers;
+use crate::interrupts::idt::InterruptStackFrameValue;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
+use x86_64::registers::control::Cr3Flags;
+use x86_64::{PhysAddr, VirtAddr};
 
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
+
+    /// Old function definition
+    pub fn _leave_context(rsp: u64);
 }
+
+#[naked]
+pub unsafe extern "C" fn leave_context(_rsp: u64) {
+    asm!(
+        "mov rsp, rdi",
+        "pop rbx",
+        "pop rcx",
+        "pop rbp",
+        "pop r11",
+        "pop r12",
+        "pop r13",
+        "pop r14",
+        "pop r15",
+        "pop r9",
+        "pop r8",
+        "pop r10",
+        "pop rdx",
+        "pop rsi",
+        "pop rdi",
+        "pop rax",
+        "add rsp, 32",
+        "vmovaps ymm0, [rsp]",
+        //"sti",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
+/*
+    mov rsp, rdi
+    pop rbx
+    pop rcx
+    pop rbp
+    pop r11
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    pop r9
+    pop r8
+    pop r10
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    sti
+    iretq
+*/
 
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
@@ -24,14 +78,15 @@ extern "C" {
 #[derive(Debug)]
 #[repr(C)]
 pub struct Process {
-    id: ID,
     pid: ID,
+    ppid: ID,
     priority: Priority,
     quantum: u64,
-    cr3: usize,
-    rsp: u64,
-    rip: u64,
-    registers: Registers,
+    pub cr3: PhysAddr,
+    pub cr3f: Cr3Flags,
+    pub rsp: u64, // every registers are saved on the stack
+    //pub stack_frame: InterruptStackFrameValue,
+    //pub registers: Registers,
     state: State,
     //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
     children: Vec<ID>,
@@ -42,14 +97,15 @@ pub struct Process {
 impl Process {
     pub fn create_new(parent: ID, priority: Priority, owner: u64) -> Self {
         Self {
-            id: ID::new(),
-            pid: parent,
+            pid: ID::new(),
+            ppid: parent,
             priority,
             quantum: 0_u64,
-            cr3: 42, // /!\
-            rsp: 0,  // /!\
-            rip: 0,  // /!\
-            registers: Registers::new(),
+            cr3: PhysAddr::zero(),
+            cr3f: Cr3Flags::empty(),
+            rsp: 0,
+            //stack_frame: InterruptStackFrameValue::empty(),
+            //registers: Registers::new(),
             state: State::Runnable,
             children: Vec::new(),
             value: 0,
@@ -57,16 +113,17 @@ impl Process {
         }
     }
 
-    pub fn missing() -> Self {
+    pub const fn missing() -> Self {
         Self {
-            id: ID(0),
             pid: ID(0),
+            ppid: ID(0),
             priority: Priority(0),
             quantum: 0_u64,
-            cr3: 0,
+            cr3: PhysAddr::zero(),
+            cr3f: Cr3Flags::empty(),
             rsp: 0,
-            rip: 0,
-            registers: Registers::new(),
+            //stack_frame: InterruptStackFrameValue::empty(),
+            //registers: Registers::new(),
             state: State::SlotAvailable,
             children: Vec::new(),
             value: 0,
@@ -76,8 +133,8 @@ impl Process {
 
     pub fn spawn(&mut self, priority: Priority) -> &ID {
         // -> &Mutex<Self> {
-        let child = Process::create_new(self.id, priority, self.owner);
-        self.children.push(child.id); //Mutex::new(child));
+        let child = Process::create_new(self.pid, priority, self.owner);
+        self.children.push(child.pid); //Mutex::new(child));
         &(self.children[self.children.len() - 1])
     }
 
@@ -172,5 +229,9 @@ lazy_static! {
         Process::missing(),
         Process::missing()
     ];
-    static ref CURRENT_PROCESS: Process = Process::missing();
+}
+pub static mut CURRENT_PROCESS: Process = Process::missing();
+
+pub unsafe fn gives_switch(counter: u64) -> (&'static Process, &'static mut Process) {
+    return (&CURRENT_PROCESS, &mut CURRENT_PROCESS);
 }

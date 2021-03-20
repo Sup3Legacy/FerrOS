@@ -28,8 +28,9 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, errorln, filesystem, gdt, halt_loop, initdebugln, interrupts,
-    keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga, warningln,
+    allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
+    interrupts, keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga,
+    warningln,
 };
 
 extern crate alloc;
@@ -42,13 +43,17 @@ use alloc::string::String;
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    println!("{}", _info);
+    errorln!("{}", _info);
     halt_loop();
 }
 
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
+    initdebugln!();
+    println!("Ceci est simplement un debug :)");
+    warningln!("Ceci est un warning :|");
+    errorln!("Ceci est une erreur :(");
     gdt::init();
 
     // Memory allocation Initialization
@@ -61,15 +66,16 @@ pub fn init(_boot_info: &'static BootInfo) {
     // I/O Initialization
     keyboard::init();
     vga::init();
-    initdebugln!();
-    println!("Ceci est simplement un debug :)");
-    warningln!("Ceci est un warning :|");
-    errorln!("Ceci est une erreur :(");
+
     println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
+    long_halt(10);
+    debug!("{:?}", unsafe { hardware::clock::Time::get() });
+    hardware::power::shutdown();
+    errorln!("Ousp");
     //filesystem::init();
 }
 
@@ -96,7 +102,7 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-
+    //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]
     test_main();
