@@ -1,5 +1,5 @@
 //! Implements all functions related to the display.
-//! Currently uses an older version, directly writing onto the 
+//! Currently uses an older version, directly writing onto the
 //! physical display.
 use core::fmt;
 use core::fmt::Write;

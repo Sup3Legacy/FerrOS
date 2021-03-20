@@ -1,19 +1,45 @@
 use x86_64::instructions::port::Port;
 
-use crate::print;
+use crate::{print, println};
 
 const CMOS_ADDRESS: u16 = 0x70;
+static mut CMOS_ADDRESS_PORT: Port<u16> = Port::new(CMOS_ADDRESS);
 const CMOS_DATA: u16 = 0x71;
+static mut CMOS_DATA_PORT: Port<u8> = Port::new(CMOS_DATA);
 
 unsafe fn get_rtc(reg: u16) -> u8 {
-    let mut port = Port::new(CMOS_ADDRESS);
-    port.write(reg);
-    let mut data = Port::new(CMOS_DATA);
-    data.read()
+    CMOS_ADDRESS_PORT.write(reg);
+    CMOS_DATA_PORT.read()
 }
 
 unsafe fn get_update() -> u8 {
     get_rtc(0x0A) & 0x80
+}
+
+#[derive(Debug)]
+pub enum WeekDay {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+impl WeekDay {
+    pub fn from_int(index: u8) -> Self {
+        match index {
+            2 => Self::Monday,
+            3 => Self::Tuesday,
+            4 => Self::Wednesday,
+            5 => Self::Thursday,
+            6 => Self::Friday,
+            7 => Self::Saturday,
+            1 => Self::Sunday,
+            _ => Self::Monday, // TO DO : ERROR
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -37,20 +63,16 @@ impl Time {
         let mut day = get_rtc(0x07);
         let mut month = get_rtc(0x08);
         let mut year = get_rtc(0x09);
-        let mut last_second = second;
-        let mut last_minute = minute;
-        let mut last_hour = hour;
-        let mut last_day = day;
-        let mut last_month = month;
-        let mut last_year = year;
+        // + 2 to enter the while
+        let mut last_second;
+        let mut last_minute;
+        let mut last_hour;
+        let mut last_day;
+        let mut last_month;
+        let mut last_year;
 
-        while last_second != second
-            || last_minute != minute
-            || last_hour != hour
-            || last_day != day
-            || last_month != month
-            || last_year != year
-        {
+        loop {
+            println!("Clock update.");
             last_second = second;
             last_minute = minute;
             last_hour = hour;
@@ -64,15 +86,24 @@ impl Time {
             day = get_rtc(0x07);
             month = get_rtc(0x08);
             year = get_rtc(0x09);
+            if !(last_second != second
+                || last_minute != minute
+                || last_hour != hour
+                || last_day != day
+                || last_month != month
+                || last_year != year)
+            {
+                break;
+            }
         }
         Self {
             century: 0,
-            last_second: second as usize,
-            last_minute: minute as usize,
-            last_hour: hour as usize,
-            last_day: day as usize,
-            last_month: month as usize,
-            last_year: year as usize + 2000,
+            last_second: ((second & 0x0F) + ((second >> 4) * 10)) as usize,
+            last_minute: ((minute & 0x0F) + ((minute >> 4) * 10)) as usize,
+            last_hour: ((hour & 0x0F) + ((hour >> 4) * 10)) as usize,
+            last_day: ((day & 0x0F) + ((day >> 4) * 10)) as usize,
+            last_month: ((month & 0x0F) + ((month >> 4) * 10)) as usize,
+            last_year: ((year & 0x0F) + ((year >> 4) * 10)) as usize + 2000,
             last_century: 0_usize,
         }
     }

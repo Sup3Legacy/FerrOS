@@ -28,7 +28,7 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
+    allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
     interrupts, keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga,
     warningln,
 };
@@ -72,7 +72,8 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
-    println!("{:?}", unsafe { hardware::clock::Time::get() });
+    long_halt(10);
+    debug!("{:?}", unsafe { hardware::clock::Time::get() });
     hardware::power::shutdown();
     errorln!("Ousp");
     //filesystem::init();
