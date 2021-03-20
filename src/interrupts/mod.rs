@@ -47,6 +47,8 @@ macro_rules! saveRegisters {
             unsafe {
                 asm!(
                 "cli",
+                "sub rsp, 32",
+                "vmovapd [rsp], ymm0",
                 "push rax",
                 "push rdi",
                 "push rsi",
@@ -65,7 +67,7 @@ macro_rules! saveRegisters {
                 "mov rsi, rsp",
                 "add rsi, rsp",
                 "mov rdi, rsp",
-                "add rdi, 15*8",
+                "add rdi, 15*8 + 32",
                 "call {0}",
                 "pop rbx",
                 "pop rcx",
@@ -82,6 +84,8 @@ macro_rules! saveRegisters {
                 "pop rsi",
                 "pop rdi",
                 "pop rax",
+                "vmovapd ymm0, [rsp]",
+                "add rsp, 32",
                 "sti",
                 "iretq",
                   sym $name
@@ -252,7 +256,7 @@ extern "x86-interrupt" fn security_exception_handler(
 
 // Should be entirely rewritten for multi-process handling
 unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame, registers: &mut Registers) {
-    //print!(".");
+    print!(".");
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
@@ -269,9 +273,9 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         old.cr3f = cr3f;
         Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
         
-        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15*8;
+        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15*8 - 32;
         
-
+        println!("Tick");
         PICS.lock()
         .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);

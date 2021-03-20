@@ -11,7 +11,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bootloader = { version = "0.9.8", features = ["map_physical_memory"]}
+bootloader = { version = "0.9.8", features = ["map_physical_memory", "sse"]}
 spin = "0.5.2"
 x86_64 = "0.13.2"
 pic8259_simple = "*"
@@ -56,6 +56,8 @@ run-args = [
     "-soundhw", "pcspk",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
     "-serial", "stdio",  # Redirect the output of the serial port to stdout.
+    "-cpu", "max,+ssse3,+sse4.1,+sse4.2", #,+avx512f,+avx512vl
+    "-rtc", "base=localtime,clock=host",
 ]
 test-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
@@ -63,3 +65,4 @@ test-args = [
     "-display", "none"  # Hide the display in test mode.
 ]
 test-success-exit-code = 33
+
