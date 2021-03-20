@@ -11,10 +11,10 @@ pub mod idt;
 use idt::Idt as InterruptDescriptorTable;
 use idt::{InterruptStackFrame, PageFaultErrorCode};
 
-use crate::gdt;
-use crate::{print, println};
-use crate::scheduler::process;
 use crate::data_storage::registers::Registers;
+use crate::gdt;
+use crate::scheduler::process;
+use crate::{print, println};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -95,8 +95,6 @@ macro_rules! saveRegisters {
         wrapper
     }};
 }
-
-
 
 lazy_static! {
     /// Defines the InterruptDescriptorTable and all the interruption handlers.
@@ -255,7 +253,10 @@ extern "x86-interrupt" fn security_exception_handler(
 }
 
 // Should be entirely rewritten for multi-process handling
-unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFrame, registers: &mut Registers) {
+unsafe extern "C" fn timer_interrupt_handler(
+    stack_frame: &mut InterruptStackFrame,
+    registers: &mut Registers,
+) {
     print!(".");
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
@@ -264,7 +265,7 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
     if (COUNTER == QUANTUM) {
         COUNTER = 0;
         //println!("{:#?}", stack_frame);
-        let mut stack_frame_2 =  stack_frame.as_mut();
+        let mut stack_frame_2 = stack_frame.as_mut();
         //println!("entered");
         let (next, mut old) = process::gives_switch(COUNTER);
         //println!("here");
@@ -272,21 +273,21 @@ unsafe extern "C" fn timer_interrupt_handler(stack_frame: &mut InterruptStackFra
         old.cr3 = cr3.start_address();
         old.cr3f = cr3f;
         Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-        
-        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15*8 - 32;
-        
+
+        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15 * 8 - 32;
+
         println!("Tick");
         PICS.lock()
-        .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
         process::leave_context(next.rsp);
-        loop {};
+        loop {}
         return;
     } else {
         COUNTER += 1;
     }
-    
+
     /*
     let stack_frame2 = unsafe { stack_frame.as_mut() };
     let (pf, cr_f) = Cr3::read();

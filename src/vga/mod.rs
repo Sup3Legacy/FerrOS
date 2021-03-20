@@ -1,3 +1,6 @@
+//! Implements all functions related to the display.
+//! Currently uses an older version, directly writing onto the 
+//! physical display.
 use core::fmt;
 use core::fmt::Write;
 use lazy_static::lazy_static;

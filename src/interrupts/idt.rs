@@ -190,7 +190,7 @@ pub type DivergingFuncWithErrorCode =
 /// Type for Syscalls (this is duplicated and it shouldn't)
 pub type SyscallFunc = extern "C" fn();
 
-pub type NakedCHandler = SyscallFunc;//HandlerFunc;//extern "C" fn();
+pub type NakedCHandler = SyscallFunc; //HandlerFunc;//extern "C" fn();
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
@@ -376,9 +376,7 @@ impl Entry<SyscallFunc> {
     }
 }
 
-
 //createEntry!(NakedCHandler);
-
 
 bitflags! {
     #[repr(transparent)]
@@ -404,9 +402,7 @@ impl InterruptStackFrame {
     }
 
     pub unsafe fn as_real(&mut self) -> InterruptStackFrameValue {
-        InterruptStackFrameValue {
-            ..self.value
-        }
+        InterruptStackFrameValue { ..self.value }
     }
 }
 impl fmt::Debug for InterruptStackFrame {
