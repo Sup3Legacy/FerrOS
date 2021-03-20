@@ -1,6 +1,12 @@
-use crate::{print, errorln};
+use x86_64::instructions::port::Port;
+use crate::{errorln, print, warningln};
 
 pub fn shutdown() {
+    unsafe {
+        warningln!("Sending shutdown signal to QEMU.");
+        let mut shutdown = Port::new(0x604);
+        shutdown.write(0x2000_u16);
+    }
     unsafe {
         asm!(
             "push rax",
@@ -18,13 +24,13 @@ pub fn shutdown() {
             "pop rcx",
             "pop rbx",
             "pop rax",
-            "call {0}",
+            "call failed_shutdown",
             "ret",
-            sym failed_shutdown
         )
     }
 }
 
+#[no_mangle]
 fn failed_shutdown() {
     errorln!("Failed to shutdown!");
 }
