@@ -15,6 +15,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use bit_field::BitArray;
 use core::panic::PanicInfo;
+use lazy_static::lazy_static;
 
 // use os_test::println;  TODO
 //use core::task::Poll;
@@ -32,6 +33,10 @@ use ferr_os::{
     interrupts, keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga,
     warningln,
 };
+
+static _TEST_PROGRAM: &'static [u8; 2360] = include_bytes!(
+    "test_program"
+);
 
 extern crate alloc;
 
