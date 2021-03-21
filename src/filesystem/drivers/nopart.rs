@@ -11,14 +11,6 @@ impl NoPart {
 }
 
 impl Partition for NoPart {
-    fn open(&self) -> () {
-        todo!()
-    }
-
-    fn close(&self) -> () {
-        todo!()
-    }
-
     fn read(&self) -> () {
         todo!()
     }
@@ -28,6 +20,10 @@ impl Partition for NoPart {
     }
 
     fn lseek(&self) -> () {
+        todo!()
+    }
+    
+    fn flush(&self) {
         todo!()
     }
 }

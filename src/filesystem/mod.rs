@@ -4,6 +4,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::todo;
 use lazy_static::lazy_static;
+pub mod descriptor;
 pub mod drivers;
 pub mod fsflags;
 pub mod partition;

@@ -8,14 +8,6 @@ pub struct Raw {
 }
 
 impl Partition for Raw {
-    fn open(&self) -> () {
-        todo!()
-    }
-
-    fn close(&self) -> () {
-        todo!()
-    }
-
     fn read(&self) -> () {
         todo!()
     }
@@ -25,6 +17,10 @@ impl Partition for Raw {
     }
 
     fn lseek(&self) -> () {
+        todo!()
+    }
+
+    fn flush(&self) {
         todo!()
     }
 }

@@ -32,14 +32,6 @@ pub struct RamDisk {
 
 /// This interfaces enables a RAM-Disk to get used alongside every other device.
 impl Partition for RamDisk {
-    fn open(&self) -> () {
-        todo!()
-    }
-
-    fn close(&self) -> () {
-        todo!()
-    }
-
     fn read(&self) {
         todo!()
     }
@@ -49,6 +41,10 @@ impl Partition for RamDisk {
     }
 
     fn lseek(&self) -> () {
+        todo!()
+    }
+
+    fn flush(&self) {
         todo!()
     }
 }

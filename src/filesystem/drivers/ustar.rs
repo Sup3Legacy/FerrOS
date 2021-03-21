@@ -16,6 +16,12 @@ static mut FILE_ADRESS_CACHE: AddressCache = AddressCache(BTreeMap::new());
 
 static mut DIR_CACHE: DirCache = DirCache(BTreeMap::new());
 
+/// This holds the buffer for opened files.
+/// When a file is opened (be it in read or write mode), it gets placed into this buffer.
+/// All read/write actions are then performed on ths buffered version.
+/// When the file is closed, the buffered version is then placed back into the disk
+static mut FILE_BUFFER: FileBuffer = FileBuffer(BTreeMap::new());
+
 /// Number of 512-sector segments.
 ///
 /// It should be replaced by an automatic detection of the number of segments,
@@ -312,6 +318,9 @@ struct AddressCache(BTreeMap<Path, Address>);
 
 #[derive(Debug)]
 struct DirCache(BTreeMap<Path, MemDir>);
+
+#[derive(Debug)]
+struct FileBuffer(BTreeMap<Path, MemFile>);
 
 /// Slices a `Vec<u8>` of binary data into a `Vec<[u16; 256]>`.
 /// This simplifies the conversion from data-blob to set of `256-u16` sectors.
@@ -706,14 +715,6 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn open(&self) -> () {
-        todo!()
-    }
-
-    fn close(&self) -> () {
-        todo!()
-    }
-
     fn read(&self) -> () {
         todo!()
     }
@@ -723,6 +724,10 @@ impl Partition for UsTar {
     }
 
     fn lseek(&self) -> () {
+        todo!()
+    }
+
+    fn flush(&self) {
         todo!()
     }
 }

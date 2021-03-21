@@ -2,13 +2,13 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
-use crate::{print, println, debug};
+use crate::{debug, print, println};
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 7;
+const SYSCALL_NUMBER: u64 = 10;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(Registers, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
@@ -16,9 +16,12 @@ const SYSCALL_TABLE: [extern "C" fn(Registers, InterruptStackFrame); SYSCALL_NUM
     syscall_1_write,
     syscall_2_open,
     syscall_3_close,
-    syscall_not_implemented,
+    syscall_4_dup2,
     syscall_5_fork,
     syscall_6_exec,
+    syscall_7_exit,
+    syscall_8_wait,
+    syscall_test
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -48,12 +51,28 @@ extern "C" fn syscall_3_close(_args: Registers, _isf: InterruptStackFrame) {
     panic!("close not implemented")
 }
 
+extern "C" fn syscall_4_dup2(_args: Registers, _isf: InterruptStackFrame) {
+    panic!("dup2 not implemented");
+}
+
 extern "C" fn syscall_5_fork(_args: Registers, _isf: InterruptStackFrame) {
     panic!("fork not implemented");
 }
 
 extern "C" fn syscall_6_exec(_args: Registers, _isf: InterruptStackFrame) {
     panic!("exec not implemented");
+}
+
+extern "C" fn syscall_7_exit(_args: Registers, _isf: InterruptStackFrame) {
+    panic!("exit not implemented");
+}
+
+extern "C" fn syscall_8_wait(_args: Registers, _isf: InterruptStackFrame) {
+    panic!("wait not implemented");
+}
+
+extern "C" fn syscall_test(_args: Registers, _isf:InterruptStackFrame) {
+    debug!("Test syscall.");
 }
 
 extern "C" fn syscall_not_implemented(_args: Registers, _isf: InterruptStackFrame) {
