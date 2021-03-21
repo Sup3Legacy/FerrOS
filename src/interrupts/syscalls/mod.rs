@@ -8,7 +8,7 @@ use crate::{print, println, debug};
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 5;
+const SYSCALL_NUMBER: u64 = 7;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(Registers, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
@@ -17,6 +17,8 @@ const SYSCALL_TABLE: [extern "C" fn(Registers, InterruptStackFrame); SYSCALL_NUM
     syscall_2_open,
     syscall_3_close,
     syscall_not_implemented,
+    syscall_5_fork,
+    syscall_6_exec,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -44,6 +46,14 @@ extern "C" fn syscall_2_open(_args: Registers, _isf: InterruptStackFrame) {
 /// close file. arg0 : unsigned int fd
 extern "C" fn syscall_3_close(_args: Registers, _isf: InterruptStackFrame) {
     panic!("close not implemented")
+}
+
+extern "C" fn syscall_5_fork(_args: Registers, _isf: InterruptStackFrame) {
+    panic!("fork not implemented");
+}
+
+extern "C" fn syscall_6_exec(_args: Registers, _isf: InterruptStackFrame) {
+    panic!("exec not implemented");
 }
 
 extern "C" fn syscall_not_implemented(_args: Registers, _isf: InterruptStackFrame) {
