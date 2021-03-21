@@ -44,6 +44,7 @@ use alloc::string::String;
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     errorln!("{}", _info);
+    hardware::power::shutdown();
     halt_loop();
 }
 
@@ -73,6 +74,9 @@ pub fn init(_boot_info: &'static BootInfo) {
     interrupts::init();
     println!(":( :(");
     long_halt(10);
+    unsafe {
+        asm!("mov rax, 1", "int 80h",);
+    }
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     hardware::power::shutdown();
     errorln!("Ousp");
