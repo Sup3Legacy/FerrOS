@@ -8,7 +8,7 @@ use crate::{print, println};
 /// A ColorCode is the data of a foreground color and a background one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct ColorCode(u8);
+pub struct ColorCode(pub u8);
 
 /// COPY OF THE ONE IN MOD
 /// This is the base element, stored in the screen buffer.
@@ -21,6 +21,12 @@ pub struct ColorCode(u8);
 pub struct CHAR {
     code: u8,
     color: ColorCode,
+}
+
+impl CHAR {
+    pub fn new(code: u8, color: ColorCode) -> Self {
+        Self { code, color }
+    }
 }
 
 /// This is the structure holding the layer index

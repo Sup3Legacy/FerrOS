@@ -47,4 +47,8 @@ impl Partition for RamDisk {
     fn flush(&self) {
         todo!()
     }
+
+    fn read_raw(&self) -> () {
+        todo!()
+    }
 }

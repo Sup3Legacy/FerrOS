@@ -13,4 +13,7 @@ pub trait Partition {
 
     /// TODO
     fn lseek(&self) -> ();
+
+    /// This is the function the kernel reads through.
+    fn read_raw(&self) -> ();
 }

@@ -1,4 +1,1 @@
-
-pub struct ProcessDescriptorTable {
-    
-}
+pub struct ProcessDescriptorTable {}

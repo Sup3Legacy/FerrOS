@@ -23,4 +23,8 @@ impl Partition for Raw {
     fn flush(&self) {
         todo!()
     }
+
+    fn read_raw(&self) -> () {
+        todo!()
+    }
 }

@@ -1,16 +1,9 @@
-use crate::filesystem::partition::Partition;
+use super::super::partition::Partition;
+use x86_64::instructions::port::Port;
 
-/// Used to define an empty partition
-#[derive(Debug)]
-pub struct NoPart {}
+pub struct Kernel {}
 
-impl NoPart {
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Partition for NoPart {
+impl Partition for Kernel {
     fn read(&self) -> () {
         todo!()
     }

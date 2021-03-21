@@ -730,4 +730,8 @@ impl Partition for UsTar {
     fn flush(&self) {
         todo!()
     }
+
+    fn read_raw(&self) -> () {
+        todo!()
+    }
 }

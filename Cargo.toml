@@ -22,7 +22,7 @@ vga= "*"
 bitflags = "*"
 bit_field = "*"
 elf_rs = "*"
-priority-queue = "*"
+priority-queue = "1.1.1"
 hashbrown = "*"
 # ferr_os-librust = { git = "https://github.com/Sup3Legacy/FerrOS-librust" }
 

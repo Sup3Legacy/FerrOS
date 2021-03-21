@@ -21,7 +21,7 @@ const SYSCALL_TABLE: [extern "C" fn(Registers, InterruptStackFrame); SYSCALL_NUM
     syscall_6_exec,
     syscall_7_exit,
     syscall_8_wait,
-    syscall_test
+    syscall_test,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -71,7 +71,7 @@ extern "C" fn syscall_8_wait(_args: Registers, _isf: InterruptStackFrame) {
     panic!("wait not implemented");
 }
 
-extern "C" fn syscall_test(_args: Registers, _isf:InterruptStackFrame) {
+extern "C" fn syscall_test(_args: Registers, _isf: InterruptStackFrame) {
     debug!("Test syscall.");
 }
 

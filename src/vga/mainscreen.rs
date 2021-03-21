@@ -40,6 +40,16 @@ pub struct MainScreen {
 }
 
 impl MainScreen {
+    pub fn new() -> Self {
+        let blank = CHAR::new(b' ', ColorCode(0_u8));
+        Self {
+            map: BTreeMap::new(),
+            queue: PriorityQueue::with_default_hasher(),
+            roll_queue: PriorityQueue::with_default_hasher(),
+            buffer: [[blank; BUFFER_WIDTH]; BUFFER_HEIGHT],
+            alpha: [[false; BUFFER_WIDTH]; BUFFER_HEIGHT],
+        }
+    }
     /// Draws the whole screen by displaying each vScreen ordered by layer
     ///
     /// A higher layer means the vScreen will be more on the foreground.

@@ -66,7 +66,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     // I/O Initialization
     keyboard::init();
-    vga::init();
+    //vga::init();
 
     println!(":(");
 
@@ -121,16 +121,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         println!("{},", i);
     }
 
-    for i in 0..10000 {
-        print!("{}/1000000", i);
-        vga::write_back();
-    }
     println!();
 
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
-    vga::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
