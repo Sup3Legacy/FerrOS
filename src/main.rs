@@ -116,7 +116,7 @@ pub fn init(_boot_info: &'static BootInfo) {
                 };
                 let (cr3, cr3f) = Cr3::read();
                 Cr3::write(level_4_addr, cr3f);
-                hardware::power::shutdown();
+                //hardware::power::shutdown();
                 warningln!("jump addr : 0x{:X}", scheduler::process::towards_user as u64);
                 //asm!("int 0");
                 scheduler::process::towards_user(addr2, addr);

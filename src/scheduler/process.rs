@@ -46,6 +46,16 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         "mov rsp, rdi",
+        // On empile le rsi (= nouveau rip)
+        "push rsi",
+        // Puis on saute à l'adresse, via un ret
+        "call rsi",
+        // Là, on est revenu du programme
+        // On arrête l'exécution avec un syscall qui panique
+        "mov rax, 0",
+        "int 80h",
+
+        // Ceci n'est pas exécuté
         "push 0",
         "push rsi",
         "push 8",
