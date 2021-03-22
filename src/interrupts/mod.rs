@@ -231,6 +231,7 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
+    println!("Protection {}", _error_code);
     println!("GENERAL PROTECTION FAULT! {:#?}", _stack_frame);
     println!("TRIED TO READ : {:#?}", Cr2::read());
     println!("ERROR : {:#?}", _error_code);
