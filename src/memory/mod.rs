@@ -133,7 +133,7 @@ impl BootInfoAllocator {
     }
 
     /// Creates a new level_4 table and taking into account the kernel adresses.
-    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysAddr, ()> {
+    pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysFrame, ()> {
         if let Some(phys) = self.allocate_4k_frame() {
             warningln!("l.138 success");
             // let phys = frame.start_address();
@@ -145,7 +145,7 @@ impl BootInfoAllocator {
                     .set_addr(self.level4_table[i].addr(), self.level4_table[i].flags());
                 // copies the data from the kernels table
             }
-            Ok(phys)
+            Ok(PhysFrame::containing_address(phys))
         } else {
             warningln!("l.150 failure");
             Err(())
@@ -154,11 +154,11 @@ impl BootInfoAllocator {
 
     pub unsafe fn add_entry_to_table(
         &mut self,
-        table_4: PhysAddr,
+        table_4: PhysFrame,
         virt_4: VirtAddr,
         flags: PageTableFlags
     ) -> Result<(), ()> {
-        let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
+        let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
         self.add_entry_to_table_4(&mut *page_table_ptr, virt_4, flags)
     }
@@ -291,12 +291,12 @@ impl BootInfoAllocator {
 
     pub unsafe fn add_entry_to_table_with_data(
         &mut self,
-        table_4: PhysAddr,
+        table_4: PhysFrame,
         virt_4: VirtAddr,
         flags: PageTableFlags,
-        data: [u64; 512]
+        data: &[u64; 512]
     ) -> Result<(), ()> {
-        let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
+        let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
         self.add_entry_to_table_4_with_data(&mut *page_table_ptr, virt_4, flags, data)
     }
@@ -309,8 +309,9 @@ impl BootInfoAllocator {
         table_4: &'static mut PageTable,
         virt_4: VirtAddr,
         flags: PageTableFlags,
-        data: [u64; 512]
+        data: &[u64; 512]
     ) -> Result<(), ()> {
+        warningln!("entered level 4");
         let p_4 = virt_4.p4_index();
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -342,8 +343,9 @@ impl BootInfoAllocator {
         table_3: &'static mut PageTable,
         virt_3: VirtAddr,
         flags: PageTableFlags,
-        data: [u64; 512]
+        data: &[u64; 512]
     ) -> Result<(), ()> {
+        warningln!("entered level 3");
         let p_3 = virt_3.p3_index();
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -375,8 +377,9 @@ impl BootInfoAllocator {
         table_2: &'static mut PageTable,
         virt_2: VirtAddr,
         flags: PageTableFlags,
-        data: [u64; 512]
+        data: &[u64; 512]
     ) -> Result<(), ()> {
+        warningln!("entered level 2");
         let p_2 = virt_2.p2_index();
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -408,8 +411,9 @@ impl BootInfoAllocator {
         table_1: &'static mut PageTable,
         virt_1: VirtAddr,
         flags: PageTableFlags,
-        data: [u64; 512]
+        data: &[u64; 512]
     ) -> Result<(), ()> {
+        warningln!("entered level 1");
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -418,13 +422,14 @@ impl BootInfoAllocator {
             match self.allocate_4k_frame() {
                 None => Err(()),
                 Some(addr) => {
-                    //let addr = phys_frame.start_address();
                     table_1[p_1].set_addr(addr, flags);
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
-                    let content: *mut [u64; 512] = virt_1.as_mut_ptr();
+                    let content: *mut [u64; 512] = virt.as_mut_ptr();
+                    warningln!("starts copying");
                     for i in 0..512 {
                         (*content)[i] = data[i];
                     }
+                    warningln!("copied");
                     Ok(())
                 }
             }

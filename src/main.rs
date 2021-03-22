@@ -27,6 +27,7 @@ mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
 use x86_64::structures::paging::PageTableFlags;
+use x86_64::registers::control::Cr3;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
@@ -84,11 +85,16 @@ pub fn init(_boot_info: &'static BootInfo) {
         match frame_allocator.allocate_level_4_frame() {
             Ok(level_4_addr) => {
                 let addr: u64 = 54975581388800; 
+                let data: *const [u64; 512] = VirtAddr::from_ptr(&ferr_os::LOL as *const u8).as_mut_ptr();
+
                 println!("add entry to address : 0x{:X} {:#?}", addr, VirtAddr::new(addr));
-                match frame_allocator.add_entry_to_table(level_4_addr, VirtAddr::new(addr),
-                                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT) {
+                match frame_allocator.add_entry_to_table_with_data(level_4_addr, VirtAddr::new(addr),
+                                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT, &*data) {
                     Ok(()) => {
                         warningln!("worked");
+                        let (cr3, cr3f) = Cr3::read();
+                        Cr3::write(level_4_addr, cr3f);
+                        asm!("jmp {0}", in(reg) addr);
                     },
 
                     Err(()) => errorln!("error didn't allocate"),
