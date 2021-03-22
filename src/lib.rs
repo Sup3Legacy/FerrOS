@@ -31,6 +31,13 @@ pub mod vga;
 
 extern crate alloc;
 
+pub static _TEST_PROGRAM: &'static [u8; 2360] = include_bytes!(
+    "test_program"
+);
+
+pub static LOL: [u8; 6] = [0x66, 0xb8, 0x01, 0x00, 
+    0xcd, 0x80];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum QemuExitCode {

@@ -34,9 +34,7 @@ use ferr_os::{
     warningln,
 };
 
-static _TEST_PROGRAM: &'static [u8; 2360] = include_bytes!(
-    "test_program"
-);
+
 
 extern crate alloc;
 
@@ -74,6 +72,9 @@ pub fn init(_boot_info: &'static BootInfo) {
     //vga::init();
 
     println!(":(");
+    unsafe {
+        asm!("jmp {0}", in(reg) &ferr_os::LOL as *const u8);
+    }
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
@@ -83,7 +84,8 @@ pub fn init(_boot_info: &'static BootInfo) {
         asm!("mov rax, 1", "int 80h",);
     }
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
-    hardware::power::shutdown();
+    //hardware::power::shutdown();
+    loop {}
     errorln!("Ousp");
     //filesystem::init();
 }
