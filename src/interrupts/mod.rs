@@ -49,13 +49,6 @@ macro_rules! saveRegisters {
                 "cli",
                 "sub rsp, 32",
                 "vmovapd [rsp], ymm0",
-                "push rax",
-                "push rdi",
-                "push rsi",
-                "push rdx",
-                "push r10",
-                "push r8",
-                "push r9",
                 "push r15",
                 "push r14",
                 "push r13",
@@ -64,11 +57,24 @@ macro_rules! saveRegisters {
                 "push rbp",
                 "push rcx",
                 "push rbx",
+                "push rax",
+                "push rdi",
+                "push rsi",
+                "push rdx",
+                "push r10",
+                "push r8",
+                "push r9",
                 "mov rsi, rsp",
-                "add rsi, rsp",
                 "mov rdi, rsp",
                 "add rdi, 15*8 + 32",
                 "call {0}",
+                "pop r9",
+                "pop r8",
+                "pop r10",
+                "pop rdx",
+                "pop rsi",
+                "pop rdi",
+                "pop rax",
                 "pop rbx",
                 "pop rcx",
                 "pop rbp",
@@ -77,13 +83,6 @@ macro_rules! saveRegisters {
                 "pop r13",
                 "pop r14",
                 "pop r15",
-                "pop r9",
-                "pop r8",
-                "pop r10",
-                "pop rdx",
-                "pop rsi",
-                "pop rdi",
-                "pop rax",
                 "vmovapd ymm0, [rsp]",
                 "add rsp, 32",
                 "sti",
@@ -274,7 +273,7 @@ unsafe extern "C" fn timer_interrupt_handler(
         old.cr3f = cr3f;
         Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
 
-        old.rsp = VirtAddr::from_ptr(stack_frame).as_u64() - 15 * 8 - 32;
+        old.rsp = VirtAddr::from_ptr(registers).as_u64() ;
 
         println!("Tick");
         PICS.lock()

@@ -80,6 +80,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     interrupts::init();
     println!(":( :(");
 
+    long_halt(10);
 
     unsafe {
         match frame_allocator.allocate_level_4_frame() {
@@ -94,7 +95,7 @@ pub fn init(_boot_info: &'static BootInfo) {
                         warningln!("worked");
                         let (cr3, cr3f) = Cr3::read();
                         Cr3::write(level_4_addr, cr3f);
-                        asm!("jmp {0}", in(reg) addr);
+                        //asm!("jmp {0}", in(reg) addr);
                     },
 
                     Err(()) => errorln!("error didn't allocate"),
@@ -110,7 +111,6 @@ pub fn init(_boot_info: &'static BootInfo) {
         asm!("jmp {0}", in(reg) &ferr_os::LOL as *const u8);
     }
 
-    long_halt(10);
     unsafe {
         asm!("mov rax, 1", "int 80h",);
     }
