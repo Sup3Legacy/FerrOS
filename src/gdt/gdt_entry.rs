@@ -175,8 +175,8 @@ pub fn new_ds() -> u64 {
         .set_read_write(true)
         .is_code(false)
         .set_dpl(3)
-        .set_available(true)
-        .set_big(true)
+        .set_big(false)
+        .set_available(false)
         .set_gran(true);
     ds.as_u64()
 }
@@ -190,8 +190,8 @@ pub fn new_cs() -> u64 {
         .set_read_write(true)
         .is_code(true)
         .set_dpl(3)
+        .set_big(false)
         .set_available(true)
-        .set_big(true)
         .set_gran(true);
     unsafe {
         cs.set_x86_64_code_descriptor(true);
@@ -228,7 +228,8 @@ pub fn kernel_ds() -> u64 {
         .set_read_write(true)
         .is_code(false)
         .set_dpl(0)
-        .set_big(true)
+        .set_big(false)
+        .set_available(false)
         .set_gran(true);
     kernel_ds.as_u64()
 }

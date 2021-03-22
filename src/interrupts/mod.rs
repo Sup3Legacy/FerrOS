@@ -1,6 +1,7 @@
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
 use x86_64::instructions::port::Port;
+use x86_64::PrivilegeLevel;
 use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::structures::paging::PhysFrame;
 use x86_64::VirtAddr;
@@ -128,7 +129,8 @@ lazy_static! {
             .set_handler_fn(security_exception_handler);
         idt.timer.set_handler_fn(saveRegisters!(timer_interrupt_handler));
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
-        idt.syscall.set_handler_fn(syscalls::naked_syscall_dispatch);
+        idt.syscall.set_handler_fn(syscalls::naked_syscall_dispatch)
+                    .set_privilege_level(PrivilegeLevel::Ring3);
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)

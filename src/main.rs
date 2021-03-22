@@ -98,7 +98,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
                 };
                 warningln!("worked");
-                let addr2: u64 = addr * 2 - 1;
+                let addr2: u64 = addr * 2 - 8;
                 let mut stackRaw : [u64; 512] = [0; 512];
                 stackRaw[511] =  0; // arbitrary !
                 stackRaw[510] =  addr; // rip

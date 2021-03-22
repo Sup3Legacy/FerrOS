@@ -45,14 +45,21 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 #[naked]
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
-        "mov rsp, rdi",
         // Ceci n'est pas exécuté
+        "mov rax, 0x20", // data segment
+        "mov ds, ax",
+        "mov es, ax",
+        "mov fs, ax",
+        "mov gs, ax",
+
+        "mov rsp, rdi",
+        "add rsp, 8",
         "push 0",
-        "push 0",
-        "push rdi",
-        "push 518",
-        "push 8",
-        "push rsi",
+        "push rax", // stack segment
+        "push rdi", // stack pointer
+        "push 518", // cpu flags
+        "push 0x18", // code segment
+        "push rsi", // instruction pointer
         "iretq",
         options(noreturn, ),
     )

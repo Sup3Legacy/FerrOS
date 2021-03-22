@@ -135,7 +135,7 @@ impl BootInfoAllocator {
     /// Creates a new level_4 table and taking into account the kernel adresses.
     pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysFrame, ()> {
         if let Some(phys) = self.allocate_4k_frame() {
-            warningln!("l.138 success");
+            //warningln!("l.138 success");
             // let phys = frame.start_address();
             let virt = VirtAddr::new(phys.as_u64() + PHYSICAL_OFFSET);
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -147,7 +147,7 @@ impl BootInfoAllocator {
             }
             Ok(PhysFrame::containing_address(phys))
         } else {
-            warningln!("l.150 failure");
+            //warningln!("l.150 failure");
             Err(())
         }
     }
@@ -176,7 +176,7 @@ impl BootInfoAllocator {
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
                 table_4[p_4].set_flags(entry | flags);
-                warningln!("already existed for user l.178");
+                //warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 self.add_entry_to_table_3(&mut *page_table_ptr, virt, flags)
@@ -187,11 +187,11 @@ impl BootInfoAllocator {
                 Err(())
             }
         } else {
-            warningln!("l.187 new page");
+            //warningln!("l.187 new page");
             match self.allocate_4k_frame() {
                 None => Err(()),
                 Some(addr) => {
-                    warningln!("l.191 goes in deaper");
+                    //warningln!("l.191 goes in deaper");
                     //let addr = phys_frame.start_address();
                     table_4[p_4].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
@@ -314,7 +314,7 @@ impl BootInfoAllocator {
         flags: PageTableFlags,
         data: &[u64; 512]
     ) -> Result<(), ()> {
-        warningln!("entered level 4");
+        //warningln!("entered level 4");
         let p_4 = virt_4.p4_index();
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -349,7 +349,7 @@ impl BootInfoAllocator {
         flags: PageTableFlags,
         data: &[u64; 512]
     ) -> Result<(), ()> {
-        warningln!("entered level 3");
+        //warningln!("entered level 3");
         let p_3 = virt_3.p3_index();
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -384,7 +384,7 @@ impl BootInfoAllocator {
         flags: PageTableFlags,
         data: &[u64; 512]
     ) -> Result<(), ()> {
-        warningln!("entered level 2");
+        //warningln!("entered level 2");
         let p_2 = virt_2.p2_index();
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -419,7 +419,7 @@ impl BootInfoAllocator {
         flags: PageTableFlags,
         data: &[u64; 512]
     ) -> Result<(), ()> {
-        warningln!("entered level 1");
+        //warningln!("entered level 1");
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
@@ -431,11 +431,11 @@ impl BootInfoAllocator {
                     table_1[p_1].set_addr(addr, flags);
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
                     let content: *mut [u64; 512] = virt.as_mut_ptr();
-                    warningln!("starts copying");
+                    //warningln!("starts copying");
                     for i in 0..512 {
                         (*content)[i] = data[i];
                     }
-                    warningln!("copied");
+                    //warningln!("copied");
                     Ok(())
                 }
             }
