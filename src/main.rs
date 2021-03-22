@@ -17,6 +17,7 @@ use bit_field::BitArray;
 use core::panic::PanicInfo;
 use lazy_static::lazy_static;
 
+
 // use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
@@ -25,6 +26,7 @@ extern crate vga as vga_video;
 mod programs;
 use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
+use x86_64::structures::paging::PageTableFlags;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
@@ -72,13 +74,36 @@ pub fn init(_boot_info: &'static BootInfo) {
     //vga::init();
 
     println!(":(");
-    unsafe {
-        asm!("jmp {0}", in(reg) &ferr_os::LOL as *const u8);
-    }
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
+
+
+    unsafe {
+        match frame_allocator.allocate_level_4_frame() {
+            Ok(level_4_addr) => {
+                let addr: u64 = 54975581388800; 
+                println!("add entry to address : 0x{:X} {:#?}", addr, VirtAddr::new(addr));
+                match frame_allocator.add_entry_to_table(level_4_addr, VirtAddr::new(addr),
+                                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT) {
+                    Ok(()) => {
+                        warningln!("worked");
+                    },
+
+                    Err(()) => errorln!("error didn't allocate"),
+
+                };
+                hardware::power::shutdown();
+            },
+
+            Err(()) => hardware::power::shutdown()
+        }
+    }
+    unsafe {
+        asm!("jmp {0}", in(reg) &ferr_os::LOL as *const u8);
+    }
+
     long_halt(10);
     unsafe {
         asm!("mov rax, 1", "int 80h",);

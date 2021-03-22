@@ -10,6 +10,8 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
+use crate::warningln;
+
 /// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
 
@@ -133,6 +135,7 @@ impl BootInfoAllocator {
     /// Creates a new level_4 table and taking into account the kernel adresses.
     pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysAddr, ()> {
         if let Some(phys) = self.allocate_4k_frame() {
+            warningln!("l.138 success");
             // let phys = frame.start_address();
             let virt = VirtAddr::new(phys.as_u64() + PHYSICAL_OFFSET);
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -144,38 +147,56 @@ impl BootInfoAllocator {
             }
             Ok(phys)
         } else {
+            warningln!("l.150 failure");
             Err(())
         }
     }
 
-    /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
-    /// You should mark it as USER_ACCESSIBLE and PRESENT !
     pub unsafe fn add_entry_to_table(
         &mut self,
+        table_4: PhysAddr,
+        virt_4: VirtAddr,
+        flags: PageTableFlags
+    ) -> Result<(), ()> {
+        let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
+        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+        self.add_entry_to_table_4(&mut *page_table_ptr, virt_4, flags)
+    }
+
+    /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
+    /// You should mark it as USER_ACCESSIBLE and PRESENT !
+    pub unsafe fn add_entry_to_table_4(
+        &mut self,
         table_4: &'static mut PageTable,
-        virt: VirtAddr,
+        virt_4: VirtAddr,
         flags: PageTableFlags,
     ) -> Result<(), ()> {
-        let p_4 = virt.p4_index();
+        let p_4 = virt_4.p4_index();
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 self.add_entry_to_table_3(&mut *page_table_ptr, virt, flags)
             } else {
+                warningln!("already existed for kernel l.183 failure");
+                warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
+                warningln!("{:#?}", entry);
                 Err(())
             }
         } else {
+            warningln!("l.187 new page");
             match self.allocate_4k_frame() {
                 None => Err(()),
                 Some(addr) => {
+                    warningln!("l.191 goes in deaper");
                     //let addr = phys_frame.start_address();
                     table_4[p_4].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     table_4[p_4].set_flags(entry | flags);
-                    self.add_entry_to_table_3(&mut *page_table_ptr, virt, flags)
+                    self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags)
                 }
             }
         }
@@ -185,17 +206,17 @@ impl BootInfoAllocator {
     unsafe fn add_entry_to_table_3(
         &mut self,
         table_3: &'static mut PageTable,
-        virt: VirtAddr,
+        virt_3: VirtAddr,
         flags: PageTableFlags,
     ) -> Result<(), ()> {
-        let p_3 = virt.p3_index();
+        let p_3 = virt_3.p3_index();
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_3[p_3].set_flags(entry | flags);
-                self.add_entry_to_table_2(&mut *page_table_ptr, virt, flags)
+                self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
             } else {
                 Err(())
             }
@@ -207,7 +228,7 @@ impl BootInfoAllocator {
                     table_3[p_3].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    self.add_entry_to_table_2(&mut *page_table_ptr, virt, flags)
+                    self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
                 }
             }
         }
@@ -217,17 +238,17 @@ impl BootInfoAllocator {
     unsafe fn add_entry_to_table_2(
         &mut self,
         table_2: &'static mut PageTable,
-        virt: VirtAddr,
+        virt_2: VirtAddr,
         flags: PageTableFlags,
     ) -> Result<(), ()> {
-        let p_2 = virt.p2_index();
+        let p_2 = virt_2.p2_index();
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_2[p_2].set_flags(entry | flags);
-                self.add_entry_to_table_1(&mut *page_table_ptr, virt, flags)
+                self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
             } else {
                 Err(())
             }
@@ -239,7 +260,7 @@ impl BootInfoAllocator {
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    self.add_entry_to_table_1(&mut *page_table_ptr, virt, flags)
+                    self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
                 }
             }
         }
@@ -249,10 +270,10 @@ impl BootInfoAllocator {
     unsafe fn add_entry_to_table_1(
         &mut self,
         table_1: &'static mut PageTable,
-        virt: VirtAddr,
+        virt_1: VirtAddr,
         flags: PageTableFlags,
     ) -> Result<(), ()> {
-        let p_1 = virt.p1_index();
+        let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             Err(())
@@ -267,6 +288,149 @@ impl BootInfoAllocator {
             }
         }
     }
+
+    pub unsafe fn add_entry_to_table_with_data(
+        &mut self,
+        table_4: PhysAddr,
+        virt_4: VirtAddr,
+        flags: PageTableFlags,
+        data: [u64; 512]
+    ) -> Result<(), ()> {
+        let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
+        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+        self.add_entry_to_table_4_with_data(&mut *page_table_ptr, virt_4, flags, data)
+    }
+
+
+    /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags and the given data
+    /// You should mark it as USER_ACCESSIBLE and PRESENT !
+    pub unsafe fn add_entry_to_table_4_with_data(
+        &mut self,
+        table_4: &'static mut PageTable,
+        virt_4: VirtAddr,
+        flags: PageTableFlags,
+        data: [u64; 512]
+    ) -> Result<(), ()> {
+        let p_4 = virt_4.p4_index();
+        let entry = table_4[p_4].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
+            } else {
+                Err(())
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(addr) => {
+                    //let addr = phys_frame.start_address();
+                    table_4[p_4].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    table_4[p_4].set_flags(entry | flags);
+                    self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
+                }
+            }
+        }
+    }
+
+    /// Inner function of add_entry_to_table with data
+    unsafe fn add_entry_to_table_3_with_data(
+        &mut self,
+        table_3: &'static mut PageTable,
+        virt_3: VirtAddr,
+        flags: PageTableFlags,
+        data: [u64; 512]
+    ) -> Result<(), ()> {
+        let p_3 = virt_3.p3_index();
+        let entry = table_3[p_3].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                table_3[p_3].set_flags(entry | flags);
+                self.add_entry_to_table_2_with_data(&mut *page_table_ptr, virt_3, flags, data)
+            } else {
+                Err(())
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(addr) => {
+                    // let addr = phys_frame.start_address();
+                    table_3[p_3].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.add_entry_to_table_2_with_data(&mut *page_table_ptr, virt_3, flags, data)
+                }
+            }
+        }
+    }
+
+    /// Inner function of add_entry_to_table with data
+    unsafe fn add_entry_to_table_2_with_data(
+        &mut self,
+        table_2: &'static mut PageTable,
+        virt_2: VirtAddr,
+        flags: PageTableFlags,
+        data: [u64; 512]
+    ) -> Result<(), ()> {
+        let p_2 = virt_2.p2_index();
+        let entry = table_2[p_2].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                table_2[p_2].set_flags(entry | flags);
+                self.add_entry_to_table_1_with_data(&mut *page_table_ptr, virt_2, flags, data)
+            } else {
+                Err(())
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(addr) => {
+                    //let addr = phys_frame.start_address();
+                    table_2[p_2].set_addr(addr, flags);
+                    let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    self.add_entry_to_table_1_with_data(&mut *page_table_ptr, virt_2, flags, data)
+                }
+            }
+        }
+    }
+
+    /// Inner function of add_entry_to_table with data
+    unsafe fn add_entry_to_table_1_with_data(
+        &mut self,
+        table_1: &'static mut PageTable,
+        virt_1: VirtAddr,
+        flags: PageTableFlags,
+        data: [u64; 512]
+    ) -> Result<(), ()> {
+        let p_1 = virt_1.p1_index();
+        let entry = table_1[p_1].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            Err(())
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(()),
+                Some(addr) => {
+                    //let addr = phys_frame.start_address();
+                    table_1[p_1].set_addr(addr, flags);
+                    let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
+                    let content: *mut [u64; 512] = virt_1.as_mut_ptr();
+                    for i in 0..512 {
+                        (*content)[i] = data[i];
+                    }
+                    Ok(())
+                }
+            }
+        }
+    }
+
 
     pub unsafe fn copy_table_entries(&mut self, table_4: PhysAddr) -> Result<PhysAddr, ()> {
         let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
