@@ -95,7 +95,7 @@ pub fn init(_boot_info: &'static BootInfo) {
                         warningln!("worked");
                         let (cr3, cr3f) = Cr3::read();
                         Cr3::write(level_4_addr, cr3f);
-                        //asm!("jmp {0}", in(reg) addr);
+                        asm!("jmp {0}", in(reg) addr);
                     },
 
                     Err(()) => errorln!("error didn't allocate"),

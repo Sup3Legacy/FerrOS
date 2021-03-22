@@ -11,7 +11,7 @@ pub type SyscallFunc = extern "C" fn();
 const SYSCALL_NUMBER: u64 = 10;
 
 /// table containing every syscall functions
-const SYSCALL_TABLE: [extern "C" fn(Registers, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
+const SYSCALL_TABLE: [extern "C" fn(RegistersMini, InterruptStackFrame); SYSCALL_NUMBER as usize] = [
     syscall_0_read,
     syscall_1_write,
     syscall_2_open,
@@ -32,55 +32,55 @@ unsafe extern "C" fn convert_register_to_full(_args: RegistersMini) -> Registers
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
-extern "C" fn syscall_0_read(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_0_read(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("read not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
-extern "C" fn syscall_1_write(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_1_write(_args: RegistersMini, _isf: InterruptStackFrame) {
     debug!("write congrats you just called the good syscall!")
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
-extern "C" fn syscall_2_open(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_2_open(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("open not implemented")
 }
 
 /// close file. arg0 : unsigned int fd
-extern "C" fn syscall_3_close(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_3_close(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("close not implemented")
 }
 
-extern "C" fn syscall_4_dup2(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_4_dup2(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("dup2 not implemented");
 }
 
-extern "C" fn syscall_5_fork(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_5_fork(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("fork not implemented");
 }
 
-extern "C" fn syscall_6_exec(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_6_exec(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("exec not implemented");
 }
 
-extern "C" fn syscall_7_exit(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_7_exit(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("exit not implemented");
 }
 
-extern "C" fn syscall_8_wait(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_8_wait(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("wait not implemented");
 }
 
-extern "C" fn syscall_test(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_test(_args: RegistersMini, _isf: InterruptStackFrame) {
     debug!("Test syscall.");
 }
 
-extern "C" fn syscall_not_implemented(_args: Registers, _isf: InterruptStackFrame) {
+extern "C" fn syscall_not_implemented(_args: RegistersMini, _isf: InterruptStackFrame) {
     panic!("not implemented")
 }
 
 /// dispatch function who gives control to the good syscall function
-extern "C" fn syscall_dispatch(args: Registers, isf: InterruptStackFrame) {
+extern "C" fn syscall_dispatch(args: RegistersMini, isf: InterruptStackFrame) {
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall : {:?}", args);
     } else {
