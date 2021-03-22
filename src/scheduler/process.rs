@@ -51,17 +51,16 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
-
         "mov rsp, rdi",
         "add rsp, 8",
         "push 0",
-        "push rax", // stack segment
-        "push rdi", // stack pointer
-        "push 518", // cpu flags
+        "push rax",  // stack segment
+        "push rdi",  // stack pointer
+        "push 518",  // cpu flags
         "push 0x1B", // code segment
-        "push rsi", // instruction pointer
+        "push rsi",  // instruction pointer
         "iretq",
-        options(noreturn, ),
+        options(noreturn,),
     )
 }
 

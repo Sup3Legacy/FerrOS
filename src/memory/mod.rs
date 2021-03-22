@@ -156,7 +156,7 @@ impl BootInfoAllocator {
         &mut self,
         table_4: PhysFrame,
         virt_4: VirtAddr,
-        flags: PageTableFlags
+        flags: PageTableFlags,
     ) -> Result<(), ()> {
         let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -297,13 +297,12 @@ impl BootInfoAllocator {
         table_4: PhysFrame,
         virt_4: VirtAddr,
         flags: PageTableFlags,
-        data: &[u64; 512]
+        data: &[u64; 512],
     ) -> Result<(), ()> {
         let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
         self.add_entry_to_table_4_with_data(&mut *page_table_ptr, virt_4, flags, data)
     }
-
 
     /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags and the given data
     /// You should mark it as USER_ACCESSIBLE and PRESENT !
@@ -312,7 +311,7 @@ impl BootInfoAllocator {
         table_4: &'static mut PageTable,
         virt_4: VirtAddr,
         flags: PageTableFlags,
-        data: &[u64; 512]
+        data: &[u64; 512],
     ) -> Result<(), ()> {
         //warningln!("entered level 4");
         let p_4 = virt_4.p4_index();
@@ -347,7 +346,7 @@ impl BootInfoAllocator {
         table_3: &'static mut PageTable,
         virt_3: VirtAddr,
         flags: PageTableFlags,
-        data: &[u64; 512]
+        data: &[u64; 512],
     ) -> Result<(), ()> {
         //warningln!("entered level 3");
         let p_3 = virt_3.p3_index();
@@ -382,7 +381,7 @@ impl BootInfoAllocator {
         table_2: &'static mut PageTable,
         virt_2: VirtAddr,
         flags: PageTableFlags,
-        data: &[u64; 512]
+        data: &[u64; 512],
     ) -> Result<(), ()> {
         //warningln!("entered level 2");
         let p_2 = virt_2.p2_index();
@@ -417,7 +416,7 @@ impl BootInfoAllocator {
         table_1: &'static mut PageTable,
         virt_1: VirtAddr,
         flags: PageTableFlags,
-        data: &[u64; 512]
+        data: &[u64; 512],
     ) -> Result<(), ()> {
         //warningln!("entered level 1");
         let p_1 = virt_1.p1_index();
@@ -441,7 +440,6 @@ impl BootInfoAllocator {
             }
         }
     }
-
 
     pub unsafe fn copy_table_entries(&mut self, table_4: PhysAddr) -> Result<PhysAddr, ()> {
         let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
