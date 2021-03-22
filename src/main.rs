@@ -33,8 +33,8 @@ use x86_64::registers::control::Cr3;
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
-    interrupts, keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga,
-    warningln,
+    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task, test_panic, vga,
+    warningln
 };
 
 
@@ -91,16 +91,31 @@ pub fn init(_boot_info: &'static BootInfo) {
                 println!("add entry to address : 0x{:X} {:#?}", addr, VirtAddr::new(addr));
                 match frame_allocator.add_entry_to_table_with_data(level_4_addr, VirtAddr::new(addr),
                                 PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT, &*data) {
-                    Ok(()) => {
-                        warningln!("worked");
-                        let (cr3, cr3f) = Cr3::read();
-                        Cr3::write(level_4_addr, cr3f);
-                        asm!("call {0}", in(reg) addr);
-                    },
-
-                    Err(()) => errorln!("error didn't allocate"),
+                    Ok(()) => (),
+                    Err(()) => {errorln!("error didn't allocate"); 
+                        hardware::power::shutdown();
+                        },
 
                 };
+                warningln!("worked");
+                let addr2: u64 = addr * 2;
+                let mut stackRaw : [u64; 512] = [0; 512];
+                stackRaw[511] =  0; // arbitrary !
+                stackRaw[510] =  addr; // rip
+                stackRaw[509] =  8; // cs
+                stackRaw[508] =  518; // cpu_f
+                stackRaw[507] =  0; // ss
+                match frame_allocator.add_entry_to_table_with_data(level_4_addr, VirtAddr::new(addr2),
+                                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT, &stackRaw) {
+                    Ok(()) => (),
+                    Err(()) => {errorln!("error didn't allocate 2"); 
+                        hardware::power::shutdown();
+                        },
+
+                };
+                let (cr3, cr3f) = Cr3::read();
+                Cr3::write(level_4_addr, cr3f);
+                scheduler::process::leave_context(addr2 + 4096 - 8 * (6 + 15 + 2));
                 hardware::power::shutdown();
             },
 
