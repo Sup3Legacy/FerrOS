@@ -100,35 +100,55 @@ lazy_static! {
     /// Defines the InterruptDescriptorTable and all the interruption handlers.
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
-        idt.divide_error.set_handler_fn(divide_error_handler);
-        idt.debug.set_handler_fn(debug_handler);
+        idt.divide_error.set_handler_fn(divide_error_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.debug.set_handler_fn(debug_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.non_maskable_interrupt
-            .set_handler_fn(non_maskable_interrupt_handler);
-        idt.breakpoint.set_handler_fn(breakpoint_handler);
-        idt.overflow.set_handler_fn(overflow_handler);
+            .set_handler_fn(non_maskable_interrupt_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.breakpoint.set_handler_fn(breakpoint_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.overflow.set_handler_fn(overflow_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.bound_range_exceeded
-            .set_handler_fn(bound_range_exceeded_handler);
-        idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
+            .set_handler_fn(bound_range_exceeded_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.invalid_opcode.set_handler_fn(invalid_opcode_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.device_not_available
-            .set_handler_fn(device_not_available_handler);
-        idt.invalid_tss.set_handler_fn(invalid_tss_handler);
+            .set_handler_fn(device_not_available_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.invalid_tss.set_handler_fn(invalid_tss_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.segment_not_present
-            .set_handler_fn(segment_not_present_handler);
+            .set_handler_fn(segment_not_present_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.stack_segment_fault
-            .set_handler_fn(stack_segment_fault_handler);
+            .set_handler_fn(stack_segment_fault_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.general_protection_fault
-            .set_handler_fn(general_protection_fault_handler);
-        idt.page_fault.set_handler_fn(page_fault_handler);
+            .set_handler_fn(general_protection_fault_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.page_fault.set_handler_fn(page_fault_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.x87_floating_point
-            .set_handler_fn(x87_floating_point_handler);
-        idt.alignment_check.set_handler_fn(alignment_check_handler);
+            .set_handler_fn(x87_floating_point_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.alignment_check.set_handler_fn(alignment_check_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.simd_floating_point
-            .set_handler_fn(simd_floating_point_handler);
-        idt.virtualization.set_handler_fn(virtualization_handler);
+            .set_handler_fn(simd_floating_point_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.virtualization.set_handler_fn(virtualization_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.security_exception
-            .set_handler_fn(security_exception_handler);
-        idt.timer.set_handler_fn(saveRegisters!(timer_interrupt_handler));
-        idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+            .set_handler_fn(security_exception_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt.timer.set_handler_fn(saveRegisters!(timer_interrupt_handler))
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
         idt.syscall.set_handler_fn(syscalls::naked_syscall_dispatch)
                     .set_privilege_level(PrivilegeLevel::Ring3);
         unsafe {

@@ -46,7 +46,7 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
-        "mov rax, 0x20", // data segment
+        "mov rax, 0x23", // data segment
         "mov ds, ax",
         "mov es, ax",
         "mov fs, ax",
@@ -58,7 +58,7 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "push rax", // stack segment
         "push rdi", // stack pointer
         "push 518", // cpu flags
-        "push 0x18", // code segment
+        "push 0x1B", // code segment
         "push rsi", // instruction pointer
         "iretq",
         options(noreturn, ),

@@ -101,7 +101,7 @@ impl GdtEntryBits {
 
     /// set privilege level from 0 to 3
     pub fn set_dpl(&mut self, dpl: u8) -> &mut Self {
-        self.attributes = (self.attributes & 0x9F) | ((dpl & 0b11) << 1);
+        self.attributes = (self.attributes & 0x9F) | ((dpl & 0b11) << 5);
         self
     }
 
