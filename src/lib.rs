@@ -12,6 +12,7 @@
 #![feature(option_result_unwrap_unchecked)]
 
 use core::panic::PanicInfo;
+use alloc::boxed::Box;
 extern crate vga as vga_video;
 
 pub mod allocator;
@@ -35,7 +36,7 @@ pub static _TEST_PROGRAM: &'static [u8; 2360] = include_bytes!(
     "test_program"
 );
 
-pub static LOL: [u8; 6] = [0x66, 0xb8, 0x01, 0x00, 
+pub static LOL: [u8; 9] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00,
     0xcd, 0x80];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
