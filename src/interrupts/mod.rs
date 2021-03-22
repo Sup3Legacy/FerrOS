@@ -152,36 +152,44 @@ pub fn init() {
 }
 
 extern "x86-interrupt" fn divide_error_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("div 0");
     panic!("DIVISION BY ZERO {:#?}", _stack_frame);
 } // Rust catches this before the CPU, but it's a safeguard for asm/extern code.
 
 // probably would not need to panic ?
 // This interruption should pause the current process until the father restarts it
 extern "x86-interrupt" fn debug_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("debug");
     panic!("DEBUG");
 }
 
 extern "x86-interrupt" fn non_maskable_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("non maskable");
     panic!("Non maskable Stack Frame");
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
     println!("BREAKPOINT : {:#?}", stack_frame);
+    loop {}
 }
 
 extern "x86-interrupt" fn overflow_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("overflow");
     panic!("OVERFLOW");
 }
 
 extern "x86-interrupt" fn bound_range_exceeded_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("bound range");
     panic!("BOUND RANGE EXCEEDED");
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("opcode");
     panic!("INVALID OPCODE");
 }
 
 extern "x86-interrupt" fn device_not_available_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("device");
     panic!("DEVICE NOT AVAILABLE");
 }
 
@@ -198,6 +206,7 @@ extern "x86-interrupt" fn invalid_tss_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
+    println!("tss");
     panic!("INVALID TSS");
 }
 
@@ -205,6 +214,8 @@ extern "x86-interrupt" fn segment_not_present_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
+    println!("segment {}", _error_code);
+    println!("error : {}", _error_code);
     panic!("SEGMENT NOT PRESENT {}", _error_code);
 }
 
@@ -212,6 +223,7 @@ extern "x86-interrupt" fn stack_segment_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
+    println!("stack");
     panic!("STACK SEGMENT FAULT");
 }
 
@@ -233,14 +245,17 @@ extern "x86-interrupt" fn alignment_check_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
+    println!("alignement");
     panic!("ALIGNMENT CHECK ERROR");
 }
 
 extern "x86-interrupt" fn simd_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("simd");
     panic!("SIMD FLOATING POINT ERROR");
 }
 
 extern "x86-interrupt" fn virtualization_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("virtualization");
     panic!("VIRTUALIZATION ERROR");
 }
 
@@ -248,6 +263,7 @@ extern "x86-interrupt" fn security_exception_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
+    println!("security");
     panic!("SECURITY EXCEPTION");
 }
 

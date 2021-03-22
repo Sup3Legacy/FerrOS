@@ -98,15 +98,16 @@ pub fn init(_boot_info: &'static BootInfo) {
 
                 };
                 warningln!("worked");
-                let addr2: u64 = addr * 2;
+                let addr2: u64 = addr * 2 - 1;
                 let mut stackRaw : [u64; 512] = [0; 512];
                 stackRaw[511] =  0; // arbitrary !
                 stackRaw[510] =  addr; // rip
                 stackRaw[509] =  8; // cs
                 stackRaw[508] =  518; // cpu_f
-                stackRaw[507] =  0; // ss
+                stackRaw[507] =  addr2 + 4096 - 8;
+                stackRaw[506] =  0; // ss
                 match frame_allocator.add_entry_to_table_with_data(level_4_addr, VirtAddr::new(addr2),
-                                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT, &stackRaw) {
+                                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT | PageTableFlags::NO_EXECUTE | PageTableFlags::WRITABLE, &stackRaw) {
                     Ok(()) => (),
                     Err(()) => {errorln!("error didn't allocate 2"); 
                         hardware::power::shutdown();
@@ -115,7 +116,10 @@ pub fn init(_boot_info: &'static BootInfo) {
                 };
                 let (cr3, cr3f) = Cr3::read();
                 Cr3::write(level_4_addr, cr3f);
-                scheduler::process::leave_context(addr2 + 4096 - 8 * (6 + 15 + 2));
+                hardware::power::shutdown();
+                warningln!("jump addr : 0x{:X}", scheduler::process::towards_user as u64);
+                //asm!("int 0");
+                scheduler::process::towards_user(addr2, addr);
                 hardware::power::shutdown();
             },
 

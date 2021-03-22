@@ -175,6 +175,7 @@ impl BootInfoAllocator {
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_4[p_4].set_flags(entry | flags);
                 warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -213,6 +214,7 @@ impl BootInfoAllocator {
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_3[p_3].set_flags(entry | flags);
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_3[p_3].set_flags(entry | flags);
@@ -245,6 +247,7 @@ impl BootInfoAllocator {
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_2[p_2].set_flags(entry | flags);
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_2[p_2].set_flags(entry | flags);
@@ -316,6 +319,7 @@ impl BootInfoAllocator {
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_4[p_4].set_flags(entry | flags);
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
@@ -350,6 +354,7 @@ impl BootInfoAllocator {
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_3[p_3].set_flags(entry | flags);
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_3[p_3].set_flags(entry | flags);
@@ -384,6 +389,7 @@ impl BootInfoAllocator {
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_2[p_2].set_flags(entry | flags);
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_2[p_2].set_flags(entry | flags);

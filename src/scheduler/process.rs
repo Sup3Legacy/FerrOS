@@ -18,6 +18,7 @@ extern "C" {
 pub unsafe extern "C" fn leave_context(_rsp: u64) {
     asm!(
         "mov rsp, rdi",
+        "int 0",
         "pop rbx",
         "pop rcx",
         "pop rbp",
@@ -38,6 +39,22 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         //"sti",
         "iretq",
         options(noreturn,),
+    )
+}
+
+#[naked]
+pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
+    asm!(
+        "mov rsp, rdi",
+        "push 0",
+        "push rsi",
+        "push 8",
+        "push 518",
+        "sub rdi, 8",
+        "push rdi",
+        "push 0",
+        "iretq",
+        options(noreturn, ),
     )
 }
 
