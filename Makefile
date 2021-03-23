@@ -1,4 +1,3 @@
-
 all:
 	cargo run -- -boot c
 
@@ -16,3 +15,5 @@ memory:
 
 memory2:
 	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk.disk,index=2 -boot c
+
+.PHONY: all clean count memory memory2
