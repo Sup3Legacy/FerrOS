@@ -182,8 +182,7 @@ pub fn new_ds() -> u64 {
 /// Creates a new user code segment
 pub fn new_cs() -> u64 {
     let mut cs = GdtEntryBits::new();
-    cs
-        .set_present(true)
+    cs.set_present(true)
         .set_read_write(false)
         .is_code(true)
         .set_dpl(0)

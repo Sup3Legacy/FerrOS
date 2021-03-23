@@ -6,13 +6,13 @@ use x86_64::instructions::{
     tables::{lidt, DescriptorTablePointer},
 };
 //use x86_64::structures::gdt::SegmentSelector;
+use crate::println;
 use bit_field::BitField;
 use bitflags::bitflags;
 use core::fmt;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use x86_64::{PrivilegeLevel, VirtAddr};
-use crate::println;
 //use super::syscalls::SyscallFunc;
 
 /// Constant containing the syscall position, syscall - 1 and syscall + 1 (needs to be improved)

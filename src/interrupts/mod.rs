@@ -1,8 +1,8 @@
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
 use x86_64::instructions::port::Port;
-use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::instructions::segmentation;
+use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::structures::paging::PhysFrame;
 use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;

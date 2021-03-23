@@ -5,11 +5,11 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
 use x86_64::registers::control::{Cr3, Cr3Flags};
-use x86_64::{PhysAddr, VirtAddr};
 use x86_64::structures::paging::PageTableFlags;
+use x86_64::{PhysAddr, VirtAddr};
 
-use crate::hardware;
 use crate::errorln;
+use crate::hardware;
 use crate::memory;
 use crate::println;
 
@@ -70,16 +70,21 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 }
 
 /// Function to launch the first process !
-pub unsafe fn launch_first_process(frame_allocator: &mut memory::BootInfoAllocator, code_address: *const u8, number_of_block: u64, stack_size: u64) {
+pub unsafe fn launch_first_process(
+    frame_allocator: &mut memory::BootInfoAllocator,
+    code_address: *const u8,
+    number_of_block: u64,
+    stack_size: u64,
+) {
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
-
         // addresses telling where the code and the stack starts
-        let addr_code:  u64 = 0x320000000000;
+        let addr_code: u64 = 0x320000000000;
         let addr_stack: u64 = 0x63fffffffff8;
 
         // put the code blocks at the right place
         for i in 0..number_of_block {
-            let data: *const [u64; 512] = VirtAddr::from_ptr(code_address.add((i * 4096) as usize)).as_mut_ptr();
+            let data: *const [u64; 512] =
+                VirtAddr::from_ptr(code_address.add((i * 4096) as usize)).as_mut_ptr();
             match frame_allocator.add_entry_to_table_with_data(
                 level_4_table_addr,
                 VirtAddr::new(addr_code + i * 4096),
@@ -118,13 +123,10 @@ pub unsafe fn launch_first_process(frame_allocator: &mut memory::BootInfoAllocat
 
         // should not be reached
         hardware::power::shutdown();
-
     } else {
         errorln!("couldn't allocate a level 4 table");
         hardware::power::shutdown();
     }
-
-
 }
 
 /*

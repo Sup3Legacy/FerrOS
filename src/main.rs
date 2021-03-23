@@ -33,6 +33,7 @@ use ferr_os::{
     interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
     test_panic, vga, warningln,
 };
+use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::PageTableFlags;
 
@@ -53,9 +54,7 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[naked]
 pub unsafe extern "C" fn test_syscall() {
-    asm!("mov rax, 1",
-        "mov rax, 1",
-        "ret")
+    asm!("mov rax, 1", "mov rax, 1", "ret")
 }
 
 /// # Initialization
@@ -91,9 +90,10 @@ pub fn init(_boot_info: &'static BootInfo) {
     long_halt(3);
 
     unsafe {
-      //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
+        //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
     }
 
+    println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
     unsafe {
         asm!("mov rax, 1", "int 80h",);
