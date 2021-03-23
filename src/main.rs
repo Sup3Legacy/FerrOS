@@ -51,6 +51,13 @@ fn panic(_info: &PanicInfo) -> ! {
     halt_loop();
 }
 
+#[naked]
+pub unsafe extern "C" fn test_syscall() {
+    asm!("mov rax, 1",
+        "mov rax, 1",
+        "ret")
+}
+
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
@@ -77,14 +84,18 @@ pub fn init(_boot_info: &'static BootInfo) {
     interrupts::init();
     println!(":( :(");
 
-    long_halt(10);
+    long_halt(3);
+    unsafe {
+        asm!("mov rax, 1", "int 80h",);
+    }
+    long_halt(3);
 
     unsafe {
         match frame_allocator.allocate_level_4_frame() {
             Ok(level_4_addr) => {
                 let addr: u64 = 54975581388800;
                 let data: *const [u64; 512] =
-                    VirtAddr::from_ptr(&ferr_os::LOL as *const u8).as_mut_ptr();
+                    VirtAddr::from_ptr(test_syscall as *const u8).as_mut_ptr();
 
                 println!(
                     "add entry to address : 0x{:X} {:#?}",

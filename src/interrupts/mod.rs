@@ -2,6 +2,7 @@
 
 use x86_64::instructions::port::Port;
 use x86_64::registers::control::{Cr2, Cr3};
+use x86_64::instructions::segmentation;
 use x86_64::structures::paging::PhysFrame;
 use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;
@@ -254,7 +255,14 @@ extern "x86-interrupt" fn general_protection_fault_handler(
     _error_code: u64,
 ) {
     println!("Protection {}", _error_code);
-    println!("GENERAL PROTECTION FAULT! {:#?}", _stack_frame);
+    unsafe {
+        let stack = _stack_frame.as_mut();
+        println!("cs {} ss {}", stack.code_segment, stack.stack_segment);
+        println!("ip : {}", stack.instruction_pointer.as_u64());
+        println!("sp : {}", stack.stack_pointer.as_u64());
+        //println!("cs2 {}", segmentation::cs().0);
+        println!("GENERAL PROTECTION FAULT! {:#?}", stack);
+    }
     println!("TRIED TO READ : {:#?}", Cr2::read());
     println!("ERROR : {:#?}", _error_code);
     loop {}

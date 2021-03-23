@@ -47,10 +47,10 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
         "mov rax, 0x23", // data segment
-        "mov ds, ax",
-        "mov es, ax",
-        "mov fs, ax",
-        "mov gs, ax",
+        "mov ds, eax",
+        "mov es, eax",
+        "mov fs, eax",
+        "mov gs, eax",
         "mov rsp, rdi",
         "add rsp, 8",
         "push 0",
