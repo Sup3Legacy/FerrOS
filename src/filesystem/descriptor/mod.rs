@@ -1,23 +1,41 @@
+use core::cmp::min;
+
+use crate::data_storage::path::Path;
+use alloc::vec::Vec;
+use lazy_static::lazy;
+use lazy_static::lazy_static;
+
 /// Max number of total opened files
 const MAX_TOTAL_OPEN_FILES: usize = 256;
 
-static mut GLOBAL_FILE_TABLE: GeneralFileTable = GeneralFileTable::new();
+/// Max number of openable files by a process
+const MAX_TOTAL_OPEN_FILES_BY_PROCESS: usize = 16;
+
+lazy_static! {
+    pub static ref GLOBAL_FILE_TABLE: GeneralFileTable = GeneralFileTable::new();
+}
 
 /// Contains all the open_file_tables
 pub struct GeneralFileTable {
     /// Array containing all the filetables
-    tables: [Option<OpenFileTable>; MAX_TOTAL_OPEN_FILES],
-    /// Index of the smallest unoccupied space in the table
+    tables: Vec<Option<OpenFileTable>>,
+    /// Index of the first unoccupied space in the table
     index: usize,
 }
 
 impl GeneralFileTable {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
+        let mut tab = Vec::new();
+        for _ in 0..MAX_TOTAL_OPEN_FILES {
+            tab.push(None);
+        }
         Self {
-            tables: [None; MAX_TOTAL_OPEN_FILES],
+            tables: tab,
             index: 0,
         }
     }
+
+    /// Inserts an entry
     pub fn insert(&mut self, openfile: OpenFileTable) {
         self.tables[self.index] = Some(openfile);
         loop {
@@ -30,8 +48,58 @@ impl GeneralFileTable {
             }
         }
     }
+
+    /// Deletes an entry
+    pub fn delete(&mut self, index: usize) {
+        self.tables[index] = None;
+        self.index = min(index, self.index);
+    }
+    pub fn get_file_table_ref(&'static self, index: usize) -> &'static OpenFileTable {
+        &self.tables[index].as_ref().unwrap()
+    }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct OpenFileTable {}
-pub struct ProcessDescriptorTable {}
+#[derive(Debug)]
+pub struct OpenFileTable {
+    /// path of the file
+    path: Path,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FileDescriptor(usize);
+
+impl FileDescriptor {
+    pub fn new(a: usize) -> Self {
+        Self(a)
+    }
+    pub fn into_usize(&self) -> usize {
+        self.0
+    }
+}
+
+/// Should be held by the [`crate::scheduler::process::Process`] struct.
+pub struct ProcessDescriptorTable {
+    /// Associates a file descriptor to the index of the open file table
+    /// in the [`GLOBAL_FILE_TABLE`]
+    files: [Option<usize>; MAX_TOTAL_OPEN_FILES_BY_PROCESS],
+    index: usize,
+}
+
+impl ProcessDescriptorTable {
+    /// Returns reference to filetable from a filedescriptor.
+    pub fn get_file_table(&self, fd: FileDescriptor) -> &'static OpenFileTable {
+        GLOBAL_FILE_TABLE.get_file_table_ref(fd.into_usize())
+    }
+
+    /// TODO : add fields like flags, etc.
+    pub fn create_file_table(&mut self, path: Path, flags: u64) -> FileDescriptor {
+        // Here we create a new OpenFileTable.
+        // We fill it with all the passed values,
+        // inserts it into the GLOBAL_FILE_TABLE
+        // and finally add an entry to the index in
+        // the GLOBAL_FILE_TABLE into the first
+        // unoccupied FileDescriptor field.
+        // We then return the associated FileDescriptor
+        todo!()
+    }
+}
