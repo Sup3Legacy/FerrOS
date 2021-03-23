@@ -91,71 +91,9 @@ pub fn init(_boot_info: &'static BootInfo) {
     long_halt(3);
 
     unsafe {
-        match frame_allocator.allocate_level_4_frame() {
-            Ok(level_4_addr) => {
-                let addr: u64 = 54975581388800;
-                let data: *const [u64; 512] =
-                    VirtAddr::from_ptr(test_syscall as *const u8).as_mut_ptr();
-
-                println!(
-                    "add entry to address : 0x{:X} {:#?}",
-                    addr,
-                    VirtAddr::new(addr)
-                );
-                match frame_allocator.add_entry_to_table_with_data(
-                    level_4_addr,
-                    VirtAddr::new(addr),
-                    PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                    &*data,
-                ) {
-                    Ok(()) => (),
-                    Err(()) => {
-                        errorln!("error didn't allocate");
-                        hardware::power::shutdown();
-                    }
-                };
-                warningln!("worked");
-                let addr2: u64 = addr * 2 - 8;
-                let mut stackRaw: [u64; 512] = [0; 512];
-                stackRaw[511] = 0; // arbitrary !
-                stackRaw[510] = addr; // rip
-                stackRaw[509] = 8; // cs
-                stackRaw[508] = 518; // cpu_f
-                stackRaw[507] = addr2 + 4096 - 8;
-                stackRaw[506] = 0; // ss
-                match frame_allocator.add_entry_to_table_with_data(
-                    level_4_addr,
-                    VirtAddr::new(addr2),
-                    PageTableFlags::USER_ACCESSIBLE
-                        | PageTableFlags::PRESENT
-                        | PageTableFlags::NO_EXECUTE
-                        | PageTableFlags::WRITABLE,
-                    &stackRaw,
-                ) {
-                    Ok(()) => (),
-                    Err(()) => {
-                        errorln!("error didn't allocate 2");
-                        hardware::power::shutdown();
-                    }
-                };
-                let (cr3, cr3f) = Cr3::read();
-                Cr3::write(level_4_addr, cr3f);
-                //hardware::power::shutdown();
-                warningln!(
-                    "jump addr : 0x{:X}",
-                    scheduler::process::towards_user as u64
-                );
-                //asm!("int 0");
-                scheduler::process::towards_user(addr2, addr);
-                hardware::power::shutdown();
-            }
-
-            Err(()) => hardware::power::shutdown(),
-        }
+        scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
     }
-    unsafe {
-        asm!("jmp {0}", in(reg) &ferr_os::LOL as *const u8);
-    }
+
 
     unsafe {
         asm!("mov rax, 1", "int 80h",);
