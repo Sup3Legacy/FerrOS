@@ -12,6 +12,7 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use x86_64::{PrivilegeLevel, VirtAddr};
+use crate::println;
 //use super::syscalls::SyscallFunc;
 
 /// Constant containing the syscall position, syscall - 1 and syscall + 1 (needs to be improved)
@@ -371,6 +372,7 @@ impl Entry<SyscallFunc> {
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
         self.gdt_selector = segmentation::cs().0;
+        println!("syscall segment {}", self.gdt_selector);
         self.options.set_present(true);
         &mut self.options
     }

@@ -11,6 +11,7 @@
 #![feature(const_btree_new)]
 #![feature(option_result_unwrap_unchecked)]
 
+use alloc::boxed::Box;
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
 
@@ -31,12 +32,9 @@ pub mod vga;
 
 extern crate alloc;
 
-pub static _TEST_PROGRAM: &'static [u8; 2360] = include_bytes!(
-    "test_program"
-);
+pub static _TEST_PROGRAM: &'static [u8; 2360] = include_bytes!("test_program");
 
-pub static LOL: [u8; 6] = [0x66, 0xb8, 0x01, 0x00, 
-    0xcd, 0x80];
+pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]

@@ -30,11 +30,11 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
-    interrupts, keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga,
-    warningln,
+    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
+    test_panic, vga, warningln,
 };
-
-
+use x86_64::registers::control::Cr3;
+use x86_64::structures::paging::PageTableFlags;
 
 extern crate alloc;
 
@@ -49,6 +49,13 @@ fn panic(_info: &PanicInfo) -> ! {
     errorln!("{}", _info);
     hardware::power::shutdown();
     halt_loop();
+}
+
+#[naked]
+pub unsafe extern "C" fn test_syscall() {
+    asm!("mov rax, 1",
+        "mov rax, 1",
+        "ret")
 }
 
 /// # Initialization
@@ -72,14 +79,22 @@ pub fn init(_boot_info: &'static BootInfo) {
     //vga::init();
 
     println!(":(");
-    unsafe {
-        asm!("jmp {0}", in(reg) &ferr_os::LOL as *const u8);
-    }
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
-    long_halt(10);
+
+    long_halt(3);
+    unsafe {
+        asm!("mov rax, 1", "int 80h",);
+    }
+    long_halt(3);
+
+    unsafe {
+      //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
+    }
+
+
     unsafe {
         asm!("mov rax, 1", "int 80h",);
     }

@@ -31,7 +31,7 @@ impl GdtEntryBits {
 
     /// set the highest part of the limit
     fn set_limit_high(&mut self, val: u8) {
-        self.granularity = (self.granularity & 0xF0) | val
+        self.granularity = (self.granularity & 0xF0) | (val & 0x0F)
     }
 
     /// Set the limit in the right place (separate higher from the lower part)
@@ -101,7 +101,7 @@ impl GdtEntryBits {
 
     /// set privilege level from 0 to 3
     pub fn set_dpl(&mut self, dpl: u8) -> &mut Self {
-        self.attributes = (self.attributes & 0x9F) | ((dpl & 0b11) << 1);
+        self.attributes = (self.attributes & 0x9F) | ((dpl & 0b11) << 5);
         self
     }
 
@@ -169,14 +169,12 @@ impl GdtEntryBits {
 /// Creates a user data segment
 pub fn new_ds() -> u64 {
     let mut ds = GdtEntryBits::new();
-    ds.set_limit(0xFFFFF)
-        .set_base(0)
-        .set_present(true)
+    ds.set_present(true)
         .set_read_write(true)
         .is_code(false)
         .set_dpl(3)
-        .set_available(true)
-        .set_big(true)
+        .set_big(false)
+        .set_available(false)
         .set_gran(true);
     ds.as_u64()
 }
@@ -184,15 +182,15 @@ pub fn new_ds() -> u64 {
 /// Creates a new user code segment
 pub fn new_cs() -> u64 {
     let mut cs = GdtEntryBits::new();
-    cs.set_limit(0xFFFFF)
-        .set_base(0)
+    cs
         .set_present(true)
-        .set_read_write(true)
+        .set_read_write(false)
         .is_code(true)
-        .set_dpl(3)
-        .set_available(true)
-        .set_big(true)
-        .set_gran(true);
+        .set_dpl(0)
+        .set_big(false)
+        .set_conforming_expand_down(true)
+        .set_available(false)
+        .set_gran(false);
     unsafe {
         cs.set_x86_64_code_descriptor(true);
     };
@@ -203,15 +201,14 @@ pub fn new_cs() -> u64 {
 pub fn kernel_cs() -> u64 {
     let mut kernel_cs = GdtEntryBits::new();
     kernel_cs
-        .set_limit(0xFFFFF)
-        .set_base(0)
         .set_present(true)
-        .set_read_write(true)
+        .set_read_write(false)
         .is_code(true)
         .set_dpl(0)
         .set_big(false)
-        .set_available(true)
-        .set_gran(true);
+        .set_conforming_expand_down(false)
+        .set_available(false)
+        .set_gran(false);
     unsafe {
         kernel_cs.set_x86_64_code_descriptor(true);
     };
@@ -222,13 +219,12 @@ pub fn kernel_cs() -> u64 {
 pub fn kernel_ds() -> u64 {
     let mut kernel_ds = GdtEntryBits::new();
     kernel_ds
-        .set_limit(0xFFFFF)
-        .set_base(0)
         .set_present(true)
         .set_read_write(true)
         .is_code(false)
         .set_dpl(0)
-        .set_big(true)
+        .set_big(false)
+        .set_available(false)
         .set_gran(true);
     kernel_ds.as_u64()
 }

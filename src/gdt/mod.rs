@@ -6,7 +6,7 @@ use x86_64::instructions::tables::load_tss;
 use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 use x86_64::VirtAddr;
-
+use crate::warningln;
 mod gdt_entry;
 
 /// Index of the stack for double fault handling
@@ -31,13 +31,15 @@ lazy_static! {
             gdt_entry::kernel_cs(),
             gdt_entry::kernel_ds(),
         ));
-
-        // Add the TSS in the Global descriptor table
-        let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
+        warningln!("kernel_cs : {}", gdt_entry::kernel_cs());
 
         // Add the segments for user space in the table.
         let code_segment = gdt.add_entry(Descriptor::UserSegment(gdt_entry::new_cs()));
         let data_segment = gdt.add_entry(Descriptor::UserSegment(gdt_entry::new_ds()));
+
+        // Add the TSS in the Global descriptor table
+        let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
+
         (
             gdt,
             Selectors {
