@@ -715,11 +715,11 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn read(&self) -> () {
+    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn write(&self) -> () {
+    fn write(&self, path: Path, buffer: Vec<u8>) -> usize {
         todo!()
     }
 

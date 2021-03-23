@@ -88,7 +88,7 @@ pub struct ProcessDescriptorTable {
 impl ProcessDescriptorTable {
     /// Returns reference to filetable from a filedescriptor.
     pub fn get_file_table(&self, fd: FileDescriptor) -> &'static OpenFileTable {
-        GLOBAL_FILE_TABLE.get_file_table_ref(fd.into_usize())
+        GLOBAL_FILE_TABLE.get_file_table_ref(self.files[fd.into_usize()].unwrap())
     }
 
     /// TODO : add fields like flags, etc.
@@ -101,5 +101,13 @@ impl ProcessDescriptorTable {
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
         todo!()
+    }
+
+    /// self.dup(4, 1) redirects fd 1 to the OpenFileTable
+    /// fd 4 points to.
+    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> Result<(), ()> {
+        // TO DO check the bounds and validity of the given data!
+        self.files[operand.into_usize()] = self.files[target.into_usize()];
+        Ok(())
     }
 }

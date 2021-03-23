@@ -1,12 +1,18 @@
-// Each storage element (be it an ATA disk or  a virtual system)
+use crate::data_storage::path::Path;
+use alloc::vec::Vec;
+
+/// Each storage element (be it an ATA disk or  a virtual system)
 /// needs to implement this trait in order to get integrated into the
 /// VFS.
 pub trait Partition {
     /// Reads a file
-    fn read(&self) -> ();
+    /// Takes as a parameter the path to the file, the offset and the size
+    /// Returns the read buffer
+    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8>;
 
     /// Writes a file
-    fn write(&self) -> ();
+    /// Might wanna add some flags...
+    fn write(&self, path: Path, buffer: Vec<u8>) -> usize;
 
     /// Flushes all changes to a file
     fn flush(&self) -> ();

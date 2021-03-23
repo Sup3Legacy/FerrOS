@@ -1,18 +1,16 @@
+//! Provides bindings to the different functions in `hardware`, `keyboard`, `sound`, etc.
+use super::super::partition::Partition;
 use crate::data_storage::path::Path;
-use crate::filesystem::partition::Partition;
 use alloc::vec::Vec;
 
-/// Used to define an empty partition
-#[derive(Debug)]
-pub struct NoPart {}
-
-impl NoPart {
-    pub const fn new() -> Self {
-        Self {}
-    }
+pub trait SoftWareInterface {
+    fn read(&self);
+    fn write(&self);
 }
 
-impl Partition for NoPart {
+pub struct SoftwarePartition;
+
+impl Partition for SoftwarePartition {
     fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
         todo!()
     }
@@ -21,11 +19,11 @@ impl Partition for NoPart {
         todo!()
     }
 
-    fn lseek(&self) -> () {
+    fn flush(&self) -> () {
         todo!()
     }
 
-    fn flush(&self) {
+    fn lseek(&self) -> () {
         todo!()
     }
 
