@@ -24,7 +24,6 @@ extern "C" {
 pub unsafe extern "C" fn leave_context(_rsp: u64) {
     asm!(
         "mov rsp, rdi",
-        "int 0",
         "pop rbx",
         "pop rcx",
         "pop rbp",

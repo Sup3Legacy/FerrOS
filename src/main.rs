@@ -91,7 +91,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     long_halt(3);
 
     unsafe {
-        scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
+      //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
     }
 
 
