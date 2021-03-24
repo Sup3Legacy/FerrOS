@@ -2,7 +2,7 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
-use crate::{debug, print, println};
+use crate::{debug};
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();

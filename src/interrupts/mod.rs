@@ -1,7 +1,7 @@
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
 use x86_64::instructions::port::Port;
-use x86_64::instructions::segmentation;
+
 use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::structures::paging::PhysFrame;
 use x86_64::PrivilegeLevel;
@@ -308,10 +308,10 @@ unsafe extern "C" fn timer_interrupt_handler(
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
     //println!("r12:{} r11:{} rbp:{} rcx:{} rbx:{}", registers.r12, registers.r11, registers.rbp, registers.rcx, registers.rbx);
-    if (COUNTER == QUANTUM) {
+    if COUNTER == QUANTUM {
         COUNTER = 0;
         //println!("{:#?}", stack_frame);
-        let mut stack_frame_2 = stack_frame.as_mut();
+        let _stack_frame_2 = stack_frame.as_mut();
         //println!("entered");
         let (next, mut old) = process::gives_switch(COUNTER);
         //println!("here");

@@ -11,23 +11,23 @@ pub trait SoftWareInterface {
 pub struct SoftwarePartition;
 
 impl Partition for SoftwarePartition {
-    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
+    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn write(&self, path: Path, buffer: Vec<u8>) -> usize {
+    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
         todo!()
     }
 
-    fn flush(&self) -> () {
+    fn flush(&self) {
         todo!()
     }
 
-    fn lseek(&self) -> () {
+    fn lseek(&self) {
         todo!()
     }
 
-    fn read_raw(&self) -> () {
+    fn read_raw(&self) {
         todo!()
     }
 }

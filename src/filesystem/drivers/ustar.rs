@@ -1,7 +1,7 @@
 use super::super::partition::Partition;
 use super::disk_operations;
 use crate::data_storage::path::Path;
-use crate::{print, println};
+use crate::{println};
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -457,7 +457,7 @@ impl UsTar {
     pub fn write_memfile_to_disk(&mut self, memfile: &MemFile) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = memfile.header;
-        let length = file_header.length; // TODO : make sure it is also the length of self.data
+        let _length = file_header.length; // TODO : make sure it is also the length of self.data
         if file_header.mode == FileMode::Short {
             //println!("Writing in short mode.");
             let blocks_number = file_header.blocks_number;
@@ -520,7 +520,7 @@ impl UsTar {
             for i in 0..number_address_block {
                 // Fresh address-block
                 let mut block = LongFile {
-                    addresses: [Address { lba: 0, block: 0 }; 128 as usize],
+                    addresses: [Address { lba: 0, block: 0 }; 128_usize],
                 };
                 // We fill this block with block addresses
                 for j in (i * 128)..((i + 1) * 128) {
@@ -689,7 +689,7 @@ impl UsTar {
                 }
             }
             // At this point, we just came onto a directory that isn't already in cache.
-            while let Some(next_dir) = decomp.next() {
+            for next_dir in decomp {
                 current_path.push_str(&next_dir);
                 let next_address = current_dir.files.get_mut(&next_dir).unwrap();
                 let current_dir = self.memdir_from_address(*next_address);
@@ -715,15 +715,15 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
+    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn write(&self, path: Path, buffer: Vec<u8>) -> usize {
+    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
         todo!()
     }
 
-    fn lseek(&self) -> () {
+    fn lseek(&self) {
         todo!()
     }
 
@@ -731,7 +731,7 @@ impl Partition for UsTar {
         todo!()
     }
 
-    fn read_raw(&self) -> () {
+    fn read_raw(&self) {
         todo!()
     }
 }

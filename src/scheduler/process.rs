@@ -1,6 +1,6 @@
 use super::PROCESS_MAX_NUMBER;
-use crate::data_storage::registers::Registers;
-use crate::interrupts::idt::InterruptStackFrameValue;
+
+
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use lazy_static::lazy_static;
@@ -116,7 +116,7 @@ pub unsafe fn launch_first_process(
             }
         }
 
-        let (cr3, cr3f) = Cr3::read();
+        let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;)");
         towards_user(addr_stack, addr_code); // good luck user ;)
@@ -320,6 +320,6 @@ lazy_static! {
 }
 pub static mut CURRENT_PROCESS: Process = Process::missing();
 
-pub unsafe fn gives_switch(counter: u64) -> (&'static Process, &'static mut Process) {
-    return (&CURRENT_PROCESS, &mut CURRENT_PROCESS);
+pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
+    (&CURRENT_PROCESS, &mut CURRENT_PROCESS)
 }

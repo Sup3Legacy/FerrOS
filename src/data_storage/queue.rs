@@ -58,7 +58,7 @@ impl<T: Copy> Queue<T> {
             if (self.poping - self.pushing + 1) % MAX_SIZE == 0 {
                 self.empty = true;
             }
-            return (Ok(res));
+            Ok(res)
         }
     }
 }

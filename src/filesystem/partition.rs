@@ -15,11 +15,11 @@ pub trait Partition {
     fn write(&self, path: Path, buffer: Vec<u8>) -> usize;
 
     /// Flushes all changes to a file
-    fn flush(&self) -> ();
+    fn flush(&self);
 
     /// TODO
-    fn lseek(&self) -> ();
+    fn lseek(&self);
 
     /// This is the function the kernel reads through.
-    fn read_raw(&self) -> ();
+    fn read_raw(&self);
 }

@@ -2,7 +2,7 @@ use core::cmp::min;
 
 use crate::data_storage::path::Path;
 use alloc::vec::Vec;
-use lazy_static::lazy;
+
 use lazy_static::lazy_static;
 
 /// Max number of total opened files
@@ -43,7 +43,7 @@ impl GeneralFileTable {
             if self.index == MAX_TOTAL_OPEN_FILES {
                 panic!("VFS : reached maximum number of opened files.");
             }
-            if let None = self.tables[self.index] {
+            if self.tables[self.index].is_none() {
                 break;
             }
         }
@@ -92,7 +92,7 @@ impl ProcessDescriptorTable {
     }
 
     /// TODO : add fields like flags, etc.
-    pub fn create_file_table(&mut self, path: Path, flags: u64) -> FileDescriptor {
+    pub fn create_file_table(&mut self, _path: Path, _flags: u64) -> FileDescriptor {
         // Here we create a new OpenFileTable.
         // We fill it with all the passed values,
         // inserts it into the GLOBAL_FILE_TABLE

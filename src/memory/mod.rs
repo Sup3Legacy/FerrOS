@@ -445,8 +445,8 @@ impl BootInfoAllocator {
         let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
         let table4: *mut PageTable = virt.as_mut_ptr();
         match self.copy_table_4(&mut *table4) {
-            Ok(phys) => return Ok(phys),
-            Err(()) => return Err(()),
+            Ok(phys) => Ok(phys),
+            Err(()) => Err(()),
         }
     }
 
@@ -476,9 +476,9 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
-            return Ok(new_table_addr);
+            Ok(new_table_addr)
         } else {
-            return Err(());
+            Err(())
         }
     }
 
@@ -508,9 +508,9 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
-            return Ok(new_table_addr);
+            Ok(new_table_addr)
         } else {
-            return Err(());
+            Err(())
         }
     }
 
@@ -540,9 +540,9 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
-            return Ok(new_table_addr);
+            Ok(new_table_addr)
         } else {
-            return Err(());
+            Err(())
         }
     }
 
@@ -555,7 +555,7 @@ impl BootInfoAllocator {
                 let flags = table_1[index].flags();
                 if flags.contains(PageTableFlags::PRESENT) {
                     if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
-                        if let Some(mut data_table) = self.allocate_4k_frame() {
+                        if let Some(data_table) = self.allocate_4k_frame() {
                             let virt =
                                 VirtAddr::new(table_1[index].addr().as_u64() + PHYSICAL_OFFSET);
                             let old_table: *mut [u64; 64] = virt.as_mut_ptr();
@@ -578,9 +578,9 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
-            return Ok(new_table_addr);
+            Ok(new_table_addr)
         } else {
-            return Err(());
+            Err(())
         }
     }
 
@@ -695,7 +695,7 @@ impl BootInfoAllocator {
     pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) -> Result<(), ()> {
         let table_index = addr.as_u64() >> 12;
         self.pages_available[table_index as usize] = false;
-        return Ok(());
+        Ok(())
     }
 }
 

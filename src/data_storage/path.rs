@@ -32,7 +32,7 @@ impl Path {
     }
     pub fn get_parent(&self) -> Self {
         let mut sliced = self.slice();
-        if sliced.len() == 0 {
+        if sliced.is_empty() {
             Self::from(&self.to())
         } else {
             sliced.pop();

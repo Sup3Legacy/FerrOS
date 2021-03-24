@@ -51,12 +51,12 @@ impl PartitionNode {
                     return Err(());
                 }
                 if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                    return next_part.get_partition(sliced_path, index + 1);
+                    next_part.get_partition(sliced_path, index + 1)
                 } else {
-                    return Err(());
+                    Err(())
                 }
             }
-            PartitionNode::Leaf(part) => return Ok(part),
+            PartitionNode::Leaf(part) => Ok(part),
         }
     }
 }
@@ -79,16 +79,16 @@ impl VFS {
         if res_partition.is_err() {
             return -1;
         }
-        let partition = res_partition.unwrap();
+        let _partition = res_partition.unwrap();
         todo!()
     }
 
-    pub fn close(&self) -> () {
+    pub fn close(&self) {
         todo!()
     }
 
     /// Returns the amount of bytes that were read into the buffer
-    pub fn read(&self, buffer: *mut usize) -> usize {
+    pub fn read(&self, _buffer: *mut usize) -> usize {
         todo!()
     }
 
@@ -96,7 +96,7 @@ impl VFS {
         todo!()
     }
 
-    pub fn lseek(&self) -> () {
+    pub fn lseek(&self) {
         todo!()
     }
 

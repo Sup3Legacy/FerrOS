@@ -5,7 +5,7 @@ use priority_queue::PriorityQueue;
 
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
 
-use crate::{print, println};
+use crate::{println};
 
 /// Height of the screen
 const BUFFER_HEIGHT: usize = 25;

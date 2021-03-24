@@ -1,7 +1,7 @@
 //! Crate for every interractions with the disk
 
-use crate::{print, println};
-use x86_64::instructions::interrupts::{disable, enable};
+use crate::{println};
+
 use x86_64::instructions::port::Port;
 
 /// Base port for the kernel in QEMU
