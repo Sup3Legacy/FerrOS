@@ -23,6 +23,8 @@ use pic8259_simple::ChainedPics;
 
 mod syscalls;
 
+use syscalls::syscall_dispatch;
+
 static mut COUNTER: u64 = 0;
 
 #[derive(Clone, Debug, Copy)]
@@ -151,7 +153,7 @@ lazy_static! {
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler)
             .set_privilege_level(PrivilegeLevel::Ring3);
-        idt.syscall.set_handler_fn(syscalls::naked_syscall_dispatch)
+        idt.syscall.set_handler_fn(saveRegisters!(syscall_dispatch))
                     .set_privilege_level(PrivilegeLevel::Ring3);
         unsafe {
             idt.double_fault
@@ -222,7 +224,8 @@ extern "x86-interrupt" fn double_fault_handler(
     error_code: u64,
 ) -> ! {
     println!("ERROR : {:#?}", error_code);
-    println!("saved rsp : {:#?}", unsafe { process::CURRENT_PROCESS.rsp });
+    println!("saved rsp : {:#?}", unsafe { process::get_current().rsp });
+    println!("CR3 : {:#?}", Cr3::read());
     panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }
 
@@ -265,8 +268,9 @@ extern "x86-interrupt" fn general_protection_fault_handler(
         println!("GENERAL PROTECTION FAULT! {:#?}", stack);
     }
     println!("TRIED TO READ : {:#?}", Cr2::read());
+    println!("CR3 : {:#?}", Cr3::read());
     println!("ERROR : {:#?}", _error_code);
-    loop {}
+    hardware::power::shutdown();
 }
 
 extern "x86-interrupt" fn x87_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
@@ -319,7 +323,6 @@ unsafe extern "C" fn timer_interrupt_handler(
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
         old.cr3f = cr3f;
-        Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
 
         old.rsp = VirtAddr::from_ptr(registers).as_u64();
 
@@ -328,7 +331,10 @@ unsafe extern "C" fn timer_interrupt_handler(
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
-        process::leave_context(next.rsp);
+        //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
+        println!("target {:x}", process::leave_context_cr3 as u64);
+        println!("{:#?} {:x}",next.cr3f, next.cr3f.bits());
+        process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
         return;
     } else {

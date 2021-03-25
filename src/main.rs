@@ -54,7 +54,19 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[naked]
 pub unsafe extern "C" fn test_syscall() {
-    asm!("mov rax, 1", "mov rax, 2", "int 80h", "int 80h", "ret")
+    asm!(
+        "mov rax, 42",
+        "mov rax, 1", // syscall 1 == test (good syscall)
+        "int 80h",
+        "mov rax, 5", // syscall 5 == fork
+        "int 80h",
+        "loop:", // the fathers loops
+        "cmp rax, 0",
+        "jnz loop",
+        "mov rdi, rax",
+        "mov rax, 9", // syscall 9 == shutdown
+        "int 80h",
+        "ret")
 }
 
 /// # Initialization
@@ -88,17 +100,15 @@ pub fn init(_boot_info: &'static BootInfo) {
     interrupts::init();
     println!(":( :(");
 
-    long_halt(3);
-    unsafe {
-        asm!("mov rax, 1", "int 80h",);
-    }
-    long_halt(3);
+    long_halt(5);
 
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
-    unsafe {
-        asm!("mov rax, 1", "int 80h",);
-    }
+   /* unsafe {
+        asm!(
+            "mov rdi, 42",
+            "mov rax, 9", "int 80h",);
+    }*/
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     //hardware::power::shutdown();
     //loop {}
@@ -132,7 +142,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::launch_first_process(frame_allocator, test_syscall as *const u8, 1, 1);
+            scheduler::process::launch_first_process(frame_allocator, test_syscall as *const u8, 1, 2);
         }
     }
     //unsafe{asm!("mov rcx, 0","div rcx");}

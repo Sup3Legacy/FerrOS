@@ -24,9 +24,17 @@ extern "C" {
 #[naked]
 /// # Safety
 /// TODO
-pub unsafe extern "C" fn leave_context(_rsp: u64) {
+pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
     asm!(
-        "mov rsp, rdi",
+        "mov cr3, rdi",
+        "mov rsp, rsi",
+        "pop r9",
+        "pop r8",
+        "pop r10",
+        "pop rdx",
+        "pop rsi",
+        "pop rdi",
+        "pop rax",
         "pop rbx",
         "pop rcx",
         "pop rbp",
@@ -35,6 +43,20 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         "pop r13",
         "pop r14",
         "pop r15",
+        "add rsp, 32",
+        "vmovaps ymm0, [rsp]",
+        //"sti",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
+#[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn leave_context(_rsp: u64) {
+    asm!(
+        "mov rsp, rdi",
         "pop r9",
         "pop r8",
         "pop r10",
@@ -42,6 +64,14 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         "pop rsi",
         "pop rdi",
         "pop rax",
+        "pop rbx",
+        "pop rcx",
+        "pop rbp",
+        "pop r11",
+        "pop r12",
+        "pop r13",
+        "pop r14",
+        "pop r15",
         "add rsp, 32",
         "vmovaps ymm0, [rsp]",
         //"sti",
@@ -82,7 +112,8 @@ pub unsafe fn launch_first_process(
     code_address: *const u8,
     number_of_block: u64,
     stack_size: u64,
-) {
+) -> ! {
+    ID_TABLE[0].state = State::Runnable;
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         // addresses telling where the code and the stack starts
         let addr_code: u64 = 0x320000000000;
@@ -110,7 +141,7 @@ pub unsafe fn launch_first_process(
         for i in 0..stack_size {
             match frame_allocator.add_entry_to_table(
                 level_4_table_addr,
-                VirtAddr::new(addr_stack - i * 4096),
+                VirtAddr::new(addr_stack - i * 0x1000),
                 PageTableFlags::USER_ACCESSIBLE
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
@@ -125,7 +156,8 @@ pub unsafe fn launch_first_process(
 
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
-        println!("good luck user ;)");
+        println!("good luck user ;) {} {}", addr_stack, addr_code);
+        println!("target : {:x}", towards_user as u64);
         towards_user(addr_stack, addr_code); // good luck user ;)
 
         // should not be reached
@@ -283,7 +315,9 @@ impl ID {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         for _i in 0..PROCESS_MAX_NUMBER {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-            if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {return ID(new)}
+            unsafe {
+              if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {return ID(new)}
+            }
         }
         panic!("no slot available")
     }
@@ -294,8 +328,7 @@ impl Default for ID {
     }
 }
 
-lazy_static! {
-    static ref ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
+static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
         Process::missing(),
         Process::missing(),
         Process::missing(),
@@ -329,20 +362,60 @@ lazy_static! {
         Process::missing(),
         Process::missing()
     ];
-}
-pub static mut CURRENT_PROCESS: Process = Process::missing();
+
+pub static mut CURRENT_PROCESS: usize = 0;
 
 /// # Safety
 /// TODO
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
-    (&CURRENT_PROCESS, &mut CURRENT_PROCESS)
+    for new in 0..PROCESS_MAX_NUMBER as usize {
+        if new != CURRENT_PROCESS && ID_TABLE[new].state == State::Runnable {
+            let old = CURRENT_PROCESS;
+            CURRENT_PROCESS = new;
+            println!("{} <-> {}", old, new);
+            return (&ID_TABLE[new], &mut ID_TABLE[old])
+        }
+    }
+    (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
 }
 
-pub unsafe fn get_current() -> (&'static mut Process) {
-    &mut CURRENT_PROCESS
+pub unsafe fn get_current() -> (&'static Process) {
+    &ID_TABLE[CURRENT_PROCESS]
+}
+
+pub unsafe fn get_current_as_mut() -> (&'static mut Process) {
+    &mut ID_TABLE[CURRENT_PROCESS]
 }
 
 pub unsafe fn fork() -> u64 {
+    let mut son = Process::create_new(ID_TABLE[CURRENT_PROCESS].pid,
+            ID_TABLE[CURRENT_PROCESS].priority,
+            ID_TABLE[CURRENT_PROCESS].owner,
+        );
+    if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+        match frame_allocator.copy_table_entries(ID_TABLE[CURRENT_PROCESS].cr3) {
+            Ok(phys) => son.cr3 = phys,
+            Err(_) => panic!("TODO"),
+        }
+        son.cr3f = ID_TABLE[CURRENT_PROCESS].cr3f;
+    } else {
+        panic!("un initialized frame allocator");
+    }
+    let pid = son.pid.0;
+    son.state = State::Runnable;
+    son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
+    ID_TABLE[pid as usize] = son;
+    println!("new process of id {}", pid);
+
     // TODO
-    1
+    pid
+}
+
+pub unsafe fn set_priority(prio :usize) -> usize {
+    if (ID_TABLE[CURRENT_PROCESS].priority.0 <= prio) {
+        ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
+        prio
+    } else {
+        usize::MAX
+    }
 }
