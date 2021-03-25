@@ -51,7 +51,7 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
-        "mov rax, 0x23", // data segment
+        "mov rax, 0x0", // data segment
         "mov ds, eax",
         "mov es, eax",
         "mov fs, eax",
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "push rax",  // stack segment
         "push rdi",  // stack pointer
         "push 518",  // cpu flags
-        "push 0x1B", // code segment
+        "push 0x08", // code segment
         "push rsi",  // instruction pointer
         "iretq",
         options(noreturn,),
@@ -322,4 +322,13 @@ pub static mut CURRENT_PROCESS: Process = Process::missing();
 
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
     (&CURRENT_PROCESS, &mut CURRENT_PROCESS)
+}
+
+pub unsafe fn get_current() -> (&'static mut Process) {
+    &mut CURRENT_PROCESS
+}
+
+pub unsafe fn fork() -> u64 {
+    // TODO
+    1
 }

@@ -54,7 +54,7 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[naked]
 pub unsafe extern "C" fn test_syscall() {
-    asm!("mov rax, 1", "mov rax, 1", "ret")
+    asm!("mov rax, 1", "mov rax, 2", "int 80h", "int 80h", "ret")
 }
 
 /// # Initialization
@@ -69,11 +69,16 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator =
-        unsafe { memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset) };
-    allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
+    unsafe { 
+        memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            allocator::init(&mut mapper,  frame_allocator).expect("Heap init failed :((");
+        } else {
+            panic!("Frame allocator wasn't initialized");
+        }
+    };
 
-    // I/O Initialization
+// I/O Initialization
     keyboard::init();
     //vga::init();
 
@@ -89,10 +94,6 @@ pub fn init(_boot_info: &'static BootInfo) {
     }
     long_halt(3);
 
-    unsafe {
-        //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
-    }
-
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
     unsafe {
@@ -100,8 +101,8 @@ pub fn init(_boot_info: &'static BootInfo) {
     }
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     //hardware::power::shutdown();
-    loop {}
-    errorln!("Ousp");
+    //loop {}
+    //errorln!("Ousp");
     //filesystem::init();
 }
 
@@ -128,6 +129,12 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
+
+    unsafe {
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            scheduler::process::launch_first_process(frame_allocator, test_syscall as *const u8, 1, 1);
+        }
+    }
     //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]

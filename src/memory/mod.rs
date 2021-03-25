@@ -9,6 +9,11 @@ use x86_64::{
     structures::paging::{PageTable, PageTableFlags},
     PhysAddr, VirtAddr,
 };
+use core::ptr;
+
+use lazy_static::lazy_static;
+
+pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
 use crate::warningln;
 
@@ -84,7 +89,7 @@ pub struct BootInfoAllocator {
 impl BootInfoAllocator {
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
-    pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) -> Self {
+    pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
         let mut pages_available = [false; MAX_PAGE_ALLOWED];
         let regions = memory_map.iter();
         let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
@@ -99,16 +104,27 @@ impl BootInfoAllocator {
         for i in frame_addresses {
             NUMBER_TABLES += 1;
             pages_available[(i >> 12) as usize] = true;
-            maxi = max(i >> 12, maxi);
-            next = min(i >> 12, next);
+            maxi = max((i >> 12) as usize, maxi);
+            next = min((i >> 12) as usize, next);
         }
         print!("Num tables : {}\n", NUMBER_TABLES); // just for show, should be removed
 
-        BootInfoAllocator {
+        FRAME_ALLOCATOR = Some(BootInfoAllocator {
             pages_available,
-            next: next as usize,
-            maxi: maxi as usize,
-            level4_table: active_level_4_table(physical_memory_offset),
+            next,
+            maxi,
+            level4_table : active_level_4_table(physical_memory_offset),
+        });
+    }
+
+    pub fn empty() -> Self {
+        unsafe {
+            Self {
+                pages_available: [false; MAX_PAGE_ALLOWED],
+                next : 0,
+                maxi : 0,
+                level4_table : &*VirtAddr::zero().as_ptr(),
+            }
         }
     }
 

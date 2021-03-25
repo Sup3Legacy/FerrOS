@@ -8,6 +8,7 @@ use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;
 
 use crate::scheduler::QUANTUM;
+use crate::hardware;
 
 pub mod idt;
 use idt::Idt as InterruptDescriptorTable;
@@ -334,30 +335,8 @@ unsafe extern "C" fn timer_interrupt_handler(
         COUNTER += 1;
     }
 
-    /*
-    let stack_frame2 = unsafe { stack_frame.as_mut() };
-    let (pf, cr_f) = Cr3::read();
-    let state = crate::task::executor::Status {
-        cs: stack_frame2.code_segment,
-        cf: stack_frame2.cpu_flags,
-        sp: stack_frame2.stack_pointer,
-        ss: stack_frame2.stack_segment,
-        ip: stack_frame2.instruction_pointer,
-        cr3: (pf, cr_f),
-    };
-    let next = crate::task::executor::next_task(state);
-    stack_frame2.code_segment = next.cs;
-    stack_frame2.cpu_flags = next.cf;
-    stack_frame2.stack_pointer = next.sp;
-    stack_frame2.stack_segment = next.ss;
-    stack_frame2.instruction_pointer = next.ip;
-    unsafe {
-        Cr3::write(next.cr3.0, next.cr3.1);
-    };*/
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
+    PICS.lock()
+        .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 }
 
 /// Page fault handler, should verify wether killing the current process or allocating a new page !
@@ -365,9 +344,27 @@ extern "x86-interrupt" fn page_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: PageFaultErrorCode,
 ) {
-    println!("PAGE FAULT! {:#?}", _stack_frame);
-    println!("TRIED TO READ : {:#?}", Cr2::read());
-    println!("ERROR : {:#?}", _error_code);
+    let read_addr = Cr2::read();
+    if read_addr.as_u64() == 0 {
+        println!("terminated normally");
+        /* // This launch a new process when the other one has finished.
+        unsafe {
+            let (next, mut old) = process::terminated_normally(COUNTER);
+            COUNTER = 0;
+            let (cr3, cr3f) = CR"::read();
+            old.cr3 = cr3.start_address();
+            old.cr3f = cr3f;
+            Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
+            old.rsp = VirtAddr::from_ptr(registers).as_u64();
+            process::leave_context(next.rsp);
+        }
+        */
+        hardware::power::shutdown();
+    } else {
+        println!("PAGE FAULT! {:#?}", _stack_frame);
+        println!("TRIED TO READ : {:#?}", Cr2::read());
+        println!("ERROR : {:#?}", _error_code);
+    }
     crate::halt_loop();
 }
 
