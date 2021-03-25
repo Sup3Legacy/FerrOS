@@ -335,10 +335,8 @@ unsafe extern "C" fn timer_interrupt_handler(
         COUNTER += 1;
     }
 
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
+    PICS.lock()
+        .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 }
 
 /// Page fault handler, should verify wether killing the current process or allocating a new page !

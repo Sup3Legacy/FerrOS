@@ -54,7 +54,7 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[naked]
 pub unsafe extern "C" fn test_syscall() {
-    asm!("mov rax, 1", "mov rax, 1", "int 80h", "ret")
+    asm!("mov rax, 1", "mov rax, 2", "int 80h", "int 80h", "ret")
 }
 
 /// # Initialization
@@ -69,8 +69,10 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator =
-        unsafe { memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset) };
+    unsafe { 
+        memory::FRAME_ALLOCATOR.init(&_boot_info.memory_map, phys_mem_offset)
+    };
+    let mut frame_allocator: memory::BootInfoAllocator = memory::FRAME_ALLOCATOR;
     allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
 
     // I/O Initialization
@@ -89,10 +91,6 @@ pub fn init(_boot_info: &'static BootInfo) {
     }
     long_halt(3);
 
-    unsafe {
-        //scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
-    }
-
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
     unsafe {
@@ -100,9 +98,15 @@ pub fn init(_boot_info: &'static BootInfo) {
     }
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     //hardware::power::shutdown();
-    loop {}
-    errorln!("Ousp");
+    //loop {}
+    //errorln!("Ousp");
     //filesystem::init();
+
+
+    unsafe {
+        scheduler::process::launch_first_process(&mut memory::FRAME_ALLOCATOR, test_syscall as *const u8, 1, 1);
+    }
+
 }
 
 // test taks, to move out of here
