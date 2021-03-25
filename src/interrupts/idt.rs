@@ -101,8 +101,8 @@ impl Idt {
         unsafe { lidt(&ptr) };
     }
 }
-impl Default for Idt{
-    fn default() -> Self{
+impl Default for Idt {
+    fn default() -> Self {
         Self::new()
     }
 }

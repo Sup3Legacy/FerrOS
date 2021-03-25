@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 
-
 mod sound_queue;
 
 lazy_static! {

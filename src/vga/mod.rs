@@ -2,13 +2,8 @@
 //! Currently uses an older version, directly writing onto the
 //! physical display.
 
-
 use lazy_static::lazy_static;
 use spin::Mutex;
-
-
-
-
 
 pub mod mainscreen;
 pub mod video_mode;

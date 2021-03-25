@@ -62,8 +62,8 @@ impl<T: Copy> Queue<T> {
         }
     }
 }
-impl<T : Copy> Default for Queue<T>{
-    fn default() -> Self{
+impl<T: Copy> Default for Queue<T> {
+    fn default() -> Self {
         Self::new()
     }
 }

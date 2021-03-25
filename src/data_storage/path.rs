@@ -47,8 +47,8 @@ impl Path {
         self.slice().get(0).unwrap_or(&String::from("")).clone()
     }
 }
-impl Default for Path{
-    fn default() -> Self{
+impl Default for Path {
+    fn default() -> Self {
         Self::new()
     }
 }

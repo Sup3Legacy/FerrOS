@@ -3,7 +3,7 @@ use x86_64::instructions::port::Port;
 
 /// Sends the shutdown signal.
 /// It must obviously be the very last step in the shutdown process.
-pub fn shutdown() -> !{
+pub fn shutdown() -> ! {
     // This uses the special QEMU signal.
     // It is quite of a brute-force method but it works
     unsafe {

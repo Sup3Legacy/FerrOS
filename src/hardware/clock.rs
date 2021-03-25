@@ -1,12 +1,11 @@
 use x86_64::instructions::port::Port;
 
-use crate::{println};
+use crate::println;
 
 const CMOS_ADDRESS: u16 = 0x70;
 static mut CMOS_ADDRESS_PORT: Port<u16> = Port::new(CMOS_ADDRESS);
 const CMOS_DATA: u16 = 0x71;
 static mut CMOS_DATA_PORT: Port<u8> = Port::new(CMOS_DATA);
-
 
 /// # Safety
 /// TODO

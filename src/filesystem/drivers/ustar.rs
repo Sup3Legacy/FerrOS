@@ -3,7 +3,7 @@
 use super::super::partition::Partition;
 use super::disk_operations;
 use crate::data_storage::path::Path;
-use crate::{println};
+use crate::println;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -330,7 +330,7 @@ fn slice_vec(data: &[u8]) -> Vec<[u16; 256]> {
     let mut index = 0;
     for _i in 0..block_number {
         let mut arr = [0_u16; 256];
-        for elt in arr.iter_mut().take(256){
+        for elt in arr.iter_mut().take(256) {
             if 2 * index + 1 >= n {
                 break;
             }

@@ -4,11 +4,11 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
-use crate::{debug};
+use crate::debug;
+use crate::hardware;
 use crate::scheduler::process;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
-use crate::hardware;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -17,7 +17,8 @@ pub type SyscallFunc = extern "C" fn();
 const SYSCALL_NUMBER: u64 = 11;
 
 /// table containing every syscall functions
-const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame); SYSCALL_NUMBER as usize] = [
+const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
+    SYSCALL_NUMBER as usize] = [
     syscall_0_read,
     syscall_1_write,
     syscall_2_open,
@@ -111,7 +112,6 @@ pub extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut Reg
         SYSCALL_TABLE[args.rax as usize](args, isf)
     }
 }
-
 
 /// interface function for syscalls, saves every register before giving control to the dispatch function
 /// it disables interrupts at entry !

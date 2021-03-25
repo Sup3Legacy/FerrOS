@@ -1,5 +1,4 @@
 #![allow(unused_imports)]
-
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
 #![feature(abi_x86_interrupt)]
@@ -72,7 +71,8 @@ pub unsafe extern "C" fn test_syscall() {
         "mov rax, 9", // syscall 9 == shutdown
         "int 80h",
         "ret",
-        options(noreturn))
+        options(noreturn)
+    )
 }
 
 /// # Initialization
@@ -87,16 +87,16 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    unsafe { 
+    unsafe {
         memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            allocator::init(&mut mapper,  frame_allocator).expect("Heap init failed :((");
+            allocator::init(&mut mapper, frame_allocator).expect("Heap init failed :((");
         } else {
             panic!("Frame allocator wasn't initialized");
         }
     };
 
-// I/O Initialization
+    // I/O Initialization
     keyboard::init();
     //vga::init();
 
@@ -110,7 +110,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
-   /* unsafe {
+    /* unsafe {
         asm!(
             "mov rdi, 42",
             "mov rax, 9", "int 80h",);
@@ -148,7 +148,12 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::launch_first_process(frame_allocator, test_syscall as *const u8, 1, 2);
+            scheduler::process::launch_first_process(
+                frame_allocator,
+                test_syscall as *const u8,
+                1,
+                2,
+            );
         }
     }
     //unsafe{asm!("mov rcx, 0","div rcx");}

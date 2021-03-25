@@ -62,7 +62,7 @@ impl GeneralFileTable {
 }
 
 impl Default for GeneralFileTable {
-    fn default() -> Self{
+    fn default() -> Self {
         Self::new()
     }
 }
@@ -113,7 +113,11 @@ impl ProcessDescriptorTable {
 
     /// self.dup(4, 1) redirects fd 1 to the OpenFileTable
     /// fd 4 points to.
-    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> Result<(), FileDesciptorError> {
+    pub fn dup(
+        &mut self,
+        target: FileDescriptor,
+        operand: FileDescriptor,
+    ) -> Result<(), FileDesciptorError> {
         // TO DO check the bounds and validity of the given data!
         self.files[operand.into_usize()] = self.files[target.into_usize()];
         Ok(())

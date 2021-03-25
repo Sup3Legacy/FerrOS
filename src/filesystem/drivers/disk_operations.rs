@@ -1,6 +1,6 @@
 //! Crate for every interractions with the disk
 
-use crate::{println};
+use crate::println;
 
 use x86_64::instructions::port::Port;
 
@@ -46,7 +46,7 @@ pub fn init(port: u16) {
         lba_mid.read();
         lba_high.read();
         let mut data_table: [u16; 256] = [0; 256];
-        for elt in &mut data_table{
+        for elt in &mut data_table {
             *elt = data_register.read();
         }
 
@@ -166,7 +166,7 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     wait_drq(port);
 
     let mut delay = Port::new(0x80);
-    for elt in table.iter().take(256){
+    for elt in table.iter().take(256) {
         data_register.write(*elt); // writes all the data one by one. The loop is mandatory to give the drive the time to accept the data
         delay.write(0_u8);
     }

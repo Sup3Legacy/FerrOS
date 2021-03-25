@@ -12,7 +12,6 @@
 #![feature(option_result_unwrap_unchecked)]
 #![feature(const_raw_ptr_deref)]
 
-
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
 
@@ -75,7 +74,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     }
     exit_qemu(QemuExitCode::Success);
 }
-    
+
 #[allow(clippy::empty_loop)]
 pub fn test_panic(_info: &PanicInfo) -> ! {
     println!("[failed]\nError: {}\n", _info);

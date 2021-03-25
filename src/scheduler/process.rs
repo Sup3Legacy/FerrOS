@@ -1,6 +1,5 @@
 use super::PROCESS_MAX_NUMBER;
 
-
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
@@ -316,64 +315,70 @@ impl ID {
         for _i in 0..PROCESS_MAX_NUMBER {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
             unsafe {
-              if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {return ID(new)}
+                if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {
+                    return ID(new);
+                }
             }
         }
         panic!("no slot available")
     }
 }
 impl Default for ID {
-    fn default () -> Self {
+    fn default() -> Self {
         Self::new()
     }
 }
 
 static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing()
-    ];
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+];
 
 pub static mut CURRENT_PROCESS: usize = 0;
 
 /// # Safety
 /// TODO
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
-    for (new, new_id) in ID_TABLE.iter().enumerate().take(PROCESS_MAX_NUMBER as usize) {
+    for (new, new_id) in ID_TABLE
+        .iter()
+        .enumerate()
+        .take(PROCESS_MAX_NUMBER as usize)
+    {
         if new != CURRENT_PROCESS && new_id.state == State::Runnable {
             let old = CURRENT_PROCESS;
             CURRENT_PROCESS = new;
             println!("{} <-> {}", old, new);
-            return (&new_id, &mut ID_TABLE[old])
+            return (&new_id, &mut ID_TABLE[old]);
         }
     }
     (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
@@ -394,10 +399,11 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
 /// # Safety
 /// TODO
 pub unsafe fn fork() -> u64 {
-    let mut son = Process::create_new(ID_TABLE[CURRENT_PROCESS].pid,
-            ID_TABLE[CURRENT_PROCESS].priority,
-            ID_TABLE[CURRENT_PROCESS].owner,
-        );
+    let mut son = Process::create_new(
+        ID_TABLE[CURRENT_PROCESS].pid,
+        ID_TABLE[CURRENT_PROCESS].priority,
+        ID_TABLE[CURRENT_PROCESS].owner,
+    );
     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
         match frame_allocator.copy_table_entries(ID_TABLE[CURRENT_PROCESS].cr3) {
             Ok(phys) => son.cr3 = phys,
@@ -419,7 +425,7 @@ pub unsafe fn fork() -> u64 {
 
 /// # Safety
 /// TODO
-pub unsafe fn set_priority(prio :usize) -> usize {
+pub unsafe fn set_priority(prio: usize) -> usize {
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
         prio

@@ -123,8 +123,8 @@ pub fn main() -> ! {
 
         println!("Loul");
 
-        for line in screenbuffer.iter_mut().take(WIDTH){
-            for element in line.iter_mut().take(HEIGHT){
+        for line in screenbuffer.iter_mut().take(WIDTH) {
+            for element in line.iter_mut().take(HEIGHT) {
                 *element = 0_u8;
             }
         }

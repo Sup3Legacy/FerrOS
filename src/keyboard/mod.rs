@@ -1,4 +1,4 @@
-use crate::{println};
+use crate::println;
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::{ArrayQueue, PopError, PushError};
 use lazy_static::lazy_static;

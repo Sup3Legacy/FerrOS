@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 
 use super::ascii_fluid;
 
-use crate::{println};
+use crate::println;
 
 #[derive(Debug, Clone)]
 pub struct ShellErr {

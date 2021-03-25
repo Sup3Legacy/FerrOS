@@ -10,8 +10,8 @@ use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;
 
-use crate::scheduler::QUANTUM;
 use crate::hardware;
+use crate::scheduler::QUANTUM;
 
 pub mod idt;
 use idt::Idt as InterruptDescriptorTable;
@@ -337,7 +337,7 @@ unsafe extern "C" fn timer_interrupt_handler(
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
         //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
         println!("target {:x}", process::leave_context_cr3 as usize);
-        println!("{:#?} {:x}",next.cr3f, next.cr3f.bits());
+        println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
         process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
         // return; -> unreachable
@@ -369,6 +369,7 @@ extern "x86-interrupt" fn page_fault_handler(
             process::leave_context(next.rsp);
         }
         */
+        
         hardware::power::shutdown();
     } else {
         println!("PAGE FAULT! {:#?}", _stack_frame);
