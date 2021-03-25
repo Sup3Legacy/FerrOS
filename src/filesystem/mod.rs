@@ -1,9 +1,10 @@
 use crate::data_storage::path::Path;
-use alloc::collections::BTreeMap;
+
 use alloc::string::String;
-use alloc::vec::Vec;
+
 use core::todo;
-use lazy_static::lazy_static;
+
+pub mod descriptor;
 pub mod drivers;
 pub mod fsflags;
 pub mod partition;
@@ -15,7 +16,7 @@ pub mod vfs;
 pub use drivers::{disk_operations, ustar};
 pub use vfs::VFS;
 
-use crate::{print, println};
+use crate::{println};
 
 static mut VFS: VFS = VFS::new();
 

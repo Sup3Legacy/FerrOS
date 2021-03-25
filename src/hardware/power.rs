@@ -1,4 +1,4 @@
-use crate::{errorln, print, warningln};
+use crate::{errorln, warningln};
 use x86_64::instructions::port::Port;
 
 /// Sends the shutdown signal.
