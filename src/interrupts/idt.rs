@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Our own implementation of Interruption Descriptor Table Structure (inspired by X86_64 lib's one)
 
 use core::mem::size_of;
@@ -97,6 +99,11 @@ impl Idt {
         };
 
         unsafe { lidt(&ptr) };
+    }
+}
+impl Default for Idt{
+    fn default() -> Self{
+        Self::new()
     }
 }
 
@@ -237,6 +244,8 @@ impl EntryOptions {
     }
 
     /// Select the stack associated with the interruption
+    /// # Safety
+    /// TODO
     pub unsafe fn set_stack_index(&mut self, index: u16) -> &mut Self {
         self.0.set_bits(0..3, index + 1); // from 1 to 7
         self
@@ -281,7 +290,7 @@ macro_rules! createEntry {
         impl Entry<$name> {
             /// Set the handler function to the associated entry of the Interruption Descriptor Table
             pub fn set_handler_fn(&mut self, handler: $name) -> &mut EntryOptions {
-                let handler = handler as u64;
+                let handler = handler as usize;
                 self.pointer_low = handler as u16;
                 self.pointer_middle = (handler >> 16) as u16;
                 self.pointer_high = (handler >> 32) as u32;
@@ -299,7 +308,7 @@ macro_rules! createEntry {
 impl Entry<HandlerFunc> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: HandlerFunc) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -312,7 +321,7 @@ impl Entry<HandlerFunc> {
 impl Entry<HandlerFuncWithErrorCode> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: HandlerFuncWithErrorCode) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -325,7 +334,7 @@ impl Entry<HandlerFuncWithErrorCode> {
 impl Entry<DivergingFunc> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: DivergingFunc) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -338,7 +347,7 @@ impl Entry<DivergingFunc> {
 impl Entry<DivergingFuncWithErrorCode> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: DivergingFuncWithErrorCode) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -354,7 +363,7 @@ impl Entry<DivergingFuncWithErrorCode> {
 impl Entry<PageFaultHandler> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: PageFaultHandler) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -367,7 +376,7 @@ impl Entry<PageFaultHandler> {
 impl Entry<SyscallFunc> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: SyscallFunc) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -399,10 +408,13 @@ pub struct InterruptStackFrame {
 
 impl InterruptStackFrame {
     /// Get a mutable reference of the Interrupt Stack Frame's Value
+    /// # Safety
+    /// TODO
     pub unsafe fn as_mut(&mut self) -> &mut InterruptStackFrameValue {
         &mut self.value
     }
-
+    /// # Safety
+    /// TODO
     pub unsafe fn as_real(&mut self) -> InterruptStackFrameValue {
         InterruptStackFrameValue { ..self.value }
     }

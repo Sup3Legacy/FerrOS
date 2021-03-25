@@ -157,7 +157,7 @@ impl GdtEntryBits {
 
     /// convert the representation structure to u64 (should be improved !)
     pub fn as_u64(&self) -> u64 {
-        ((self.limit_low as u64) << 0)
+        (self.limit_low as u64) // << 0
             | ((self.base_low1 as u64) << 16)
             | ((self.base_low2 as u64) << 32)
             | ((self.attributes as u64) << 40)

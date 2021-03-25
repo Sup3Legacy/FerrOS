@@ -87,6 +87,8 @@ impl LinkedListAllocator {
         node_ptr.write(node);
         self.head.next = Some(&mut *node_ptr)
     }
+    /// # Safety
+    /// TODO
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.add_free_region(heap_start, heap_size)
     }

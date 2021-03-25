@@ -123,9 +123,9 @@ pub fn main() -> ! {
 
         println!("Loul");
 
-        for i in 0..WIDTH {
-            for j in 0..HEIGHT {
-                screenbuffer[i][j] = 0_u8;
+        for line in screenbuffer.iter_mut().take(WIDTH){
+            for element in line.iter_mut().take(HEIGHT){
+                *element = 0_u8;
             }
         }
 
@@ -161,10 +161,9 @@ pub fn main() -> ! {
             }
         }
 
-        for i in 0..WIDTH {
-            for j in 0..HEIGHT {
-                let index = screenbuffer[i][j];
-                print!("{}", CHARS[index as usize]);
+        for line in screenbuffer.iter().take(WIDTH) {
+            for index in line.iter().take(HEIGHT) {
+                print!("{}", CHARS[*index as usize]);
             }
             println!();
         }

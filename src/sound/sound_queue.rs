@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use x86_64::instructions::port::Port;

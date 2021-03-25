@@ -2,8 +2,9 @@ use crate::{print, println};
 use x86_64::instructions::interrupts::{disable, enable};
 use x86_64::instructions::port::Port;
 
-pub fn test_old() {
-    unsafe {
+/// # Safety
+/// TODO
+pub unsafe fn test_old() {
         let mut master_drive = Port::new(0x1F6);
         let mut control_port_base = Port::<u8>::new(0x3F7);
         println!("control port base : {}", control_port_base.read());
@@ -39,8 +40,8 @@ pub fn test_old() {
         );
         let mut next_port = Port::<u16>::new(0x1F0);
         let mut table: [u16; 512] = [0; 512];
-        for i in 0..256 {
-            table[i] = next_port.read();
+        for elt in table.iter_mut().take(256){
+            *elt = next_port.read();
         }
 
         println!("uint16_t 0 : {}", table[0]);
@@ -49,11 +50,11 @@ pub fn test_old() {
         println!("uint16_t 93 : {}", table[93]);
         println!(
             "uint32_t 61-61 : {}",
-            (table[60] as u32) << 0 | ((table[61] as u32) << 16)
+            (table[60] as u32) | ((table[61] as u32) << 16)
         );
         println!(
             "uint32_t 100-103 : {}",
-            ((table[100] as u64) << 0)
+            (table[100] as u64)
                 | ((table[101] as u64) << 16)
                 | ((table[102] as u64) << 32)
                 | ((table[103] as u64) << 48)
@@ -96,8 +97,8 @@ pub fn test_old() {
         );
         let mut next_port = Port::<u16>::new(0x170);
         let mut table: [u16; 512] = [0; 512];
-        for i in 0..256 {
-            table[i] = next_port.read();
+        for elt in table.iter_mut().take(256){
+            *elt = next_port.read();
         }
 
         println!("uint16_t 0 : {}", table[0]);
@@ -106,18 +107,17 @@ pub fn test_old() {
         println!("uint16_t 93 : {}", table[93]);
         println!(
             "uint32_t 61-61 : {}",
-            (table[60] as u32) << 0 | ((table[61] as u32) << 16)
+            (table[60] as u32) | ((table[61] as u32) << 16)
         );
         println!(
             "uint32_t 100-103 : {}",
-            ((table[100] as u64) << 0)
+            (table[100] as u64)
                 | ((table[101] as u64) << 16)
                 | ((table[102] as u64) << 32)
                 | ((table[103] as u64) << 48)
         );
 
         enable();
-    }
 }
 
 pub fn test() {
@@ -159,8 +159,8 @@ pub fn test() {
         );
         let mut next_port = Port::<u16>::new(0x170);
         let mut table: [u16; 512] = [0; 512];
-        for i in 0..256 {
-            table[i] = next_port.read();
+        for elt in table.iter_mut().take(256){
+            *elt = next_port.read();
         }
 
         println!("uint16_t 0 : {}", table[0]);
@@ -171,11 +171,11 @@ pub fn test() {
         println!("uint16_t 93 : {}", table[93]);
         println!(
             "uint32_t 61-61 : {}",
-            (table[60] as u32) << 0 | ((table[61] as u32) << 16)
+            (table[60] as u32) | ((table[61] as u32) << 16)
         );
         println!(
             "uint32_t 100-103 : {}",
-            ((table[100] as u64) << 0)
+            (table[100] as u64)
                 | ((table[101] as u64) << 16)
                 | ((table[102] as u64) << 32)
                 | ((table[103] as u64) << 48)
@@ -219,15 +219,15 @@ pub fn read(_table: [u16; 256], lba: u32, port: u16) {
             lba_mid.read(),
             lba_high.read()
         );
-        let mut next_port = Port::<u16>::new(port + 0);
+        let mut next_port = Port::<u16>::new(port);
         let mut table: [u16; 512] = [0; 512];
-        for i in 0..256 {
-            table[i] = next_port.read();
+        for elt in table.iter_mut().take(256) {
+            *elt = next_port.read();
         }
 
-        for i in 0..10 {
-            print!("{}", ((table[i] & 0xFF) as u8) as char);
-            print!("{}", (((table[i] >> 8) & 0xFF) as u8) as char);
+        for elt in table.iter().take(10){
+            print!("{}", ((*elt & 0xFF) as u8) as char);
+            print!("{}", (((*elt >> 8) & 0xFF) as u8) as char);
         }
         println!();
         enable();

@@ -1,6 +1,6 @@
 use core::str::SplitWhitespace;
 
-use crate::keyboard::keyboard_interraction;
+use crate::keyboard::keyboard_interaction;
 use alloc::collections::BTreeMap;
 use alloc::{string::String, vec::Vec};
 use lazy_static::lazy_static;
@@ -87,10 +87,10 @@ lazy_static! {
 /// TODO : clean it and make it more general
 pub fn main_shell() {
     println!(":( :( :( :(");
-    let _utilisateur = keyboard_interraction::get_input("pseudo : ", false);
+    let _utilisateur = keyboard_interaction::get_input("pseudo : ", false);
     println!(":( :( :( :( :(");
     println!();
-    let _mpd = keyboard_interraction::get_input("mdp : ", true);
+    let _mpd = keyboard_interaction::get_input("mdp : ", true);
     _main_loop();
 }
 
@@ -100,7 +100,7 @@ pub fn main_shell() {
 /// The first word is the keywords, which indicates which (software-defined) programed is called
 pub fn _main_loop() -> ! {
     loop {
-        let a = keyboard_interraction::get_input(">> ", false);
+        let a = keyboard_interaction::get_input(">> ", false);
         let mut it = _parse_input_into_vec(&a);
         match it.next() {
             Some(a) => match COMMANDS.get(a) {
@@ -120,6 +120,6 @@ pub fn _main_loop() -> ! {
 
 /// Temporary function.
 /// Will be modified or removed in the future
-pub fn _parse_input_into_vec<'a>(s: &'a String) -> SplitWhitespace<'a> {
+pub fn _parse_input_into_vec(s: &str) -> SplitWhitespace {
     s.split_whitespace()
 }

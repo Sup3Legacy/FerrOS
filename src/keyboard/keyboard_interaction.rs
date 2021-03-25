@@ -68,8 +68,8 @@ pub fn get_input(debut: &str, cache: bool) -> String {
     println!(":D :D");
     print!("{}", debut);
     loop {
-        match { crate::keyboard::get_top_value() } {
-            Ok(a) => match a {
+        if let Ok(a) = crate::keyboard::get_top_value() {
+            match a {
                 keyboard_layout::KeyEvent::Character('\n') => {
                     if !stack.is_empty() {
                         println!();
@@ -98,9 +98,7 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                     }
                 }
                 keyboard_layout::KeyEvent::SpecialKey(_) => (),
-            },
-
-            Err(_) => (),
+            }
         }
     }
 }
