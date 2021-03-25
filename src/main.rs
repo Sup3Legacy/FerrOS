@@ -54,7 +54,7 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[naked]
 pub unsafe extern "C" fn test_syscall() {
-    asm!("mov rax, 1", "mov rax, 1", "ret")
+    asm!("mov rax, 1", "mov rax, 1", "int 80h", "ret")
 }
 
 /// # Initialization
@@ -90,7 +90,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     long_halt(3);
 
     unsafe {
-        //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
+        //scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
     }
 
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
