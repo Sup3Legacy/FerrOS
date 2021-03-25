@@ -100,11 +100,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     interrupts::init();
     println!(":( :(");
 
-    long_halt(3);
-    unsafe {
-       // asm!("mov rax, 1", "int 80h",);
-    }
-    long_halt(3);
+    long_halt(5);
 
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 

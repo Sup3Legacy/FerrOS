@@ -395,7 +395,7 @@ pub unsafe fn fork() -> u64 {
     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
         match frame_allocator.copy_table_entries(ID_TABLE[CURRENT_PROCESS].cr3) {
             Ok(phys) => son.cr3 = phys,
-            Err(()) => panic!("TODO"),
+            Err(_) => panic!("TODO"),
         }
         son.cr3f = ID_TABLE[CURRENT_PROCESS].cr3f;
     } else {
