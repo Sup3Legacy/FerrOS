@@ -145,6 +145,7 @@ impl BootInfoAllocator {
                 }
             }
         }
+        warningln!("memory is full");
         None
     }
 
@@ -163,7 +164,7 @@ impl BootInfoAllocator {
             }
             Ok(PhysFrame::containing_address(phys))
         } else {
-            //warningln!("l.150 failure");
+            warningln!("l.150 failure");
             Err(())
         }
     }
@@ -195,7 +196,7 @@ impl BootInfoAllocator {
                 //warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                self.add_entry_to_table_3(&mut *page_table_ptr, virt, flags)
+                self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags)
             } else {
                 warningln!("already existed for kernel l.183 failure");
                 warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
@@ -236,6 +237,7 @@ impl BootInfoAllocator {
                 table_3[p_3].set_flags(entry | flags);
                 self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
             } else {
+                warningln!("line 240");
                 Err(())
             }
         } else {
@@ -269,6 +271,7 @@ impl BootInfoAllocator {
                 table_2[p_2].set_flags(entry | flags);
                 self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
             } else {
+                warningln!("line 274");
                 Err(())
             }
         } else {
@@ -295,6 +298,7 @@ impl BootInfoAllocator {
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
+            warningln!("already here, l.301 {:#?}", virt_1);
             Err(())
         } else {
             match self.allocate_4k_frame() {
@@ -477,7 +481,7 @@ impl BootInfoAllocator {
                     if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
                         let virt = VirtAddr::new(table_4[index].addr().as_u64() + PHYSICAL_OFFSET);
                         let level_3: *mut PageTable = virt.as_mut_ptr();
-                        if let Ok(level_3_addr) = self.copy_table_2(&mut *level_3) {
+                        if let Ok(level_3_addr) = self.copy_table_3(&mut *level_3) {
                             (*new_table)[index].set_addr(level_3_addr, flags);
                         } else {
                             for i in index..512 {
@@ -492,6 +496,7 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
+            print!("new cr3 address : {:#?}\n", new_table_addr);
             Ok(new_table_addr)
         } else {
             Err(())
@@ -574,10 +579,10 @@ impl BootInfoAllocator {
                         if let Some(data_table) = self.allocate_4k_frame() {
                             let virt =
                                 VirtAddr::new(table_1[index].addr().as_u64() + PHYSICAL_OFFSET);
-                            let old_table: *mut [u64; 64] = virt.as_mut_ptr();
+                            let old_table: *mut [u64; 512] = virt.as_mut_ptr();
                             let virt_next = VirtAddr::new(data_table.as_u64() + PHYSICAL_OFFSET);
-                            let next_table: *mut [u64; 64] = virt_next.as_mut_ptr();
-                            for i in 0..64 {
+                            let next_table: *mut [u64; 512] = virt_next.as_mut_ptr();
+                            for i in 0..512 {
                                 (*next_table)[i] = (*old_table)[i];
                             }
                             (*new_table)[index].set_addr(data_table, flags);
