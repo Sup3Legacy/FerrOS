@@ -10,7 +10,6 @@
 #![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
-#![feature(const_raw_ptr_deref)]
 
 use alloc::vec;
 use alloc::vec::Vec;

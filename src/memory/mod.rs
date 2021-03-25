@@ -9,6 +9,7 @@ use x86_64::{
     structures::paging::{PageTable, PageTableFlags},
     PhysAddr, VirtAddr,
 };
+use core::ptr;
 
 use lazy_static::lazy_static;
 
@@ -18,7 +19,7 @@ pub static mut FRAME_ALLOCATOR: BootInfoAllocator =
                 pages_available: [false; MAX_PAGE_ALLOWED],
                 next : 0,
                 maxi : 0,
-                level4_table : &mut *(0xb8000 as *mut PageTable),
+                level4_table : &*(ptr::null() as *const PageTable),
             }
         };
 
