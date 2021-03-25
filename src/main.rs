@@ -70,12 +70,15 @@ pub fn init(_boot_info: &'static BootInfo) {
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     unsafe { 
-        memory::FRAME_ALLOCATOR.init(&_boot_info.memory_map, phys_mem_offset)
+        memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            allocator::init(&mut mapper,  frame_allocator).expect("Heap init failed :((");
+        } else {
+            panic!("Frame allocator wasn't initialized");
+        }
     };
-    let mut frame_allocator: memory::BootInfoAllocator = memory::FRAME_ALLOCATOR;
-    allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
 
-    // I/O Initialization
+// I/O Initialization
     keyboard::init();
     //vga::init();
 
@@ -101,12 +104,6 @@ pub fn init(_boot_info: &'static BootInfo) {
     //loop {}
     //errorln!("Ousp");
     //filesystem::init();
-
-
-    unsafe {
-        scheduler::process::launch_first_process(&mut memory::FRAME_ALLOCATOR, test_syscall as *const u8, 1, 1);
-    }
-
 }
 
 // test taks, to move out of here
@@ -132,6 +129,12 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
+
+    unsafe {
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            scheduler::process::launch_first_process(frame_allocator, test_syscall as *const u8, 1, 1);
+        }
+    }
     //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]

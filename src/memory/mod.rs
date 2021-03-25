@@ -13,15 +13,7 @@ use core::ptr;
 
 use lazy_static::lazy_static;
 
-pub static mut FRAME_ALLOCATOR: BootInfoAllocator =
-        unsafe {
-            BootInfoAllocator {
-                pages_available: [false; MAX_PAGE_ALLOWED],
-                next : 0,
-                maxi : 0,
-                level4_table : &*(ptr::null() as *const PageTable),
-            }
-        };
+pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
 use crate::warningln;
 
@@ -97,27 +89,32 @@ pub struct BootInfoAllocator {
 impl BootInfoAllocator {
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
-    pub unsafe fn init(&mut self, memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
-        //let mut pages_available = [false; MAX_PAGE_ALLOWED];
+    pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
+        let mut pages_available = [false; MAX_PAGE_ALLOWED];
         let regions = memory_map.iter();
         let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
         let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
         // transform to an iterator of frame start addresses
         let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
 
-        self.maxi = 0;
-        self.next = 0;
+        let mut maxi = 0;
+        let mut next = 0;
 
         // Fill up the table with every addresses
         for i in frame_addresses {
             NUMBER_TABLES += 1;
-            self.pages_available[(i >> 12) as usize] = true;
-            self.maxi = max((i >> 12) as usize, self.maxi);
-            self.next = min((i >> 12) as usize, self.next);
+            pages_available[(i >> 12) as usize] = true;
+            maxi = max((i >> 12) as usize, maxi);
+            next = min((i >> 12) as usize, next);
         }
         print!("Num tables : {}\n", NUMBER_TABLES); // just for show, should be removed
 
-        self.level4_table = active_level_4_table(physical_memory_offset);
+        FRAME_ALLOCATOR = Some(BootInfoAllocator {
+            pages_available,
+            next,
+            maxi,
+            level4_table : active_level_4_table(physical_memory_offset),
+        });
     }
 
     pub fn empty() -> Self {
