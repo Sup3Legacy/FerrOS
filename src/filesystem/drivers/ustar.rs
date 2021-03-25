@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use super::super::partition::Partition;
 use super::disk_operations;
 use crate::data_storage::path::Path;

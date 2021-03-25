@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;

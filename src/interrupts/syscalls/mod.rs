@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Part of the OS responsible for handling syscalls
 
 use super::idt::InterruptStackFrame;
@@ -32,8 +34,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
 /// highly dangerous function should use only when knowing what you are doing
 #[naked]
 unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'static mut Registers {
-    asm!("mov rax, rdi", "ret");
-    loop {}
+    asm!("mov rax, rdi", "ret", options(noreturn));
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
@@ -47,10 +48,8 @@ extern "C" fn syscall_1_write(_args: &mut RegistersMini, _isf: &mut InterruptSta
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
-extern "C" fn syscall_2_open(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    unsafe {
-        _args.rax = 1;
-    }
+extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    args.rax = 1;
     debug!("test1");
 }
 
@@ -65,7 +64,7 @@ extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStac
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("fork");
-    let rax = args.rax;
+    let _rax = args.rax;
     unsafe {
         args.rax = 0;
         let mut current = process::get_current_as_mut();
@@ -162,7 +161,8 @@ pub extern "C" fn naked_syscall_dispatch() {
             "add rsp, 32",
             "sti",
             "iretq",
-            sym syscall_dispatch
+            sym syscall_dispatch,
+            options(noreturn)
         );
     }
 }

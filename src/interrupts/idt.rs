@@ -285,6 +285,7 @@ impl<FunctionType> Entry<FunctionType> {
     }
 }
 
+#[allow(unused_macros)]
 macro_rules! createEntry {
     ($name : ident) => {
         impl Entry<$name> {

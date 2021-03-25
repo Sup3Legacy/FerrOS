@@ -37,10 +37,10 @@ pub fn init(port: u16) {
         command_register.write(0xEC_u8);
 
         let mut i = command_register.read();
-        let mut compte = 1;
+        let mut _compte = 1; // unused variable?
         while (i & 0x8) == 0 {
             i = command_register.read();
-            compte += 1;
+            _compte += 1;
         }
         lba_low.read();
         lba_mid.read();

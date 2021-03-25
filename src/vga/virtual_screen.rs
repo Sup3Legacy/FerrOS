@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-
+#![allow(clippy::upper_case_acronyms)]
 
 use alloc::vec::Vec;
 use x86_64::{instructions::port::Port};

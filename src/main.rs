@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
 #![feature(abi_x86_interrupt)]
@@ -46,6 +48,7 @@ use alloc::string::String;
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
+#[allow(unreachable_code)]
 fn panic(_info: &PanicInfo) -> ! {
     errorln!("{}", _info);
     hardware::power::shutdown();
@@ -53,6 +56,8 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 #[naked]
+/// # Safety
+/// TODO
 pub unsafe extern "C" fn test_syscall() {
     asm!(
         "mov rax, 42",
@@ -66,7 +71,8 @@ pub unsafe extern "C" fn test_syscall() {
         "mov rdi, rax",
         "mov rax, 9", // syscall 9 == shutdown
         "int 80h",
-        "ret")
+        "ret",
+        options(noreturn))
 }
 
 /// # Initialization

@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::print;
+use crate::{print,println};
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
 use x86_64::structures::paging::OffsetPageTable;
@@ -9,9 +9,9 @@ use x86_64::{
     structures::paging::{PageTable, PageTableFlags},
     PhysAddr, VirtAddr,
 };
-use core::ptr;
+//use core::ptr;
 
-use lazy_static::lazy_static;
+//use lazy_static::lazy_static;
 
 pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
@@ -47,6 +47,7 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 
 /// Returns a new `OffsetPageTable`.
 /// It is based on the 4-level active table.
+/// # Safety
 /// It is unsafe as the complete mapping has to be guaranteed by the caller.
 /// Must be called at least once to avoid `&mut` aliasing
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
@@ -65,13 +66,13 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
             let level_3_table = &mut *page_table_ptr;
             for i2 in 0..512 {
                 if !level_3_table[i2].is_unused() {
-                    print!("{} at {} with {:?}\n", i2, i, level_3_table[i].flags());
+                    println!("{} at {} with {:?}", i2, i, level_3_table[i].flags());
                     //if
                 }
             }
         }
     }
-    print!("Nb Frame used : {}.\n", compte);
+    println!("Nb Frame used : {}.", compte);
     print!("Phys_offset : {:?}", physical_memory_offset);
     // loop {}
     // End of stats
@@ -91,6 +92,8 @@ pub struct BootInfoAllocator {
 impl BootInfoAllocator {
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
+    /// # Safety
+    /// TODO
     pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
         let mut pages_available = [false; MAX_PAGE_ALLOWED];
         let regions = memory_map.iter();
@@ -109,7 +112,7 @@ impl BootInfoAllocator {
             maxi = max((i >> 12) as usize, maxi);
             next = min((i >> 12) as usize, next);
         }
-        print!("Num tables : {}\n", NUMBER_TABLES); // just for show, should be removed
+        println!("Num tables : {}", NUMBER_TABLES); // just for show, should be removed
 
         FRAME_ALLOCATOR = Some(BootInfoAllocator {
             pages_available,
@@ -152,6 +155,8 @@ impl BootInfoAllocator {
     }
 
     /// Creates a new level_4 table and taking into account the kernel adresses.
+    /// # Safety
+    /// TODO
     pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysFrame, MemoryError> {
         if let Some(phys) = self.allocate_4k_frame() {
             //warningln!("l.138 success");
@@ -171,6 +176,9 @@ impl BootInfoAllocator {
         }
     }
 
+
+    /// # Safety
+    /// TODO
     pub unsafe fn add_entry_to_table(
         &mut self,
         table_4: PhysFrame,
@@ -183,6 +191,7 @@ impl BootInfoAllocator {
     }
 
     /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
+    /// # Safety
     /// You should mark it as USER_ACCESSIBLE and PRESENT !
     pub unsafe fn add_entry_to_table_4(
         &mut self,
@@ -314,6 +323,8 @@ impl BootInfoAllocator {
         }
     }
 
+    /// # Safety
+    /// TODO
     pub unsafe fn add_entry_to_table_with_data(
         &mut self,
         table_4: PhysFrame,
@@ -327,6 +338,7 @@ impl BootInfoAllocator {
     }
 
     /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags and the given data
+    /// # Safety
     /// You should mark it as USER_ACCESSIBLE and PRESENT !
     pub unsafe fn add_entry_to_table_4_with_data(
         &mut self,
@@ -453,9 +465,7 @@ impl BootInfoAllocator {
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
                     let content: *mut [u64; 512] = virt.as_mut_ptr();
                     //warningln!("starts copying");
-                    for i in 0..512 {
-                        (*content)[i] = data[i];
-                    }
+                    (*content).clone_from_slice(&data[..512]);
                     //warningln!("copied");
                     Ok(())
                 }
@@ -463,10 +473,12 @@ impl BootInfoAllocator {
         }
     }
 
+    /// # Safety
+    /// TODO
     pub unsafe fn copy_table_entries(&mut self, table_4: PhysAddr) -> Result<PhysAddr,MemoryError> {
         let virt = VirtAddr::new(table_4.as_u64() + PHYSICAL_OFFSET);
         let table4: *mut PageTable = virt.as_mut_ptr();
-        match self.copy_table_4(&mut *table4) {
+        match self.copy_table_4(& *table4) {
             Ok(phys) => Ok(phys),
             Err(MemoryError()) => Err(MemoryError()),
         }
@@ -483,7 +495,7 @@ impl BootInfoAllocator {
                     if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
                         let virt = VirtAddr::new(table_4[index].addr().as_u64() + PHYSICAL_OFFSET);
                         let level_3: *mut PageTable = virt.as_mut_ptr();
-                        if let Ok(level_3_addr) = self.copy_table_3(&mut *level_3) {
+                        if let Ok(level_3_addr) = self.copy_table_3(& *level_3) {
                             (*new_table)[index].set_addr(level_3_addr, flags);
                         } else {
                             for i in index..512 {
@@ -498,7 +510,7 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
-            print!("new cr3 address : {:#?}\n", new_table_addr);
+            println!("new cr3 address : {:#?}", new_table_addr);
             Ok(new_table_addr)
         } else {
             Err(MemoryError())
@@ -516,7 +528,7 @@ impl BootInfoAllocator {
                     if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
                         let virt = VirtAddr::new(table_3[index].addr().as_u64() + PHYSICAL_OFFSET);
                         let level_2: *mut PageTable = virt.as_mut_ptr();
-                        if let Ok(level_2_addr) = self.copy_table_2(&mut *level_2) {
+                        if let Ok(level_2_addr) = self.copy_table_2(& *level_2) {
                             (*new_table)[index].set_addr(level_2_addr, flags);
                         } else {
                             for i in index..512 {
@@ -548,7 +560,7 @@ impl BootInfoAllocator {
                     if flags.contains(PageTableFlags::USER_ACCESSIBLE) {
                         let virt = VirtAddr::new(table_2[index].addr().as_u64() + PHYSICAL_OFFSET);
                         let level_1: *mut PageTable = virt.as_mut_ptr();
-                        if let Ok(level_1_addr) = self.copy_table_1(&mut *level_1) {
+                        if let Ok(level_1_addr) = self.copy_table_1(& *level_1) {
                             (*new_table)[index].set_addr(level_1_addr, flags);
                         } else {
                             for i in index..512 {
@@ -608,6 +620,8 @@ impl BootInfoAllocator {
     }
 
     /// Deallocator, from a given level 4 table, deallocates every thing the user had access to.
+    /// # Safety
+    /// TODO
     pub unsafe fn deallocate_level_4_page(&mut self, table_4_addr: PhysAddr) -> Result<(), MemoryError> {
         let mut failed = false;
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
@@ -619,9 +633,8 @@ impl BootInfoAllocator {
                 if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_3_page(&mut *page_table_ptr) {
-                        Err(MemoryError()) => failed = true,
-                        Ok(()) => (),
+                    if self.deallocate_level_3_page(&mut *page_table_ptr).is_err() {
+                        failed = true
                     }
                 }
             }
@@ -650,9 +663,8 @@ impl BootInfoAllocator {
                 if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_2_page(&mut *page_table_ptr) {
-                        Err(MemoryError()) => failed = true,
-                        _ => (),
+                    if self.deallocate_level_2_page(&mut *page_table_ptr).is_err() {
+                        failed = true
                     }
                 }
             }
@@ -676,9 +688,8 @@ impl BootInfoAllocator {
                 if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_1_page(&mut *page_table_ptr) {
-                        Err(MemoryError()) => failed = true,
-                        _ => (),
+                    if self.deallocate_level_1_page(&mut *page_table_ptr).is_err() {
+                         failed = true
                     }
                 }
             }
@@ -699,12 +710,10 @@ impl BootInfoAllocator {
         for i in 0..512 {
             if !table_1[i].is_unused() {
                 let flags = table_1[i].flags();
-                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
-                    match self.deallocate_4k_frame(table_1[i].addr()) {
-                        Err(MemoryError()) => failed = true,
-                        _ => (),
+                if (flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE)) && 
+                    self.deallocate_4k_frame(table_1[i].addr()).is_err() {
+                        failed = true
                     }
-                }
             }
         }
         if failed {

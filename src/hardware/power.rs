@@ -13,7 +13,7 @@ pub fn shutdown() -> !{
     }
 
     // This uses the standard shutdown procedure
-    /// doesn't work (causes error : `Segment not found`)
+    // doesn't work (causes error : `Segment not found`)
     unsafe {
         asm!(
             "push rax",

@@ -16,8 +16,8 @@ pub mod virtual_screen;
 
 use mainscreen::MainScreen;
 
-/// Main screen structure.
 lazy_static! {
+    /// Main screen structure.
     pub static ref SCREEN: Mutex<MainScreen> = Mutex::new(MainScreen::new());
 }
 

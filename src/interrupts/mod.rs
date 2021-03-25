@@ -1,9 +1,12 @@
+#![allow(clippy::empty_loop)]
+#![allow(dead_code)]
+
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
 use x86_64::instructions::port::Port;
 
 use x86_64::registers::control::{Cr2, Cr3};
-use x86_64::structures::paging::PhysFrame;
+//use x86_64::structures::paging::PhysFrame;
 use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;
 
@@ -92,7 +95,8 @@ macro_rules! saveRegisters {
                 "add rsp, 32",
                 "sti",
                 "iretq",
-                  sym $name
+                sym $name,
+                options(noreturn)
                 );
             }
         }
@@ -332,11 +336,11 @@ unsafe extern "C" fn timer_interrupt_handler(
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
         //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-        println!("target {:x}", process::leave_context_cr3 as u64);
+        println!("target {:x}", process::leave_context_cr3 as usize);
         println!("{:#?} {:x}",next.cr3f, next.cr3f.bits());
         process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
-        return;
+        // return; -> unreachable
     } else {
         COUNTER += 1;
     }

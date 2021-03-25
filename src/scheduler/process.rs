@@ -3,7 +3,7 @@ use super::PROCESS_MAX_NUMBER;
 
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
-use lazy_static::lazy_static;
+//use lazy_static::lazy_static;
 use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
@@ -157,7 +157,7 @@ pub unsafe fn launch_first_process(
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, addr_code);
-        println!("target : {:x}", towards_user as u64);
+        println!("target : {:x}", towards_user as usize);
         towards_user(addr_stack, addr_code); // good luck user ;)
 
         // should not be reached
@@ -368,25 +368,31 @@ pub static mut CURRENT_PROCESS: usize = 0;
 /// # Safety
 /// TODO
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
-    for new in 0..PROCESS_MAX_NUMBER as usize {
-        if new != CURRENT_PROCESS && ID_TABLE[new].state == State::Runnable {
+    for (new, new_id) in ID_TABLE.iter().enumerate().take(PROCESS_MAX_NUMBER as usize) {
+        if new != CURRENT_PROCESS && new_id.state == State::Runnable {
             let old = CURRENT_PROCESS;
             CURRENT_PROCESS = new;
             println!("{} <-> {}", old, new);
-            return (&ID_TABLE[new], &mut ID_TABLE[old])
+            return (&new_id, &mut ID_TABLE[old])
         }
     }
     (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
 }
 
-pub unsafe fn get_current() -> (&'static Process) {
+/// # Safety
+/// TODO
+pub unsafe fn get_current() -> &'static Process {
     &ID_TABLE[CURRENT_PROCESS]
 }
 
-pub unsafe fn get_current_as_mut() -> (&'static mut Process) {
+/// # Safety
+/// TODO
+pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
 }
 
+/// # Safety
+/// TODO
 pub unsafe fn fork() -> u64 {
     let mut son = Process::create_new(ID_TABLE[CURRENT_PROCESS].pid,
             ID_TABLE[CURRENT_PROCESS].priority,
@@ -411,8 +417,10 @@ pub unsafe fn fork() -> u64 {
     pid
 }
 
+/// # Safety
+/// TODO
 pub unsafe fn set_priority(prio :usize) -> usize {
-    if (ID_TABLE[CURRENT_PROCESS].priority.0 <= prio) {
+    if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
         prio
     } else {
