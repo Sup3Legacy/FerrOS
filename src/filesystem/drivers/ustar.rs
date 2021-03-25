@@ -1,7 +1,7 @@
 use super::super::partition::Partition;
 use super::disk_operations;
 use crate::data_storage::path::Path;
-use crate::{print, println};
+use crate::{println};
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -15,6 +15,12 @@ use core::{mem::transmute, todo};
 static mut FILE_ADRESS_CACHE: AddressCache = AddressCache(BTreeMap::new());
 
 static mut DIR_CACHE: DirCache = DirCache(BTreeMap::new());
+
+/// This holds the buffer for opened files.
+/// When a file is opened (be it in read or write mode), it gets placed into this buffer.
+/// All read/write actions are then performed on ths buffered version.
+/// When the file is closed, the buffered version is then placed back into the disk
+static mut FILE_BUFFER: FileBuffer = FileBuffer(BTreeMap::new());
 
 /// Number of 512-sector segments.
 ///
@@ -313,6 +319,9 @@ struct AddressCache(BTreeMap<Path, Address>);
 #[derive(Debug)]
 struct DirCache(BTreeMap<Path, MemDir>);
 
+#[derive(Debug)]
+struct FileBuffer(BTreeMap<Path, MemFile>);
+
 /// Slices a `Vec<u8>` of binary data into a `Vec<[u16; 256]>`.
 /// This simplifies the conversion from data-blob to set of `256-u16` sectors.
 fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
@@ -448,7 +457,7 @@ impl UsTar {
     pub fn write_memfile_to_disk(&mut self, memfile: &MemFile) -> Address {
         // Might want to Result<(), SomeError>
         let mut file_header = memfile.header;
-        let length = file_header.length; // TODO : make sure it is also the length of self.data
+        let _length = file_header.length; // TODO : make sure it is also the length of self.data
         if file_header.mode == FileMode::Short {
             //println!("Writing in short mode.");
             let blocks_number = file_header.blocks_number;
@@ -511,7 +520,7 @@ impl UsTar {
             for i in 0..number_address_block {
                 // Fresh address-block
                 let mut block = LongFile {
-                    addresses: [Address { lba: 0, block: 0 }; 128 as usize],
+                    addresses: [Address { lba: 0, block: 0 }; 128_usize],
                 };
                 // We fill this block with block addresses
                 for j in (i * 128)..((i + 1) * 128) {
@@ -680,7 +689,7 @@ impl UsTar {
                 }
             }
             // At this point, we just came onto a directory that isn't already in cache.
-            while let Some(next_dir) = decomp.next() {
+            for next_dir in decomp {
                 current_path.push_str(&next_dir);
                 let next_address = current_dir.files.get_mut(&next_dir).unwrap();
                 let current_dir = self.memdir_from_address(*next_address);
@@ -706,23 +715,23 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn open(&self) -> () {
+    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn close(&self) -> () {
+    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
         todo!()
     }
 
-    fn read(&self) -> () {
+    fn lseek(&self) {
         todo!()
     }
 
-    fn write(&self) -> () {
+    fn flush(&self) {
         todo!()
     }
 
-    fn lseek(&self) -> () {
+    fn read_raw(&self) {
         todo!()
     }
 }

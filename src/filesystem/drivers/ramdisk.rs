@@ -1,6 +1,7 @@
 use super::super::partition::Partition;
 use crate::data_storage::path::Path;
 use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Copy, Clone, Debug)]
@@ -32,23 +33,23 @@ pub struct RamDisk {
 
 /// This interfaces enables a RAM-Disk to get used alongside every other device.
 impl Partition for RamDisk {
-    fn open(&self) -> () {
+    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn close(&self) -> () {
+    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
         todo!()
     }
 
-    fn read(&self) {
+    fn lseek(&self) {
         todo!()
     }
 
-    fn write(&self) {
+    fn flush(&self) {
         todo!()
     }
 
-    fn lseek(&self) -> () {
+    fn read_raw(&self) {
         todo!()
     }
 }

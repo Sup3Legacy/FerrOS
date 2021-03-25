@@ -15,6 +15,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use bit_field::BitArray;
 use core::panic::PanicInfo;
+use lazy_static::lazy_static;
 
 // use os_test::println;  TODO
 //use core::task::Poll;
@@ -29,9 +30,12 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
-    interrupts, keyboard, long_halt, memory, print, println, serial, sound, task, test_panic, vga,
-    warningln,
+    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
+    test_panic, vga, warningln,
 };
+use x86_64::instructions::random::RdRand;
+use x86_64::registers::control::Cr3;
+use x86_64::structures::paging::PageTableFlags;
 
 extern crate alloc;
 
@@ -44,7 +48,13 @@ use alloc::string::String;
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     errorln!("{}", _info);
+    hardware::power::shutdown();
     halt_loop();
+}
+
+#[naked]
+pub unsafe extern "C" fn test_syscall() {
+    asm!("mov rax, 1", "mov rax, 1", "ret")
 }
 
 /// # Initialization
@@ -65,16 +75,32 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     // I/O Initialization
     keyboard::init();
-    vga::init();
+    //vga::init();
 
     println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
-    long_halt(10);
+
+    long_halt(3);
+    unsafe {
+        asm!("mov rax, 1", "int 80h",);
+    }
+    long_halt(3);
+
+    unsafe {
+        //  scheduler::process::launch_first_process(&mut frame_allocator, test_syscall as *const u8, 1, 1);
+    }
+
+    println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
+
+    unsafe {
+        asm!("mov rax, 1", "int 80h",);
+    }
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
-    hardware::power::shutdown();
+    //hardware::power::shutdown();
+    loop {}
     errorln!("Ousp");
     //filesystem::init();
 }
@@ -117,16 +143,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         println!("{},", i);
     }
 
-    for i in 0..10000 {
-        print!("{}/1000000", i);
-        vga::write_back();
-    }
     println!();
 
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
-    vga::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));
