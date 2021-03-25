@@ -29,6 +29,7 @@ pub struct Status {
     pub cr3: (PhysFrame, Cr3Flags),
 }
 
+#[allow(clippy::new_ret_no_self)]
 impl TaskWaker {
     fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
         Waker::from(Arc::new(TaskWaker {
@@ -106,7 +107,11 @@ impl Executor {
         }
     }
 }
-
+impl Default for Executor{
+    fn default() -> Self {
+        Self::new()
+    }
+}
 pub fn next_task(t: Status) -> Status {
     t
 }

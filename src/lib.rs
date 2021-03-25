@@ -75,7 +75,8 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     }
     exit_qemu(QemuExitCode::Success);
 }
-
+    
+#[allow(clippy::empty_loop)]
 pub fn test_panic(_info: &PanicInfo) -> ! {
     println!("[failed]\nError: {}\n", _info);
     exit_qemu(QemuExitCode::Failed);
@@ -84,6 +85,7 @@ pub fn test_panic(_info: &PanicInfo) -> ! {
 
 #[cfg(test)]
 #[no_mangle]
+#[allow(clippy::empty_loop)]
 pub extern "C" fn _start() -> ! {
     test_main();
     loop {}

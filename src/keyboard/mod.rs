@@ -7,7 +7,7 @@ use x86_64::instructions::port::Port;
 
 mod keyboard_layout;
 
-pub mod keyboard_interraction;
+pub mod keyboard_interaction;
 
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static KEY_QUEUE: OnceCell<ArrayQueue<keyboard_layout::KeyEvent>> = OnceCell::uninit();
@@ -90,6 +90,13 @@ impl ScancodeStream {
     }
 }
 
+impl Default for ScancodeStream {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[allow(clippy::empty_loop)]
 pub fn set_keyboard_responce(freq: u8, _tim: u8) {
     disable_keyboard();
     let mut command_port = Port::new(0x64);

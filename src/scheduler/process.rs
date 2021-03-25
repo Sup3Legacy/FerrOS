@@ -13,6 +13,7 @@ use crate::hardware;
 use crate::memory;
 use crate::println;
 
+#[allow(improper_ctypes)]
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
 
@@ -21,6 +22,8 @@ extern "C" {
 }
 
 #[naked]
+/// # Safety
+/// TODO
 pub unsafe extern "C" fn leave_context(_rsp: u64) {
     asm!(
         "mov rsp, rdi",
@@ -48,6 +51,8 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 }
 
 #[naked]
+/// # Safety
+/// TODO
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
@@ -70,6 +75,8 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 }
 
 /// Function to launch the first process !
+/// # Safety
+/// TODO
 pub unsafe fn launch_first_process(
     frame_allocator: &mut memory::BootInfoAllocator,
     code_address: *const u8,
@@ -92,7 +99,7 @@ pub unsafe fn launch_first_process(
                 &*data,
             ) {
                 Ok(()) => (),
-                Err(()) => {
+                Err(memory::MemoryError()) => {
                     errorln!("Could not allocate the {}th part of the code", i + 1);
                     hardware::power::shutdown();
                 }
@@ -110,7 +117,7 @@ pub unsafe fn launch_first_process(
                     | PageTableFlags::WRITABLE,
             ) {
                 Ok(()) => (),
-                Err(()) => {
+                Err(memory::MemoryError()) => {
                     errorln!("Could not allocate the {}th block of the stack", i + 1);
                 }
             }
@@ -226,6 +233,9 @@ impl Process {
         &(self.children[self.children.len() - 1])
     }
 
+    #[allow(clippy::empty_loop)]
+    /// # Safety
+    /// TODO
     pub unsafe fn launch() {
         fn f() {
             loop {}
@@ -273,12 +283,14 @@ impl ID {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         for _i in 0..PROCESS_MAX_NUMBER {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-            match ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state {
-                State::SlotAvailable => return ID(new),
-                _ => (),
-            }
+            if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {return ID(new)}
         }
         panic!("no slot available")
+    }
+}
+impl Default for ID {
+    fn default () -> Self {
+        Self::new()
     }
 }
 
@@ -320,6 +332,8 @@ lazy_static! {
 }
 pub static mut CURRENT_PROCESS: Process = Process::missing();
 
+/// # Safety
+/// TODO
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
     (&CURRENT_PROCESS, &mut CURRENT_PROCESS)
 }

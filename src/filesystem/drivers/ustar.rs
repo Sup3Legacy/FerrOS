@@ -154,10 +154,7 @@ pub struct Header {
 impl Header {
     /// Returns whether the header is of a directory. Pretty useless.
     fn is_dir(&self) -> bool {
-        match self.file_type {
-            Type::Dir => true,
-            _ => false,
-        }
+        matches!(self.file_type, Type::Dir)
     }
 }
 
@@ -324,18 +321,18 @@ struct FileBuffer(BTreeMap<Path, MemFile>);
 
 /// Slices a `Vec<u8>` of binary data into a `Vec<[u16; 256]>`.
 /// This simplifies the conversion from data-blob to set of `256-u16` sectors.
-fn slice_vec(data: &Vec<u8>) -> Vec<[u16; 256]> {
+fn slice_vec(data: &[u8]) -> Vec<[u16; 256]> {
     let n = data.len();
     let block_number = n / 512 + (if n % 512 > 0 { 1 } else { 0 });
     let mut res: Vec<[u16; 256]> = Vec::new();
     let mut index = 0;
     for _i in 0..block_number {
         let mut arr = [0_u16; 256];
-        for j in 0..256 {
+        for elt in arr.iter_mut().take(256){
             if 2 * index + 1 >= n {
                 break;
             }
-            arr[j] = (((data[2 * index] as u16) & 0xff) << 8) + (data[2 * index + 1] as u16);
+            *elt = (((data[2 * index] as u16) & 0xff) << 8) + (data[2 * index + 1] as u16);
             index += 1;
         }
         res.push(arr);
@@ -464,9 +461,8 @@ impl UsTar {
             let header_address: Address = unsafe { self.get_addresses(1)[0] };
             let block_addresses: Vec<Address> = unsafe { self.get_addresses(blocks_number) };
             let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
-            for i in 0..(blocks_number as usize) {
-                addresses[i] = block_addresses[i];
-            }
+            addresses[..(blocks_number as usize)]
+                .clone_from_slice(&block_addresses[..(blocks_number as usize)]);
             file_header.blocks = addresses;
             self.write_to_disk(
                 file_header,
@@ -505,9 +501,8 @@ impl UsTar {
 
             // This is the segment of addresses in the header
             let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
-            for i in 0..(number_address_block as usize) {
-                addresses[i] = address_block_addresses[i];
-            }
+            addresses[..(number_address_block as usize)]
+                .clone_from_slice(&address_block_addresses[..(number_address_block as usize)]);
             file_header.blocks = addresses;
             self.write_to_disk(
                 file_header,
@@ -550,9 +545,7 @@ impl UsTar {
                         as u32,
                 );
             }
-            unsafe {
-                self.lba_table_global.write_to_disk(self.port);
-            }
+            self.lba_table_global.write_to_disk(self.port);
 
             header_address
         }
@@ -675,6 +668,8 @@ impl UsTar {
     /// It uses both caches to speed-up search
     /// and mutate them on-the-fly to speed-up
     /// future searches even more.
+    /// # Safety
+    /// TODO
     pub unsafe fn fetch_data(&mut self, path: Path) -> MemFile {
         if let Some(add) = FILE_ADRESS_CACHE.0.get(&path) {
             self.read_memfile_from_disk(*add)

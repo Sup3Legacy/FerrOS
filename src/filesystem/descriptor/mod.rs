@@ -5,6 +5,8 @@ use alloc::vec::Vec;
 
 use lazy_static::lazy_static;
 
+pub struct FileDesciptorError();
+
 /// Max number of total opened files
 const MAX_TOTAL_OPEN_FILES: usize = 256;
 
@@ -59,6 +61,12 @@ impl GeneralFileTable {
     }
 }
 
+impl Default for GeneralFileTable {
+    fn default() -> Self{
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub struct OpenFileTable {
     /// path of the file
@@ -72,7 +80,7 @@ impl FileDescriptor {
     pub fn new(a: usize) -> Self {
         Self(a)
     }
-    pub fn into_usize(&self) -> usize {
+    pub fn into_usize(self) -> usize {
         self.0
     }
 }
@@ -105,7 +113,7 @@ impl ProcessDescriptorTable {
 
     /// self.dup(4, 1) redirects fd 1 to the OpenFileTable
     /// fd 4 points to.
-    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> Result<(), ()> {
+    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> Result<(), FileDesciptorError> {
         // TO DO check the bounds and validity of the given data!
         self.files[operand.into_usize()] = self.files[target.into_usize()];
         Ok(())
