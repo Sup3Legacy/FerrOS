@@ -12,10 +12,15 @@ use x86_64::{
 
 use lazy_static::lazy_static;
 
-lazy_static! {
-    pub static ref FRAME_ALLOCATOR: BootInfoAllocator =
-            BootInfoAllocator::empty();
-}
+pub static mut FRAME_ALLOCATOR: BootInfoAllocator =
+        unsafe {
+            BootInfoAllocator {
+                pages_available: [false; MAX_PAGE_ALLOWED],
+                next : 0,
+                maxi : 0,
+                level4_table : &mut *(0xb8000 as *mut PageTable),
+            }
+        };
 
 use crate::warningln;
 

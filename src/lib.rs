@@ -10,6 +10,7 @@
 #![feature(asm)]
 #![feature(const_btree_new)]
 #![feature(option_result_unwrap_unchecked)]
+#![feature(const_raw_ptr_deref)]
 
 
 use core::panic::PanicInfo;
