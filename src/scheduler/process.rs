@@ -366,8 +366,10 @@ static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
 
 pub static mut CURRENT_PROCESS: usize = 0;
 
-/// # Safety
-/// TODO
+/// # Safety depends of the usage of the data !
+/// From the number of cycles executed, returns the current process
+/// data structure (as mutable) and the next process to run one's (non mut)
+/// Beware of not doing any think on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
     for (new, new_id) in ID_TABLE
         .iter()
@@ -384,20 +386,23 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
     (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
 }
 
-/// # Safety
-/// TODO
-pub unsafe fn get_current() -> &'static Process {
-    &ID_TABLE[CURRENT_PROCESS]
+/// Returns the current process data structure as read only
+pub fn get_current() -> &'static Process {
+    unsafe {
+        &ID_TABLE[CURRENT_PROCESS]
+    }
 }
 
-/// # Safety
-/// TODO
+/// # Safety depends on the usage. May cause aliasing
+/// Returns the current process data structure as mutable
 pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
 }
 
-/// # Safety
-/// TODO
+/// # Safety depending on the current process situation. Use knowingly
+/// Function to duplicate the current process into two childs
+/// For more info on the usage, see the code of the fork syscall
+/// Returns : child process pid
 pub unsafe fn fork() -> u64 {
     let mut son = Process::create_new(
         ID_TABLE[CURRENT_PROCESS].pid,
@@ -423,8 +428,10 @@ pub unsafe fn fork() -> u64 {
     pid
 }
 
-/// # Safety
-/// TODO
+/// # It is irreversible, you just can't improve the priority of a process
+/// This will set the priority of the current process to
+/// the given value. It can be only decreasing
+/// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
