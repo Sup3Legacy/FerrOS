@@ -90,10 +90,10 @@ pub struct BootInfoAllocator {
 }
 
 impl BootInfoAllocator {
+
+    /// # Safety depends on the validity of the inputs
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
-    /// # Safety
-    /// TODO
     pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
         let mut pages_available = [false; MAX_PAGE_ALLOWED];
         let regions = memory_map.iter();
@@ -154,9 +154,8 @@ impl BootInfoAllocator {
         None
     }
 
+    /// # No garbage collector you should think above deallocating !
     /// Creates a new level_4 table and taking into account the kernel adresses.
-    /// # Safety
-    /// TODO
     pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysFrame, MemoryError> {
         if let Some(phys) = self.allocate_4k_frame() {
             //warningln!("l.138 success");
@@ -176,8 +175,8 @@ impl BootInfoAllocator {
         }
     }
 
-    /// # Safety
-    /// TODO
+    /// # Beware of giving a valid level 4 table
+    /// Adds an entry to the level 4 table with the given flags at the given virtual address
     pub unsafe fn add_entry_to_table(
         &mut self,
         table_4: PhysFrame,

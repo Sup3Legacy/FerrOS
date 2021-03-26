@@ -228,7 +228,7 @@ extern "x86-interrupt" fn double_fault_handler(
     error_code: u64,
 ) -> ! {
     println!("ERROR : {:#?}", error_code);
-    println!("saved rsp : {:#?}", unsafe { process::get_current().rsp });
+    println!("saved rsp : {:#?}", process::get_current().rsp);
     println!("CR3 : {:#?}", Cr3::read());
     panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }

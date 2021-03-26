@@ -55,8 +55,12 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 #[naked]
-/// # Safety
-/// TODO
+/// # Just don't call it
+/// Test function that is given to launcher
+/// It forks itselfs : 
+/// - the father loops
+/// - the son shuts down the computer
+/// Result : SUCCESS :D
 pub unsafe extern "C" fn test_syscall() {
     asm!(
         "mov rax, 42",
