@@ -32,11 +32,12 @@ use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
     interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
-    test_panic, vga, warningln,
+    test_panic, vga, warningln, _TEST_PROGRAM,
 };
 use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::PageTableFlags;
+use xmas_elf::ElfFile;
 
 extern crate alloc;
 
@@ -57,7 +58,7 @@ fn panic(_info: &PanicInfo) -> ! {
 #[naked]
 /// # Just don't call it
 /// Test function that is given to launcher
-/// It forks itselfs : 
+/// It forks itselfs :
 /// - the father loops
 /// - the son shuts down the computer
 /// Result : SUCCESS :D
@@ -149,6 +150,11 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
+    let elf = ElfFile::new(_TEST_PROGRAM).unwrap();
+    for e in elf.section_iter() {
+        println!("{:?}", e);
+    }
+    //println!("{:?}", elf);
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {

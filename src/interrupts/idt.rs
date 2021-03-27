@@ -408,7 +408,6 @@ pub struct InterruptStackFrame {
 }
 
 impl InterruptStackFrame {
-
     /// # Should be only called once to prevent aliasing.
     /// Get a mutable reference of the Interrupt Stack Frame's Value
     pub unsafe fn as_mut(&mut self) -> &mut InterruptStackFrameValue {

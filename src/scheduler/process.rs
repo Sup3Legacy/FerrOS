@@ -388,9 +388,7 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 
 /// Returns the current process data structure as read only
 pub fn get_current() -> &'static Process {
-    unsafe {
-        &ID_TABLE[CURRENT_PROCESS]
-    }
+    unsafe { &ID_TABLE[CURRENT_PROCESS] }
 }
 
 /// # Safety depends on the usage. May cause aliasing

@@ -90,7 +90,6 @@ pub struct BootInfoAllocator {
 }
 
 impl BootInfoAllocator {
-
     /// # Safety depends on the validity of the inputs
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
@@ -654,15 +653,17 @@ impl BootInfoAllocator {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     match self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags) {
-                        Ok(flags_level_3) => if flags_level_3.is_empty() {
-                            table_4[i].set_flags(PageTableFlags::empty());
+                        Ok(flags_level_3) => {
+                            if flags_level_3.is_empty() {
+                                table_4[i].set_flags(PageTableFlags::empty());
                                 if self.deallocate_4k_frame(table_4[i].addr()).is_err() {
                                     failed = true;
                                 }
                             } else {
                                 is_empty = false;
                                 table_4[i].set_flags(flags & flags_level_3);
-                            },
+                            }
+                        }
 
                         Err(MemoryError()) => failed = true,
                     }
@@ -672,13 +673,11 @@ impl BootInfoAllocator {
             }
         }
 
-
         if failed {
             Err(MemoryError())
         } else {
             Ok(is_empty)
         }
-
     }
 
     /// Inner function of deallocate_level_4_page
@@ -696,15 +695,17 @@ impl BootInfoAllocator {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     match self.deallocate_level_2_page(&mut *page_table_ptr, remove_flags) {
-                        Ok(flags_level_2) => if flags_level_2.is_empty() {
-                            table_3[i].set_flags(PageTableFlags::empty());
+                        Ok(flags_level_2) => {
+                            if flags_level_2.is_empty() {
+                                table_3[i].set_flags(PageTableFlags::empty());
                                 if self.deallocate_4k_frame(table_3[i].addr()).is_err() {
                                     failed = true;
                                 }
                             } else {
                                 table_3[i].set_flags(flags & flags_level_2);
                                 flags_left = flags_left | (flags & flags_level_2);
-                            },
+                            }
+                        }
 
                         Err(MemoryError()) => failed = true,
                     }
@@ -735,7 +736,8 @@ impl BootInfoAllocator {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     match self.deallocate_level_1_page(&mut *page_table_ptr, remove_flags) {
-                        Ok(flags_level_1) => if flags_level_1.is_empty() {
+                        Ok(flags_level_1) => {
+                            if flags_level_1.is_empty() {
                                 table_2[i].set_flags(PageTableFlags::empty());
                                 if self.deallocate_4k_frame(table_2[i].addr()).is_err() {
                                     failed = true;
@@ -743,7 +745,8 @@ impl BootInfoAllocator {
                             } else {
                                 table_2[i].set_flags(flags & flags_level_1);
                                 flags_left = flags_left | (flags & flags_level_1);
-                            },
+                            }
+                        }
 
                         Err(MemoryError()) => failed = true,
                     }
