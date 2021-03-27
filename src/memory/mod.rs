@@ -632,63 +632,91 @@ impl BootInfoAllocator {
         }
     }
 
-    /// Deallocator, from a given level 4 table, deallocates every thing the user had access to.
-    /// # Safety
-    /// TODO
+    /// Deallocator, from a given level 4 table, deallocates every thing containing the given flags.
+    /// # Safety : Always put PageTableFlags::PRESENT in the given flags !
+    /// You must give a level 4 table and the flags for which you want to remove the entries.
+    /// For exemple you can use PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE as default
+    /// Returns a boolean wethere the table is empty or not
     pub unsafe fn deallocate_level_4_page(
         &mut self,
         table_4_addr: PhysAddr,
-    ) -> Result<(), MemoryError> {
+        remove_flags: PageTableFlags,
+    ) -> Result<bool, MemoryError> {
         let mut failed = false;
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
         let table_4 = &mut *page_table_ptr;
+        let mut is_empty = true;
         for i in 0..512 {
             if !table_4[i].is_unused() {
                 let flags = table_4[i].flags();
-                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    if self.deallocate_level_3_page(&mut *page_table_ptr).is_err() {
-                        failed = true
+                    match self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags) {
+                        Ok(flags_level_3) => if flags_level_3.is_empty() {
+                            table_4[i].set_flags(PageTableFlags::empty());
+                                if self.deallocate_4k_frame(table_4[i].addr()).is_err() {
+                                    failed = true;
+                                }
+                            } else {
+                                is_empty = false;
+                                table_4[i].set_flags(flags & flags_level_3);
+                            },
+
+                        Err(MemoryError()) => failed = true,
                     }
+                } else if flags.contains(PageTableFlags::PRESENT) {
+                    is_empty = false;
                 }
             }
         }
-        match self.deallocate_4k_frame(table_4_addr) {
-            Err(MemoryError()) => Err(MemoryError()),
-            Ok(()) => {
-                if failed {
-                    Err(MemoryError())
-                } else {
-                    Ok(())
-                }
-            }
+
+
+        if failed {
+            Err(MemoryError())
+        } else {
+            Ok(is_empty)
         }
+
     }
 
     /// Inner function of deallocate_level_4_page
     unsafe fn deallocate_level_3_page(
         &mut self,
         table_3: &'static mut PageTable,
-    ) -> Result<(), MemoryError> {
+        remove_flags: PageTableFlags,
+    ) -> Result<PageTableFlags, MemoryError> {
         let mut failed = false;
+        let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
             if !table_3[i].is_unused() {
                 let flags = table_3[i].flags();
-                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    if self.deallocate_level_2_page(&mut *page_table_ptr).is_err() {
-                        failed = true
+                    match self.deallocate_level_2_page(&mut *page_table_ptr, remove_flags) {
+                        Ok(flags_level_2) => if flags_level_2.is_empty() {
+                            table_3[i].set_flags(PageTableFlags::empty());
+                                if self.deallocate_4k_frame(table_3[i].addr()).is_err() {
+                                    failed = true;
+                                }
+                            } else {
+                                table_3[i].set_flags(flags & flags_level_2);
+                                flags_left = flags_left | (flags & flags_level_2);
+                            },
+
+                        Err(MemoryError()) => failed = true,
                     }
+                } else if flags.contains(PageTableFlags::PRESENT) {
+                    flags_left = flags_left | flags;
                 }
             }
         }
         if failed {
             Err(MemoryError())
         } else {
-            Ok(())
+            Ok(flags_left)
         }
     }
 
@@ -696,24 +724,38 @@ impl BootInfoAllocator {
     unsafe fn deallocate_level_2_page(
         &mut self,
         table_2: &'static mut PageTable,
-    ) -> Result<(), MemoryError> {
+        remove_flags: PageTableFlags,
+    ) -> Result<PageTableFlags, MemoryError> {
         let mut failed = false;
+        let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
             if !table_2[i].is_unused() {
                 let flags = table_2[i].flags();
-                if flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+                if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    if self.deallocate_level_1_page(&mut *page_table_ptr).is_err() {
-                        failed = true
+                    match self.deallocate_level_1_page(&mut *page_table_ptr, remove_flags) {
+                        Ok(flags_level_1) => if flags_level_1.is_empty() {
+                                table_2[i].set_flags(PageTableFlags::empty());
+                                if self.deallocate_4k_frame(table_2[i].addr()).is_err() {
+                                    failed = true;
+                                }
+                            } else {
+                                table_2[i].set_flags(flags & flags_level_1);
+                                flags_left = flags_left | (flags & flags_level_1);
+                            },
+
+                        Err(MemoryError()) => failed = true,
                     }
+                } else if flags.contains(PageTableFlags::PRESENT) {
+                    flags_left = flags_left | flags;
                 }
             }
         }
         if failed {
             Err(MemoryError())
         } else {
-            Ok(())
+            Ok(flags_left)
         }
     }
 
@@ -721,22 +763,27 @@ impl BootInfoAllocator {
     unsafe fn deallocate_level_1_page(
         &mut self,
         table_1: &'static mut PageTable,
-    ) -> Result<(), MemoryError> {
+        remove_flags: PageTableFlags,
+    ) -> Result<PageTableFlags, MemoryError> {
         let mut failed = false;
+        let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
             if !table_1[i].is_unused() {
                 let flags = table_1[i].flags();
-                if (flags.contains(PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE))
-                    && self.deallocate_4k_frame(table_1[i].addr()).is_err()
-                {
-                    failed = true
+                if flags.contains(remove_flags) {
+                    table_1[i].set_flags(PageTableFlags::empty());
+                    if self.deallocate_4k_frame(table_1[i].addr()).is_err() {
+                        failed = true;
+                    }
+                } else {
+                    flags_left = flags_left | flags
                 }
             }
         }
         if failed {
             Err(MemoryError())
         } else {
-            Ok(())
+            Ok(flags_left)
         }
     }
 
