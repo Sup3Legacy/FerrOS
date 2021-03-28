@@ -7,8 +7,11 @@ use core::{
 };
 //use lazy_static::lazy_static;
 use core::{mem::transmute, todo};
-use x86_64::{registers::control::{Cr3, Cr3Flags}, structures::paging::Page};
 use x86_64::structures::paging::PageTableFlags;
+use x86_64::{
+    registers::control::{Cr3, Cr3Flags},
+    structures::paging::Page,
+};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
@@ -188,6 +191,7 @@ pub unsafe fn disassemble_and_launch(
     number_of_block: u64,
     stack_size: u64,
 ) -> ! {
+    let PROG_OFFSET = 0x8048000000;
     let elf = ElfFile::new(code).unwrap();
     let prog_entry = match elf.header.pt2 {
         xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
@@ -209,7 +213,7 @@ pub unsafe fn disassemble_and_launch(
 
             // TODO This is only temporaru
             match section.get_type().unwrap() {
-                ShType::ProgBits => {},
+                ShType::ProgBits => {}
                 _ => continue,
             }
             if (address - offset) == 0 {
@@ -239,13 +243,17 @@ pub unsafe fn disassemble_and_launch(
                 ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                 ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                 ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                _ => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT | PageTableFlags::NO_EXECUTE,
+                _ => {
+                    PageTableFlags::USER_ACCESSIBLE
+                        | PageTableFlags::PRESENT
+                        | PageTableFlags::NO_EXECUTE
+                }
             };
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table_with_data(
                     level_4_table_addr,
-                    VirtAddr::new(address + (i as u64) * 4096),
+                    VirtAddr::new(address + (i as u64) * 4096 + PROG_OFFSET),
                     flags,
                     &sliced[i],
                 ) {
@@ -282,12 +290,12 @@ pub unsafe fn disassemble_and_launch(
                 }
             }
         }
-        
+
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
         println!("target : {:x}", towards_user as usize);
-        towards_user(addr_stack, prog_entry); // good luck user ;)
+        towards_user(addr_stack, prog_entry + PROG_OFFSET); // good luck user ;)
         hardware::power::shutdown();
     }
     loop {}
