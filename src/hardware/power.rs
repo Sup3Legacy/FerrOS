@@ -3,7 +3,7 @@ use x86_64::instructions::port::Port;
 
 /// Sends the shutdown signal.
 /// It must obviously be the very last step in the shutdown process.
-pub fn shutdown() {
+pub fn shutdown() -> ! {
     // This uses the special QEMU signal.
     // It is quite of a brute-force method but it works
     unsafe {
@@ -13,7 +13,7 @@ pub fn shutdown() {
     }
 
     // This uses the standard shutdown procedure
-    /// doesn't work (causes error : `Segment not found`)
+    // doesn't work (causes error : `Segment not found`)
     unsafe {
         asm!(
             "push rax",
@@ -33,6 +33,7 @@ pub fn shutdown() {
             "pop rax",
             "call failed_shutdown",
             "ret",
+            options(noreturn,),
         )
     }
 }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::data_storage::path::Path;
 
 use alloc::string::String;
@@ -16,7 +18,7 @@ pub mod vfs;
 pub use drivers::{disk_operations, ustar};
 pub use vfs::VFS;
 
-use crate::{println};
+use crate::println;
 
 static mut VFS: VFS = VFS::new();
 

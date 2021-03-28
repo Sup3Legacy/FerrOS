@@ -1,17 +1,21 @@
 use x86_64::instructions::port::Port;
 
-use crate::{println};
+use crate::println;
 
 const CMOS_ADDRESS: u16 = 0x70;
 static mut CMOS_ADDRESS_PORT: Port<u16> = Port::new(CMOS_ADDRESS);
 const CMOS_DATA: u16 = 0x71;
 static mut CMOS_DATA_PORT: Port<u8> = Port::new(CMOS_DATA);
 
+/// # Safety
+/// TODO
 unsafe fn get_rtc(reg: u16) -> u8 {
     CMOS_ADDRESS_PORT.write(reg);
     CMOS_DATA_PORT.read()
 }
 
+/// # Safety
+/// TODO
 unsafe fn get_update() -> u8 {
     get_rtc(0x0A) & 0x80
 }
@@ -55,6 +59,8 @@ pub struct Time {
 }
 
 impl Time {
+    /// # Safety
+    /// TODO
     pub unsafe fn get() -> Self {
         while get_update() != 0 {}
         let mut second = get_rtc(0x00);

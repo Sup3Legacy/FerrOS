@@ -10,7 +10,8 @@
 #![feature(asm)]
 #![feature(const_btree_new)]
 #![feature(option_result_unwrap_unchecked)]
-
+#![feature(const_raw_ptr_deref)]
+#![feature(slice_as_chunks)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
@@ -32,7 +33,7 @@ pub mod vga;
 
 extern crate alloc;
 
-pub static _TEST_PROGRAM: &[u8; 2360] = include_bytes!("test_program");
+pub static _TEST_PROGRAM: &[u8] = include_bytes!("issou");
 
 pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 
@@ -75,6 +76,7 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     exit_qemu(QemuExitCode::Success);
 }
 
+#[allow(clippy::empty_loop)]
 pub fn test_panic(_info: &PanicInfo) -> ! {
     println!("[failed]\nError: {}\n", _info);
     exit_qemu(QemuExitCode::Failed);
@@ -83,6 +85,7 @@ pub fn test_panic(_info: &PanicInfo) -> ! {
 
 #[cfg(test)]
 #[no_mangle]
+#[allow(clippy::empty_loop)]
 pub extern "C" fn _start() -> ! {
     test_main();
     loop {}

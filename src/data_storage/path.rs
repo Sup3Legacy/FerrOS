@@ -8,7 +8,7 @@ impl Path {
     pub fn new() -> Self {
         Self(String::new())
     }
-    pub fn from(s: &String) -> Self {
+    pub fn from(s: &str) -> Self {
         Self(s.into())
     }
     // We might wanna to avoid cloning string everywhere...
@@ -26,7 +26,7 @@ impl Path {
             .collect::<Vec<String>>();
         sliced
     }
-    pub fn push_str(&mut self, s: &String) {
+    pub fn push_str(&mut self, s: &str) {
         self.0.push('/');
         self.0.push_str(&(*s))
     }
@@ -45,5 +45,10 @@ impl Path {
     }
     pub fn get_name(&self) -> String {
         self.slice().get(0).unwrap_or(&String::from("")).clone()
+    }
+}
+impl Default for Path {
+    fn default() -> Self {
+        Self::new()
     }
 }

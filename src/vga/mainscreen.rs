@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use alloc::collections::BTreeMap;
 use core::sync::atomic::{AtomicU64, Ordering};
 use hashbrown::hash_map::DefaultHashBuilder;
@@ -5,7 +7,7 @@ use priority_queue::PriorityQueue;
 
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
 
-use crate::{println};
+use crate::println;
 
 /// Height of the screen
 const BUFFER_HEIGHT: usize = 25;
@@ -50,15 +52,15 @@ impl MainScreen {
             alpha: [[false; BUFFER_WIDTH]; BUFFER_HEIGHT],
         }
     }
-    /// Draws the whole screen by displaying each vScreen ordered by layer
+    /// Draws the whole screen by displaying each v_screen ordered by layer
     ///
-    /// A higher layer means the vScreen will be more on the foreground.
+    /// A higher layer means the v_screen will be more on the foreground.
     pub fn draw(&mut self) {
         self.reset_alpha();
-        while let Some((vScreenID, _layer)) = self.queue.pop() {
-            if let Some(vScreen) = self.map.get(&vScreenID) {
-                let position = vScreen.get_position();
-                let size = vScreen.get_size();
+        while let Some((v_screen_id, _layer)) = self.queue.pop() {
+            if let Some(v_screen) = self.map.get(&v_screen_id) {
+                let position = v_screen.get_position();
+                let size = v_screen.get_size();
                 let row_origin = position.get_row();
                 let col_origin = position.get_col();
                 let row_size = size.get_row();
@@ -66,29 +68,32 @@ impl MainScreen {
                 for i in 0..row_size {
                     for j in 0..col_size {
                         // The alpha layer helps ensuring we do not write to a previously
-                        // written part of the screen (that is written from a vScreen
-                        // with a higher layer). This is because we draw vScreens by order
+                        // written part of the screen (that is written from a v_screen
+                        // with a higher layer). This is because we draw v_screens by order
                         // of decreasing layer.
                         if i + row_origin < BUFFER_HEIGHT
                             && j + col_origin < BUFFER_WIDTH
                             && !self.alpha[i + row_origin][j + col_origin]
                         {
-                            self.buffer[i + row_origin][j + col_origin] = vScreen.get_char(i, j);
+                            self.buffer[i + row_origin][j + col_origin] = v_screen.get_char(i, j);
                             self.alpha[i + row_origin][j + col_origin] = true;
                         }
                     }
                 }
             } else {
-                println!("MainScreen : could not map ID to vScreen : {:?}", vScreenID);
+                println!(
+                    "MainScreen : could not map ID to v_screen : {:?}",
+                    v_screen_id
+                );
             }
-            self.roll_queue.push(vScreenID, _layer);
+            self.roll_queue.push(v_screen_id, _layer);
         }
     }
 
     /// Puts all item in `roll_queue` back in the `queue`
     fn spill_queue(&mut self) {
-        while let Some((vScreenID, layer)) = self.roll_queue.pop() {
-            self.queue.push(vScreenID, layer);
+        while let Some((v_screen_id, layer)) = self.roll_queue.pop() {
+            self.queue.push(v_screen_id, layer);
         }
     }
 
@@ -99,5 +104,11 @@ impl MainScreen {
                 self.alpha[i][j] = false;
             }
         }
+    }
+}
+
+impl Default for MainScreen {
+    fn default() -> Self {
+        Self::new()
     }
 }

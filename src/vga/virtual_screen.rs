@@ -1,8 +1,11 @@
+#![allow(dead_code)]
+#![allow(clippy::upper_case_acronyms)]
+
 use alloc::vec::Vec;
-use x86_64::{instructions::port::Port};
+use x86_64::instructions::port::Port;
 
 use crate::data_storage::screen::Coord;
-use crate::{println};
+use crate::println;
 
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.

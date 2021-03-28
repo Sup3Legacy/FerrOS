@@ -1,12 +1,16 @@
+#![allow(clippy::empty_loop)]
+#![allow(dead_code)]
+
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
 use x86_64::instructions::port::Port;
 
 use x86_64::registers::control::{Cr2, Cr3};
-use x86_64::structures::paging::PhysFrame;
+//use x86_64::structures::paging::PhysFrame;
 use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;
 
+use crate::hardware;
 use crate::scheduler::QUANTUM;
 
 pub mod idt;
@@ -21,6 +25,8 @@ use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
 mod syscalls;
+
+use syscalls::syscall_dispatch;
 
 static mut COUNTER: u64 = 0;
 
@@ -89,7 +95,8 @@ macro_rules! saveRegisters {
                 "add rsp, 32",
                 "sti",
                 "iretq",
-                  sym $name
+                sym $name,
+                options(noreturn)
                 );
             }
         }
@@ -150,7 +157,7 @@ lazy_static! {
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler)
             .set_privilege_level(PrivilegeLevel::Ring3);
-        idt.syscall.set_handler_fn(syscalls::naked_syscall_dispatch)
+        idt.syscall.set_handler_fn(saveRegisters!(syscall_dispatch))
                     .set_privilege_level(PrivilegeLevel::Ring3);
         unsafe {
             idt.double_fault
@@ -221,7 +228,8 @@ extern "x86-interrupt" fn double_fault_handler(
     error_code: u64,
 ) -> ! {
     println!("ERROR : {:#?}", error_code);
-    println!("saved rsp : {:#?}", unsafe { process::CURRENT_PROCESS.rsp });
+    println!("saved rsp : {:#?}", process::get_current().rsp);
+    println!("CR3 : {:#?}", Cr3::read());
     panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }
 
@@ -264,8 +272,9 @@ extern "x86-interrupt" fn general_protection_fault_handler(
         println!("GENERAL PROTECTION FAULT! {:#?}", stack);
     }
     println!("TRIED TO READ : {:#?}", Cr2::read());
+    println!("CR3 : {:#?}", Cr3::read());
     println!("ERROR : {:#?}", _error_code);
-    loop {}
+    hardware::power::shutdown();
 }
 
 extern "x86-interrupt" fn x87_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
@@ -318,7 +327,6 @@ unsafe extern "C" fn timer_interrupt_handler(
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
         old.cr3f = cr3f;
-        Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
 
         old.rsp = VirtAddr::from_ptr(registers).as_u64();
 
@@ -327,37 +335,18 @@ unsafe extern "C" fn timer_interrupt_handler(
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
-        process::leave_context(next.rsp);
+        //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
+        println!("target {:x}", process::leave_context_cr3 as usize);
+        println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
+        process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
-        return;
+        // return; -> unreachable
     } else {
         COUNTER += 1;
     }
 
-    /*
-    let stack_frame2 = unsafe { stack_frame.as_mut() };
-    let (pf, cr_f) = Cr3::read();
-    let state = crate::task::executor::Status {
-        cs: stack_frame2.code_segment,
-        cf: stack_frame2.cpu_flags,
-        sp: stack_frame2.stack_pointer,
-        ss: stack_frame2.stack_segment,
-        ip: stack_frame2.instruction_pointer,
-        cr3: (pf, cr_f),
-    };
-    let next = crate::task::executor::next_task(state);
-    stack_frame2.code_segment = next.cs;
-    stack_frame2.cpu_flags = next.cf;
-    stack_frame2.stack_pointer = next.sp;
-    stack_frame2.stack_segment = next.ss;
-    stack_frame2.instruction_pointer = next.ip;
-    unsafe {
-        Cr3::write(next.cr3.0, next.cr3.1);
-    };*/
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
+    PICS.lock()
+        .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
 }
 
 /// Page fault handler, should verify wether killing the current process or allocating a new page !
@@ -365,9 +354,28 @@ extern "x86-interrupt" fn page_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: PageFaultErrorCode,
 ) {
-    println!("PAGE FAULT! {:#?}", _stack_frame);
-    println!("TRIED TO READ : {:#?}", Cr2::read());
-    println!("ERROR : {:#?}", _error_code);
+    let read_addr = Cr2::read();
+    if read_addr.as_u64() == 0 {
+        println!("terminated normally");
+        /* // This launch a new process when the other one has finished.
+        unsafe {
+            let (next, mut old) = process::terminated_normally(COUNTER);
+            COUNTER = 0;
+            let (cr3, cr3f) = CR"::read();
+            old.cr3 = cr3.start_address();
+            old.cr3f = cr3f;
+            Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
+            old.rsp = VirtAddr::from_ptr(registers).as_u64();
+            process::leave_context(next.rsp);
+        }
+        */
+        
+        hardware::power::shutdown();
+    } else {
+        println!("PAGE FAULT! {:#?}", _stack_frame);
+        println!("TRIED TO READ : {:#?}", Cr2::read());
+        println!("ERROR : {:#?}", _error_code);
+    }
     crate::halt_loop();
 }
 

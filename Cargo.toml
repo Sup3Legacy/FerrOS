@@ -24,6 +24,7 @@ bit_field = "*"
 elf_rs = "*"
 priority-queue = "1.1.1"
 hashbrown = "*"
+xmas-elf="*"
 # ferr_os-librust = { git = "https://github.com/Sup3Legacy/FerrOS-librust" }
 
 [dependencies.lazy_static]

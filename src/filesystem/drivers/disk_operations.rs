@@ -1,6 +1,6 @@
 //! Crate for every interractions with the disk
 
-use crate::{println};
+use crate::println;
 
 use x86_64::instructions::port::Port;
 
@@ -37,17 +37,17 @@ pub fn init(port: u16) {
         command_register.write(0xEC_u8);
 
         let mut i = command_register.read();
-        let mut compte = 1;
+        let mut _compte = 1; // unused variable?
         while (i & 0x8) == 0 {
             i = command_register.read();
-            compte += 1;
+            _compte += 1;
         }
         lba_low.read();
         lba_mid.read();
         lba_high.read();
         let mut data_table: [u16; 256] = [0; 256];
-        for i in 0..256 {
-            data_table[i] = data_register.read();
+        for elt in &mut data_table {
+            *elt = data_register.read();
         }
 
         println!("uint16_t 0 : {}", data_table[0]);
@@ -56,11 +56,11 @@ pub fn init(port: u16) {
         println!("uint16_t 93 : {}", data_table[93]);
         println!(
             "uint32_t 61-61 : {}",
-            (data_table[60] as u32) << 0 | ((data_table[61] as u32) << 16)
+            (data_table[60] as u32) | ((data_table[61] as u32) << 16)
         );
         println!(
             "uint32_t 100-103 : {}",
-            ((data_table[100] as u64) << 0)
+            (data_table[100] as u64)
                 | ((data_table[101] as u64) << 16)
                 | ((data_table[102] as u64) << 32)
                 | ((data_table[103] as u64) << 48)
@@ -92,7 +92,7 @@ unsafe fn read(table: *mut [u16; 256], lba: u32, port: u16) {
     //println!("Reading from sector {}", lba);
     let lba = lba as u64;
 
-    let mut data_register = Port::<u16>::new(port + 0);
+    let mut data_register = Port::<u16>::new(port);
     let mut sectorcount_register = Port::new(port + 2);
     let mut lba_low = Port::new(port + 3);
     let mut lba_mid = Port::new(port + 4);
@@ -143,7 +143,7 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
 
     let lba = lba as u64;
 
-    let mut data_register = Port::<u16>::new(port + 0);
+    let mut data_register = Port::<u16>::new(port);
     let mut sectorcount_register = Port::new(port + 2);
     let mut lba_low = Port::new(port + 3);
     let mut lba_mid = Port::new(port + 4);
@@ -166,8 +166,8 @@ unsafe fn write(table: &[u16; 256], lba: u32, port: u16) {
     wait_drq(port);
 
     let mut delay = Port::new(0x80);
-    for i in 0..256 {
-        data_register.write(table[i]); // writes all the data one by one. The loop is mandatory to give the drive the time to accept the data
+    for elt in table.iter().take(256) {
+        data_register.write(*elt); // writes all the data one by one. The loop is mandatory to give the drive the time to accept the data
         delay.write(0_u8);
     }
 

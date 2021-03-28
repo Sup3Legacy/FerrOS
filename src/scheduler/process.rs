@@ -1,18 +1,27 @@
 use super::PROCESS_MAX_NUMBER;
 
-
 use alloc::vec::Vec;
-use core::sync::atomic::{AtomicU64, Ordering};
-use lazy_static::lazy_static;
-use x86_64::registers::control::{Cr3, Cr3Flags};
+use core::{
+    convert::TryInto,
+    sync::atomic::{AtomicU64, Ordering},
+};
+//use lazy_static::lazy_static;
+use core::{mem::transmute, todo};
 use x86_64::structures::paging::PageTableFlags;
+use x86_64::{
+    registers::control::{Cr3, Cr3Flags},
+    structures::paging::Page,
+};
 use x86_64::{PhysAddr, VirtAddr};
+
+use xmas_elf::{sections::ShType, ElfFile};
 
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
 
+#[allow(improper_ctypes)]
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
 
@@ -21,9 +30,19 @@ extern "C" {
 }
 
 #[naked]
-pub unsafe extern "C" fn leave_context(_rsp: u64) {
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
     asm!(
-        "mov rsp, rdi",
+        "mov cr3, rdi",
+        "mov rsp, rsi",
+        "pop r9",
+        "pop r8",
+        "pop r10",
+        "pop rdx",
+        "pop rsi",
+        "pop rdi",
+        "pop rax",
         "pop rbx",
         "pop rcx",
         "pop rbp",
@@ -32,13 +51,6 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         "pop r13",
         "pop r14",
         "pop r15",
-        "pop r9",
-        "pop r8",
-        "pop r10",
-        "pop rdx",
-        "pop rsi",
-        "pop rdi",
-        "pop rax",
         "add rsp, 32",
         "vmovaps ymm0, [rsp]",
         //"sti",
@@ -48,10 +60,41 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 }
 
 #[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn leave_context(_rsp: u64) {
+    asm!(
+        "mov rsp, rdi",
+        "pop r9",
+        "pop r8",
+        "pop r10",
+        "pop rdx",
+        "pop rsi",
+        "pop rdi",
+        "pop rax",
+        "pop rbx",
+        "pop rcx",
+        "pop rbp",
+        "pop r11",
+        "pop r12",
+        "pop r13",
+        "pop r14",
+        "pop r15",
+        "add rsp, 32",
+        "vmovaps ymm0, [rsp]",
+        //"sti",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
+#[naked]
+/// # Safety
+/// TODO
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
-        "mov rax, 0x23", // data segment
+        "mov rax, 0x0", // data segment
         "mov ds, eax",
         "mov es, eax",
         "mov fs, eax",
@@ -62,7 +105,7 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "push rax",  // stack segment
         "push rdi",  // stack pointer
         "push 518",  // cpu flags
-        "push 0x1B", // code segment
+        "push 0x08", // code segment
         "push rsi",  // instruction pointer
         "iretq",
         options(noreturn,),
@@ -70,12 +113,15 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 }
 
 /// Function to launch the first process !
+/// # Safety
+/// TODO
 pub unsafe fn launch_first_process(
     frame_allocator: &mut memory::BootInfoAllocator,
     code_address: *const u8,
     number_of_block: u64,
     stack_size: u64,
-) {
+) -> ! {
+    ID_TABLE[0].state = State::Runnable;
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         // addresses telling where the code and the stack starts
         let addr_code: u64 = 0x320000000000;
@@ -92,8 +138,12 @@ pub unsafe fn launch_first_process(
                 &*data,
             ) {
                 Ok(()) => (),
-                Err(()) => {
-                    errorln!("Could not allocate the {}th part of the code", i + 1);
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the code. Error : {:?}",
+                        i,
+                        err
+                    );
                     hardware::power::shutdown();
                 }
             }
@@ -103,22 +153,28 @@ pub unsafe fn launch_first_process(
         for i in 0..stack_size {
             match frame_allocator.add_entry_to_table(
                 level_4_table_addr,
-                VirtAddr::new(addr_stack - i * 4096),
+                VirtAddr::new(addr_stack - i * 0x1000),
                 PageTableFlags::USER_ACCESSIBLE
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
                     | PageTableFlags::WRITABLE,
             ) {
                 Ok(()) => (),
-                Err(()) => {
-                    errorln!("Could not allocate the {}th block of the stack", i + 1);
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the stack. Error : {:?}",
+                        i,
+                        err
+                    );
+                    hardware::power::shutdown();
                 }
             }
         }
 
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
-        println!("good luck user ;)");
+        println!("good luck user ;) {} {}", addr_stack, addr_code);
+        println!("target : {:x}", towards_user as usize);
         towards_user(addr_stack, addr_code); // good luck user ;)
 
         // should not be reached
@@ -127,6 +183,123 @@ pub unsafe fn launch_first_process(
         errorln!("couldn't allocate a level 4 table");
         hardware::power::shutdown();
     }
+}
+
+pub unsafe fn disassemble_and_launch(
+    code: &[u8],
+    frame_allocator: &mut memory::BootInfoAllocator,
+    number_of_block: u64,
+    stack_size: u64,
+) -> ! {
+    let PROG_OFFSET = 0x8048000000;
+    let elf = ElfFile::new(code).unwrap();
+    let prog_entry = match elf.header.pt2 {
+        xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
+        _ => panic!("Expected a 64-bit ELF!"),
+    };
+    if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
+        ID_TABLE[0].state = State::Runnable;
+        // TODO maybe consider changing this
+        let addr_stack: u64 = 0x63fffffffff8;
+        // Allocate frames for each section
+        for section in elf.section_iter() {
+            let address = section.address();
+            let offset = section.offset();
+            let size = section.size();
+            println!(
+                "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
+                address, offset, size, section.type_()
+            );
+
+            
+            if (address - offset) == 0 {
+                continue;
+            }
+
+            let _data = section.raw_data(&elf);
+            let data = transmute::<&[u8], &[u64]>(_data);
+            let mut prev_offset = Vec::new();
+            for _ in 0..(offset / 8) {
+                prev_offset.push(0_u64);
+            }
+            let mut last_offset = Vec::new();
+            for _ in 0..(512 - ((size + offset / 8) % 512)) {
+                last_offset.push(0_u64);
+            }
+            let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
+            assert_eq!(corrected_data.len() % 512, 0);
+            let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
+            let num_blocks = sliced.len();
+            println!(
+                "Total len of 0x{:x?}, {:?} blocks",
+                num_blocks * 512,
+                num_blocks
+            );
+            let flags = match section.get_type().unwrap() {
+                ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                _ => {
+                    PageTableFlags::USER_ACCESSIBLE
+                        | PageTableFlags::PRESENT
+                        | PageTableFlags::NO_EXECUTE
+                }
+            };
+            for i in 0..num_blocks {
+                // Allocate a frame for each page needed.
+                match frame_allocator.add_entry_to_table(
+                    level_4_table_addr,
+                    VirtAddr::new(address + (i as u64) * 4096 + PROG_OFFSET),
+                    flags,
+                ) {
+                    Ok(()) => (),
+                    Err(memory::MemoryError(err)) => {
+                        errorln!(
+                            "Could not allocate the {}-th part of the code. Error : {:?}",
+                            i,
+                            err
+                        );
+                        //hardware::power::shutdown();
+                    }
+                }
+            }
+            match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + PROG_OFFSET), _data){
+                Ok(()) => (),
+                Err(a) => errorln!(
+                    "{:?} at section : {:?}", a, section
+                )
+            };
+        }
+        // Allocate frames for the stack
+        for i in 0..stack_size {
+            match frame_allocator.add_entry_to_table(
+                level_4_table_addr,
+                VirtAddr::new(addr_stack - i * 0x1000),
+                PageTableFlags::USER_ACCESSIBLE
+                    | PageTableFlags::PRESENT
+                    | PageTableFlags::NO_EXECUTE
+                    | PageTableFlags::WRITABLE,
+            ) {
+                Ok(()) => (),
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the stack. Error : {:?}",
+                        i,
+                        err
+                    );
+                    hardware::power::shutdown();
+                }
+            }
+        }
+
+        let (_cr3, cr3f) = Cr3::read();
+        Cr3::write(level_4_table_addr, cr3f);
+        println!("good luck user ;) {} {}", addr_stack, prog_entry);
+        println!("target : {:x}", towards_user as usize);
+        towards_user(addr_stack, prog_entry + PROG_OFFSET); // good luck user ;)
+        hardware::power::shutdown();
+    }
+    loop {}
 }
 
 /*
@@ -226,6 +399,9 @@ impl Process {
         &(self.children[self.children.len() - 1])
     }
 
+    #[allow(clippy::empty_loop)]
+    /// # Safety
+    /// TODO
     pub unsafe fn launch() {
         fn f() {
             loop {}
@@ -273,53 +449,127 @@ impl ID {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         for _i in 0..PROCESS_MAX_NUMBER {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-            match ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state {
-                State::SlotAvailable => return ID(new),
-                _ => (),
+            unsafe {
+                if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {
+                    return ID(new);
+                }
             }
         }
         panic!("no slot available")
     }
 }
-
-lazy_static! {
-    static ref ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing(),
-        Process::missing()
-    ];
+impl Default for ID {
+    fn default() -> Self {
+        Self::new()
+    }
 }
-pub static mut CURRENT_PROCESS: Process = Process::missing();
 
+static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+    Process::missing(),
+];
+
+pub static mut CURRENT_PROCESS: usize = 0;
+
+/// # Safety depends of the usage of the data !
+/// From the number of cycles executed, returns the current process
+/// data structure (as mutable) and the next process to run one's (non mut)
+/// Beware of not doing any think on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
-    (&CURRENT_PROCESS, &mut CURRENT_PROCESS)
+    for (new, new_id) in ID_TABLE
+        .iter()
+        .enumerate()
+        .take(PROCESS_MAX_NUMBER as usize)
+    {
+        if new != CURRENT_PROCESS && new_id.state == State::Runnable {
+            let old = CURRENT_PROCESS;
+            CURRENT_PROCESS = new;
+            println!("{} <-> {}", old, new);
+            return (&new_id, &mut ID_TABLE[old]);
+        }
+    }
+    (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
+}
+
+/// Returns the current process data structure as read only
+pub fn get_current() -> &'static Process {
+    unsafe { &ID_TABLE[CURRENT_PROCESS] }
+}
+
+/// # Safety depends on the usage. May cause aliasing
+/// Returns the current process data structure as mutable
+pub unsafe fn get_current_as_mut() -> &'static mut Process {
+    &mut ID_TABLE[CURRENT_PROCESS]
+}
+
+/// # Safety depending on the current process situation. Use knowingly
+/// Function to duplicate the current process into two childs
+/// For more info on the usage, see the code of the fork syscall
+/// Returns : child process pid
+pub unsafe fn fork() -> u64 {
+    let mut son = Process::create_new(
+        ID_TABLE[CURRENT_PROCESS].pid,
+        ID_TABLE[CURRENT_PROCESS].priority,
+        ID_TABLE[CURRENT_PROCESS].owner,
+    );
+    if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+        match frame_allocator.copy_table_entries(ID_TABLE[CURRENT_PROCESS].cr3) {
+            Ok(phys) => son.cr3 = phys,
+            Err(_) => panic!("TODO"),
+        }
+        son.cr3f = ID_TABLE[CURRENT_PROCESS].cr3f;
+    } else {
+        panic!("un initialized frame allocator");
+    }
+    let pid = son.pid.0;
+    son.state = State::Runnable;
+    son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
+    ID_TABLE[pid as usize] = son;
+    println!("new process of id {}", pid);
+
+    // TODO
+    pid
+}
+
+/// # It is irreversible, you just can't improve the priority of a process
+/// This will set the priority of the current process to
+/// the given value. It can be only decreasing
+/// Returns : usize::MAX or the new priority if succeeds
+pub unsafe fn set_priority(prio: usize) -> usize {
+    if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
+        ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
+        prio
+    } else {
+        usize::MAX
+    }
 }
