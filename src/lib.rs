@@ -11,6 +11,7 @@
 #![feature(const_btree_new)]
 #![feature(option_result_unwrap_unchecked)]
 #![feature(const_raw_ptr_deref)]
+#![feature(slice_as_chunks)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
@@ -32,7 +33,7 @@ pub mod vga;
 
 extern crate alloc;
 
-pub static _TEST_PROGRAM: &[u8; 2360] = include_bytes!("test_program");
+pub static _TEST_PROGRAM: &[u8; 864] = include_bytes!("test_program2");
 
 pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 

@@ -1,11 +1,17 @@
 use super::PROCESS_MAX_NUMBER;
 
 use alloc::vec::Vec;
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::{
+    convert::TryInto,
+    sync::atomic::{AtomicU64, Ordering},
+};
 //use lazy_static::lazy_static;
+use core::{mem::transmute, todo};
 use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
+
+use xmas_elf::{sections::ShType, ElfFile};
 
 use crate::errorln;
 use crate::hardware;
@@ -129,8 +135,12 @@ pub unsafe fn launch_first_process(
                 &*data,
             ) {
                 Ok(()) => (),
-                Err(memory::MemoryError()) => {
-                    errorln!("Could not allocate the {}th part of the code", i + 1);
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the code. Error : {:?}",
+                        i,
+                        err
+                    );
                     hardware::power::shutdown();
                 }
             }
@@ -147,8 +157,13 @@ pub unsafe fn launch_first_process(
                     | PageTableFlags::WRITABLE,
             ) {
                 Ok(()) => (),
-                Err(memory::MemoryError()) => {
-                    errorln!("Could not allocate the {}th block of the stack", i + 1);
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the stack. Error : {:?}",
+                        i,
+                        err
+                    );
+                    hardware::power::shutdown();
                 }
             }
         }
@@ -165,6 +180,78 @@ pub unsafe fn launch_first_process(
         errorln!("couldn't allocate a level 4 table");
         hardware::power::shutdown();
     }
+}
+
+pub unsafe fn disassemble_and_launch(
+    code: &[u8],
+    frame_allocator: &mut memory::BootInfoAllocator,
+    number_of_block: u64,
+    stack_size: u64,
+) -> ! {
+    let elf = ElfFile::new(code).unwrap();
+    let prog_entry = match elf.header.pt2 {
+        xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
+        _ => panic!("Expected a 64-bit ELF!"),
+    };
+    if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
+        ID_TABLE[0].state = State::Runnable;
+        for section in elf.section_iter() {
+            match section.get_type().unwrap() {
+                ShType::ProgBits => {
+                    let address = section.address();
+                    let offset = section.offset();
+                    let size = section.size();
+                    println!(
+                        "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}",
+                        address, offset, size
+                    );
+
+                    let _data = section.raw_data(&elf);
+                    let data = transmute::<&[u8], &[u64]>(_data);
+                    let mut prev_offset = Vec::new();
+                    for _ in 0..(offset / 8) {
+                        prev_offset.push(0_u64);
+                    }
+                    let mut last_offset = Vec::new();
+                    for _ in 0..(512 - ((size + offset / 8) % 512)) {
+                        last_offset.push(0_u64);
+                    }
+                    let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
+                    assert_eq!(corrected_data.len() % 512, 0);
+                    let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
+                    let num_blocks = sliced.len();
+                    println!(
+                        "Total len of 0x{:x?}, {:?} blocks",
+                        num_blocks * 512,
+                        num_blocks
+                    );
+                    for i in 0..num_blocks {
+                        // Allocate a frame for each page needed.
+                        match frame_allocator.add_entry_to_table_with_data(
+                            level_4_table_addr,
+                            VirtAddr::new(address + (i as u64) * 4096),
+                            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                            &sliced[i],
+                        ) {
+                            Ok(()) => (),
+                            Err(memory::MemoryError(err)) => {
+                                errorln!(
+                                    "Could not allocate the {}-th part of the code. Error : {:?}",
+                                    i,
+                                    err
+                                );
+                                hardware::power::shutdown();
+                            }
+                        }
+                    }
+                }
+                ShType::SymTab => {}
+                ShType::StrTab => {}
+                _ => (),
+            }
+        }
+    }
+    loop {}
 }
 
 /*
