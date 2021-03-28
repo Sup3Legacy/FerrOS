@@ -1,7 +1,5 @@
 use super::PROCESS_MAX_NUMBER;
 
-//test
-
 use alloc::vec::Vec;
 use core::{
     convert::TryInto,
@@ -22,6 +20,7 @@ use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
+use crate::data_storage::{random,queue::Queue};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -338,7 +337,7 @@ pub unsafe fn disassemble_and_launch(
 /// * `children` - vec containing the processes it spawned.
 /// * `value` - return value
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 #[repr(C)]
 pub struct Process {
     pid: ID,
@@ -503,7 +502,8 @@ static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
 
 pub static mut CURRENT_PROCESS: usize = 0;
 
-/// # Safety depends of the usage of the data !
+/// # Safety
+/// Depends of the usage of the data !
 /// From the number of cycles executed, returns the current process
 /// data structure (as mutable) and the next process to run one's (non mut)
 /// Beware of not doing any think on this data !
@@ -534,7 +534,8 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
 }
 
-/// # Safety depending on the current process situation. Use knowingly
+/// # Safety
+/// Depending on the current process situation. Use knowingly
 /// Function to duplicate the current process into two childs
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
@@ -563,11 +564,15 @@ pub unsafe fn fork() -> u64 {
     pid
 }
 
-/// # It is irreversible, you just can't improve the priority of a process
+/// # Safety
+/// It is irreversible, you just can't improve the priority of a process
 /// This will set the priority of the current process to
 /// the given value. It can be only decreasing
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
+    if prio > MAX_PRIO {
+        return usize::MAX
+    }
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
         prio
@@ -575,3 +580,48 @@ pub unsafe fn set_priority(prio: usize) -> usize {
         usize::MAX
     }
 }
+
+fn next_priority_to_run() -> usize {
+    let mut ticket = random::random_u8();
+    // Look for the most significant non null bit in the ticket
+    let mut idx = 7;
+    while idx > 0 || ticket != 0 {
+        ticket <<= 1;
+        idx += 1;
+    }
+    MAX_PRIO-idx
+}
+
+const MAX_PRIO:usize = 8;
+static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    ];
+
+#[allow(dead_code)]
+ /// # Safety
+ /// Needs sane `WAITING_QUEUES`. Should be safe to use.
+ unsafe fn next_process_to_run() -> usize {
+    let mut prio = next_priority_to_run();
+    // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
+    while WAITING_QUEUES[prio].is_empty(){
+        prio -= 1; // need to check priority
+    }
+    let old_pid = CURRENT_PROCESS;
+    let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail");
+    let mut old_priority = ID_TABLE[old_pid].priority.0;
+    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0{
+        old_priority -= 1
+    }
+    if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
+        panic!("Too many processes want to run at the same priority!")
+    }
+    WAITING_QUEUES[old_priority].push(old_pid).expect("Scheduler massive fail");
+    new_pid
+ }
