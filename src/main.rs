@@ -91,6 +91,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
+    print!("Physical memory offset : 0x{:x?}", phys_mem_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     unsafe {
         memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);

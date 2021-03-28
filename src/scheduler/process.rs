@@ -7,7 +7,7 @@ use core::{
 };
 //use lazy_static::lazy_static;
 use core::{mem::transmute, todo};
-use x86_64::registers::control::{Cr3, Cr3Flags};
+use x86_64::{registers::control::{Cr3, Cr3Flags}, structures::paging::Page};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
 
@@ -195,61 +195,100 @@ pub unsafe fn disassemble_and_launch(
     };
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         ID_TABLE[0].state = State::Runnable;
+        // TODO maybe consider changing this
+        let addr_stack: u64 = 0x63fffffffff8;
+        // Allocate frames for each section
         for section in elf.section_iter() {
-            match section.get_type().unwrap() {
-                ShType::ProgBits => {
-                    let address = section.address();
-                    let offset = section.offset();
-                    let size = section.size();
-                    println!(
-                        "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}",
-                        address, offset, size
-                    );
+            let address = section.address();
+            let offset = section.offset();
+            let size = section.size();
+            println!(
+                "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}",
+                address, offset, size
+            );
 
-                    let _data = section.raw_data(&elf);
-                    let data = transmute::<&[u8], &[u64]>(_data);
-                    let mut prev_offset = Vec::new();
-                    for _ in 0..(offset / 8) {
-                        prev_offset.push(0_u64);
-                    }
-                    let mut last_offset = Vec::new();
-                    for _ in 0..(512 - ((size + offset / 8) % 512)) {
-                        last_offset.push(0_u64);
-                    }
-                    let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
-                    assert_eq!(corrected_data.len() % 512, 0);
-                    let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
-                    let num_blocks = sliced.len();
-                    println!(
-                        "Total len of 0x{:x?}, {:?} blocks",
-                        num_blocks * 512,
-                        num_blocks
-                    );
-                    for i in 0..num_blocks {
-                        // Allocate a frame for each page needed.
-                        match frame_allocator.add_entry_to_table_with_data(
-                            level_4_table_addr,
-                            VirtAddr::new(address + (i as u64) * 4096),
-                            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                            &sliced[i],
-                        ) {
-                            Ok(()) => (),
-                            Err(memory::MemoryError(err)) => {
-                                errorln!(
-                                    "Could not allocate the {}-th part of the code. Error : {:?}",
-                                    i,
-                                    err
-                                );
-                                hardware::power::shutdown();
-                            }
-                        }
+            // TODO This is only temporaru
+            match section.get_type().unwrap() {
+                ShType::ProgBits => {},
+                _ => continue,
+            }
+            if (address - offset) == 0 {
+                continue;
+            }
+
+            let _data = section.raw_data(&elf);
+            let data = transmute::<&[u8], &[u64]>(_data);
+            let mut prev_offset = Vec::new();
+            for _ in 0..(offset / 8) {
+                prev_offset.push(0_u64);
+            }
+            let mut last_offset = Vec::new();
+            for _ in 0..(512 - ((size + offset / 8) % 512)) {
+                last_offset.push(0_u64);
+            }
+            let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
+            assert_eq!(corrected_data.len() % 512, 0);
+            let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
+            let num_blocks = sliced.len();
+            println!(
+                "Total len of 0x{:x?}, {:?} blocks",
+                num_blocks * 512,
+                num_blocks
+            );
+            let flags = match section.get_type().unwrap() {
+                ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+                _ => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT | PageTableFlags::NO_EXECUTE,
+            };
+            for i in 0..num_blocks {
+                // Allocate a frame for each page needed.
+                match frame_allocator.add_entry_to_table_with_data(
+                    level_4_table_addr,
+                    VirtAddr::new(address + (i as u64) * 4096),
+                    flags,
+                    &sliced[i],
+                ) {
+                    Ok(()) => (),
+                    Err(memory::MemoryError(err)) => {
+                        errorln!(
+                            "Could not allocate the {}-th part of the code. Error : {:?}",
+                            i,
+                            err
+                        );
+                        hardware::power::shutdown();
                     }
                 }
-                ShType::SymTab => {}
-                ShType::StrTab => {}
-                _ => (),
             }
         }
+        // Allocate frames for the stack
+        for i in 0..stack_size {
+            match frame_allocator.add_entry_to_table(
+                level_4_table_addr,
+                VirtAddr::new(addr_stack - i * 0x1000),
+                PageTableFlags::USER_ACCESSIBLE
+                    | PageTableFlags::PRESENT
+                    | PageTableFlags::NO_EXECUTE
+                    | PageTableFlags::WRITABLE,
+            ) {
+                Ok(()) => (),
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the stack. Error : {:?}",
+                        i,
+                        err
+                    );
+                    hardware::power::shutdown();
+                }
+            }
+        }
+        
+        let (_cr3, cr3f) = Cr3::read();
+        Cr3::write(level_4_table_addr, cr3f);
+        println!("good luck user ;) {} {}", addr_stack, prog_entry);
+        println!("target : {:x}", towards_user as usize);
+        towards_user(addr_stack, prog_entry); // good luck user ;)
+        hardware::power::shutdown();
     }
     loop {}
 }

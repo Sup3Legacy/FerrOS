@@ -368,6 +368,9 @@ impl BootInfoAllocator {
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
             } else {
+                warningln!("already existed for kernel l.183 failure");
+                warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
+                warningln!("{:#?}", entry);
                 Err(MemoryError(String::from(
                     "Level 4 entry is not USER_ACCESSIBLE with data",
                 )))
