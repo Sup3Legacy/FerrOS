@@ -1,5 +1,6 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
 use crate::{print, println};
+use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
 use x86_64::structures::paging::OffsetPageTable;
@@ -9,13 +10,15 @@ use x86_64::{
     structures::paging::{PageTable, PageTableFlags},
     PhysAddr, VirtAddr,
 };
+
 //use core::ptr;
 
 //use lazy_static::lazy_static;
 
 pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
-pub struct MemoryError();
+#[derive(Debug)]
+pub struct MemoryError(pub String);
 
 use crate::warningln;
 
@@ -170,7 +173,7 @@ impl BootInfoAllocator {
             Ok(PhysFrame::containing_address(phys))
         } else {
             warningln!("l.150 failure");
-            Err(MemoryError())
+            Err(MemoryError(String::from("Could not create level 4 table")))
         }
     }
 
@@ -209,12 +212,14 @@ impl BootInfoAllocator {
                 warningln!("already existed for kernel l.183 failure");
                 warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
                 warningln!("{:#?}", entry);
-                Err(MemoryError())
+                Err(MemoryError(String::from(
+                    "Level 4 entry is not USER_ACCESSIBLE",
+                )))
             }
         } else {
             //warningln!("l.187 new page");
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from("Could not allocate 4k @ level 4"))),
                 Some(addr) => {
                     //warningln!("l.191 goes in deaper");
                     //let addr = phys_frame.start_address();
@@ -246,11 +251,15 @@ impl BootInfoAllocator {
                 self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
             } else {
                 warningln!("line 240");
-                Err(MemoryError())
+                Err(MemoryError(String::from(
+                    "Level 3 entry is not USER_ACCESSIBLE",
+                )))
             }
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 3",
+                ))),
                 Some(addr) => {
                     // let addr = phys_frame.start_address();
                     table_3[p_3].set_addr(addr, flags);
@@ -280,11 +289,13 @@ impl BootInfoAllocator {
                 self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
             } else {
                 warningln!("line 274");
-                Err(MemoryError())
+                Err(MemoryError(String::from(
+                    "Level 2 entry is not USER_ACCESSIBLE",
+                )))
             }
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from("Could not allocate 4k #2"))),
                 Some(addr) => {
                     //let addr = phys_frame.start_address();
                     table_2[p_2].set_addr(addr, flags);
@@ -307,10 +318,14 @@ impl BootInfoAllocator {
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             warningln!("already here, l.301 {:#?}", virt_1);
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Level 1 entry is already present",
+            )))
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 1",
+                ))),
                 Some(addr) => {
                     //let addr = phys_frame.start_address();
                     table_1[p_1].set_addr(addr, flags);
@@ -354,11 +369,18 @@ impl BootInfoAllocator {
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
             } else {
-                Err(MemoryError())
+                warningln!("already existed for kernel l.183 failure");
+                warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
+                warningln!("{:#?}", entry);
+                Err(MemoryError(String::from(
+                    "Level 4 entry is not USER_ACCESSIBLE with data",
+                )))
             }
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 4 with data",
+                ))),
                 Some(addr) => {
                     //let addr = phys_frame.start_address();
                     table_4[p_4].set_addr(addr, flags);
@@ -390,11 +412,15 @@ impl BootInfoAllocator {
                 table_3[p_3].set_flags(entry | flags);
                 self.add_entry_to_table_2_with_data(&mut *page_table_ptr, virt_3, flags, data)
             } else {
-                Err(MemoryError())
+                Err(MemoryError(String::from(
+                    "Level 3 entry is not USER_ACCESSIBLE with data",
+                )))
             }
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 3 with data",
+                ))),
                 Some(addr) => {
                     // let addr = phys_frame.start_address();
                     table_3[p_3].set_addr(addr, flags);
@@ -425,11 +451,15 @@ impl BootInfoAllocator {
                 table_2[p_2].set_flags(entry | flags);
                 self.add_entry_to_table_1_with_data(&mut *page_table_ptr, virt_2, flags, data)
             } else {
-                Err(MemoryError())
+                Err(MemoryError(String::from(
+                    "Level 2 entry is not USER_ACCESSIBLE with data",
+                )))
             }
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 2 with data",
+                ))),
                 Some(addr) => {
                     //let addr = phys_frame.start_address();
                     table_2[p_2].set_addr(addr, flags);
@@ -453,10 +483,14 @@ impl BootInfoAllocator {
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Level 1 entry is already present with data",
+            )))
         } else {
             match self.allocate_4k_frame() {
-                None => Err(MemoryError()),
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 1 with data",
+                ))),
                 Some(addr) => {
                     table_1[p_1].set_addr(addr, flags);
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
@@ -480,7 +514,7 @@ impl BootInfoAllocator {
         let table4: *mut PageTable = virt.as_mut_ptr();
         match self.copy_table_4(&*table4) {
             Ok(phys) => Ok(phys),
-            Err(MemoryError()) => Err(MemoryError()),
+            Err(MemoryError(a)) => Err(MemoryError(a)),
         }
     }
 
@@ -504,7 +538,7 @@ impl BootInfoAllocator {
                             for i in index..512 {
                                 (*new_table)[i].set_flags(PageTableFlags::empty());
                             }
-                            return Err(MemoryError());
+                            return Err(MemoryError(String::from("Could not copy level 3 table")));
                         }
                     } else {
                         (*new_table)[index].set_addr(table_4[index].addr(), flags);
@@ -516,7 +550,9 @@ impl BootInfoAllocator {
             println!("new cr3 address : {:#?}", new_table_addr);
             Ok(new_table_addr)
         } else {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not allocate 4k frame in copy_table_4",
+            )))
         }
     }
 
@@ -540,7 +576,7 @@ impl BootInfoAllocator {
                             for i in index..512 {
                                 (*new_table)[i].set_flags(PageTableFlags::empty());
                             }
-                            return Err(MemoryError());
+                            return Err(MemoryError(String::from("Could not copy level 2 table")));
                         }
                     } else {
                         (*new_table)[index].set_addr(table_3[index].addr(), flags);
@@ -551,7 +587,9 @@ impl BootInfoAllocator {
             }
             Ok(new_table_addr)
         } else {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not allocate 4k frame in copy_table_3",
+            )))
         }
     }
 
@@ -575,7 +613,7 @@ impl BootInfoAllocator {
                             for i in index..512 {
                                 (*new_table)[i].set_flags(PageTableFlags::empty());
                             }
-                            return Err(MemoryError());
+                            return Err(MemoryError(String::from("Could not copy level 1 table")));
                         }
                     } else {
                         (*new_table)[index].set_addr(table_2[index].addr(), flags);
@@ -586,7 +624,9 @@ impl BootInfoAllocator {
             }
             Ok(new_table_addr)
         } else {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not allocate 4k frame in copy_table_2",
+            )))
         }
     }
 
@@ -616,7 +656,9 @@ impl BootInfoAllocator {
                             for i in index..512 {
                                 (*new_table)[i].set_flags(PageTableFlags::empty());
                             }
-                            return Err(MemoryError());
+                            return Err(MemoryError(String::from(
+                                "Could not allocate 4k frame in level 1 copy #0",
+                            )));
                         }
                     } else {
                         (*new_table)[index].set_addr(table_1[index].addr(), flags);
@@ -627,7 +669,9 @@ impl BootInfoAllocator {
             }
             Ok(new_table_addr)
         } else {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not allocate 4k frame in level 1 copy #1",
+            )))
         }
     }
 
@@ -665,7 +709,7 @@ impl BootInfoAllocator {
                             }
                         }
 
-                        Err(MemoryError()) => failed = true,
+                        Err(MemoryError(_)) => failed = true,
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
                     is_empty = false;
@@ -674,7 +718,9 @@ impl BootInfoAllocator {
         }
 
         if failed {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not deallocate level 4 page",
+            )))
         } else {
             Ok(is_empty)
         }
@@ -707,7 +753,7 @@ impl BootInfoAllocator {
                             }
                         }
 
-                        Err(MemoryError()) => failed = true,
+                        Err(MemoryError(_)) => failed = true,
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
                     flags_left = flags_left | flags;
@@ -715,7 +761,9 @@ impl BootInfoAllocator {
             }
         }
         if failed {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not deallocate level 3 page",
+            )))
         } else {
             Ok(flags_left)
         }
@@ -748,7 +796,7 @@ impl BootInfoAllocator {
                             }
                         }
 
-                        Err(MemoryError()) => failed = true,
+                        Err(MemoryError(_)) => failed = true,
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
                     flags_left = flags_left | flags;
@@ -756,7 +804,9 @@ impl BootInfoAllocator {
             }
         }
         if failed {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not deallocate level 2 page",
+            )))
         } else {
             Ok(flags_left)
         }
@@ -784,7 +834,9 @@ impl BootInfoAllocator {
             }
         }
         if failed {
-            Err(MemoryError())
+            Err(MemoryError(String::from(
+                "Could not deallocate level 1 page",
+            )))
         } else {
             Ok(flags_left)
         }
@@ -813,30 +865,69 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
     }
 }
 
-// Not needed as implemented in x86_64 crate ; keep it for later reference
-/*
-pub unsafe fn translate_addr(addr : VirtAddr, physical_memory_offset : VirtAddr) -> Option<PhysAddr> {
-    translate_addr_inner(addr, physical_memory_offset)
+/// This may be totally wrong
+pub unsafe fn write_into_virtual_memory(
+    table_4: PhysFrame,
+    virt_4: VirtAddr,
+    data: &[u8],
+) -> Result<(), MemoryError> {
+    let offset: u64 = virt_4.page_offset().into();
+    let length = data.len();
+    let mut virtaddr: VirtAddr = virt_4;
+    let mut physaddr: PhysAddr = match translate_addr(table_4, virtaddr) {
+        Some(a) => a,
+        None => {
+            return Err(MemoryError(String::from(
+                "Could not convert process-virtual to physical memory",
+            )))
+        }
+    };
+    for i in 0..length {
+        let content: *mut u8 = (physaddr.as_u64() + i as u64 + PHYSICAL_OFFSET) as *mut u8;
+        (*content) = data[i];
+        virtaddr += 1_u64;
+        if (i as u64 + offset) % 4096 == 0 {
+            physaddr = match translate_addr(table_4, virtaddr) {
+                Some(a) => a,
+                None => {
+                    return Err(MemoryError(String::from(
+                        "Could not convert process-virtual to physical memory",
+                    )))
+                }
+            };
+        }
+    }
+    Ok(())
 }
 
-fn translate_addr_inner(addr : VirtAddr, physical_memory_offset : VirtAddr) -> Option<PhysAddr> {
-    let (level_4_table_frame, _) = Cr3::read();
+pub unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+    translate_addr_inner(table_4, addr)
+}
+
+unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+    //let (level_4_table_frame, _) = Cr3::read();
+    let mut virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET).as_u64();
+    let page_table_ptr: *mut PageTable = virt as *mut PageTable;
+
     let table_indexes = [
-        addr.p4_index(), addr.p3_index(), addr.p2_index(), addr.p1_index()
+        addr.p4_index(),
+        addr.p3_index(),
+        addr.p2_index(),
+        addr.p1_index(),
     ];
-    let mut frame = level_4_table_frame;
+    let mut frame = PhysFrame::containing_address(PhysAddr::new(0_u64));
 
     for &index in &table_indexes {
-        let virt = physical_memory_offset + frame.start_address().as_u64();
-        let table_ptr : *const PageTable = virt.as_ptr();
-        let table = unsafe {&*table_ptr};
+        let table_ptr: *const PageTable = virt as *const PageTable;
+        let table = unsafe { &*table_ptr };
 
         let entry = &table[index];
         frame = match entry.frame() {
             Ok(frame) => frame,
-            Err(FrameError::FrameNotPresent) => return None,
-            Err(FrameError::HugeFrame) => panic!("Huge frames not supported..."),
+            Err(_) => return None,
+            Err(_) => panic!("Huge frames not supported..."),
         };
+        virt = PHYSICAL_OFFSET + frame.start_address().as_u64();
     }
     Some(frame.start_address() + u64::from(addr.page_offset()))
-}*/
+}

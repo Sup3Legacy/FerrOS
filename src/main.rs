@@ -91,6 +91,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
+    print!("Physical memory offset : 0x{:x?}", phys_mem_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     unsafe {
         memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
@@ -152,9 +153,15 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
     let elf = ElfFile::new(_TEST_PROGRAM).unwrap();
     for e in elf.section_iter() {
-        println!("{:?}", e);
+        println!("{:x?}", e);
     }
     //println!("{:?}", elf);
+
+    unsafe {
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2);
+        }
+    }
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
