@@ -207,15 +207,11 @@ pub unsafe fn disassemble_and_launch(
             let offset = section.offset();
             let size = section.size();
             println!(
-                "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}",
-                address, offset, size
+                "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
+                address, offset, size, section.type_()
             );
 
-            // TODO This is only temporaru
-            match section.get_type().unwrap() {
-                ShType::ProgBits => {}
-                _ => continue,
-            }
+            
             if (address - offset) == 0 {
                 continue;
             }
@@ -251,11 +247,10 @@ pub unsafe fn disassemble_and_launch(
             };
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
-                match frame_allocator.add_entry_to_table_with_data(
+                match frame_allocator.add_entry_to_table(
                     level_4_table_addr,
                     VirtAddr::new(address + (i as u64) * 4096 + PROG_OFFSET),
                     flags,
-                    &sliced[i],
                 ) {
                     Ok(()) => (),
                     Err(memory::MemoryError(err)) => {
@@ -264,10 +259,16 @@ pub unsafe fn disassemble_and_launch(
                             i,
                             err
                         );
-                        hardware::power::shutdown();
+                        //hardware::power::shutdown();
                     }
                 }
             }
+            match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + PROG_OFFSET), _data){
+                Ok(()) => (),
+                Err(a) => errorln!(
+                    "{:?} at section : {:?}", a, section
+                )
+            };
         }
         // Allocate frames for the stack
         for i in 0..stack_size {

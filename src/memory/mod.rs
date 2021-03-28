@@ -17,6 +17,7 @@ use x86_64::{
 
 pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
+#[derive(Debug)]
 pub struct MemoryError(pub String);
 
 use crate::warningln;
@@ -864,30 +865,69 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
     }
 }
 
-// Not needed as implemented in x86_64 crate ; keep it for later reference
-/*
-pub unsafe fn translate_addr(addr : VirtAddr, physical_memory_offset : VirtAddr) -> Option<PhysAddr> {
-    translate_addr_inner(addr, physical_memory_offset)
+/// This may be totally wrong
+pub unsafe fn write_into_virtual_memory(
+    table_4: PhysFrame,
+    virt_4: VirtAddr,
+    data: &[u8],
+) -> Result<(), MemoryError> {
+    let offset: u64 = virt_4.page_offset().into();
+    let length = data.len();
+    let mut virtaddr: VirtAddr = virt_4;
+    let mut physaddr: PhysAddr = match translate_addr(table_4, virtaddr) {
+        Some(a) => a,
+        None => {
+            return Err(MemoryError(String::from(
+                "Could not convert process-virtual to physical memory",
+            )))
+        }
+    };
+    for i in 0..length {
+        let content: *mut u8 = (physaddr.as_u64() + i as u64 + PHYSICAL_OFFSET) as *mut u8;
+        (*content) = data[i];
+        virtaddr += 1_u64;
+        if (i as u64 + offset) % 4096 == 0 {
+            physaddr = match translate_addr(table_4, virtaddr) {
+                Some(a) => a,
+                None => {
+                    return Err(MemoryError(String::from(
+                        "Could not convert process-virtual to physical memory",
+                    )))
+                }
+            };
+        }
+    }
+    Ok(())
 }
 
-fn translate_addr_inner(addr : VirtAddr, physical_memory_offset : VirtAddr) -> Option<PhysAddr> {
-    let (level_4_table_frame, _) = Cr3::read();
+pub unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+    translate_addr_inner(table_4, addr)
+}
+
+unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+    //let (level_4_table_frame, _) = Cr3::read();
+    let mut virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET).as_u64();
+    let page_table_ptr: *mut PageTable = virt as *mut PageTable;
+
     let table_indexes = [
-        addr.p4_index(), addr.p3_index(), addr.p2_index(), addr.p1_index()
+        addr.p4_index(),
+        addr.p3_index(),
+        addr.p2_index(),
+        addr.p1_index(),
     ];
-    let mut frame = level_4_table_frame;
+    let mut frame = PhysFrame::containing_address(PhysAddr::new(0_u64));
 
     for &index in &table_indexes {
-        let virt = physical_memory_offset + frame.start_address().as_u64();
-        let table_ptr : *const PageTable = virt.as_ptr();
-        let table = unsafe {&*table_ptr};
+        let table_ptr: *const PageTable = virt as *const PageTable;
+        let table = unsafe { &*table_ptr };
 
         let entry = &table[index];
         frame = match entry.frame() {
             Ok(frame) => frame,
-            Err(FrameError::FrameNotPresent) => return None,
-            Err(FrameError::HugeFrame) => panic!("Huge frames not supported..."),
+            Err(_) => return None,
+            Err(_) => panic!("Huge frames not supported..."),
         };
+        virt = PHYSICAL_OFFSET + frame.start_address().as_u64();
     }
     Some(frame.start_address() + u64::from(addr.page_offset()))
-}*/
+}

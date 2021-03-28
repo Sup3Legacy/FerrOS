@@ -153,7 +153,7 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
     let elf = ElfFile::new(_TEST_PROGRAM).unwrap();
     for e in elf.section_iter() {
-        println!("{:?}", e);
+        println!("{:x?}", e);
     }
     //println!("{:?}", elf);
 
