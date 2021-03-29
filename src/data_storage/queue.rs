@@ -15,10 +15,7 @@ pub struct Queue<T> {
     poping: usize,  // the next element to pop is in data[max]
     empty: bool,    // to distinguish empty from full
 }
-impl<T> Queue<T>
-where
-    Option<T>: Copy,
-{
+impl<T> Queue<T> where Option<T>:Copy{
     /// Returns a new bounded queue, freshly initialized
     pub const fn new() -> Self {
         Queue {
@@ -66,10 +63,7 @@ where
         }
     }
 }
-impl<T> Default for Queue<T>
-where
-    Option<T>: Copy,
-{
+impl<T> Default for Queue<T> where Option<T>:Copy{
     fn default() -> Self {
         Self::new()
     }
