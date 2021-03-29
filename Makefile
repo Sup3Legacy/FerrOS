@@ -1,5 +1,5 @@
 all:
-	cargo run -- -boot c
+	cargo run --release
 
 clean:
 	cargo clean

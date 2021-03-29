@@ -4,7 +4,7 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
-use crate::debug;
+use crate::{debug, warningln};
 use crate::hardware;
 use crate::scheduler::process;
 use x86_64::registers::control::Cr3;
@@ -40,27 +40,27 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("read not implemented")
+    warningln!("read not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("write congrats you just called the good syscall!")
+    warningln!("write congrats you just called the good syscall!")
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     args.rax = 1;
-    debug!("test1");
+    warningln!("test1");
 }
 
 /// close file. arg0 : unsigned int fd
 extern "C" fn syscall_3_close(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("close not implemented")
+    warningln!("close not implemented")
 }
 
 extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("dup2 not implemented");
+    warningln!("dup2 not implemented");
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

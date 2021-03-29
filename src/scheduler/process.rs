@@ -14,12 +14,13 @@ use x86_64::{
 };
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{sections::ShType, ElfFile};
+use xmas_elf::{sections::ShType, sections::ShType_, ElfFile};
 
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
+use crate::data_storage::{random,queue::Queue};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -185,6 +186,13 @@ pub unsafe fn launch_first_process(
     }
 }
 
+/// Takes in a slice containing an ELF file,
+/// disassembles it and executes the program.
+///
+/// TODO : maybe use `number_of_block` as the maximum
+/// number of frames allocated to the program?
+///
+/// PROG_OFFSET is set arbitrary and may need some fine-tuning.
 pub unsafe fn disassemble_and_launch(
     code: &[u8],
     frame_allocator: &mut memory::BootInfoAllocator,
@@ -192,49 +200,51 @@ pub unsafe fn disassemble_and_launch(
     stack_size: u64,
 ) -> ! {
     let PROG_OFFSET = 0x8048000000;
+    // TODO maybe consider changing this
+    let addr_stack: u64 = 0x63fffffffff8;
+    // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
+    // We get the main entry point and mmake sure it is
+    // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
         xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
         _ => panic!("Expected a 64-bit ELF!"),
     };
+    // This allocates a new level-4 table
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         ID_TABLE[0].state = State::Runnable;
-        // TODO maybe consider changing this
-        let addr_stack: u64 = 0x63fffffffff8;
-        // Allocate frames for each section
+        // Loop over each section
         for section in elf.section_iter() {
+            // Characteristics of the section
             let address = section.address();
             let offset = section.offset();
             let size = section.size();
+            // Section debug
             println!(
                 "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-                address, offset, size, section.type_()
+                address,
+                offset,
+                size,
+                section.get_type()
             );
 
-            
-            if (address - offset) == 0 {
-                continue;
-            }
+            match section.get_type() {
+                Ok(ShType::Null) | Err(_) => continue,
+                Ok(_) => (),
+            };
 
             let _data = section.raw_data(&elf);
-            let data = transmute::<&[u8], &[u64]>(_data);
-            let mut prev_offset = Vec::new();
-            for _ in 0..(offset / 8) {
-                prev_offset.push(0_u64);
-            }
-            let mut last_offset = Vec::new();
-            for _ in 0..(512 - ((size + offset / 8) % 512)) {
-                last_offset.push(0_u64);
-            }
-            let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
-            assert_eq!(corrected_data.len() % 512, 0);
-            let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
-            let num_blocks = sliced.len();
+            let total_length = _data.len() as u64 + offset;
+            let num_blocks = total_length / 4096 + 1;
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
                 num_blocks * 512,
                 num_blocks
             );
+
+            // TODO : change this to respect the conventions
+            // For now, it is very probably wrong
+            // for certain writable segment types
             let flags = match section.get_type().unwrap() {
                 ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                 ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
@@ -243,6 +253,7 @@ pub unsafe fn disassemble_and_launch(
                     PageTableFlags::USER_ACCESSIBLE
                         | PageTableFlags::PRESENT
                         | PageTableFlags::NO_EXECUTE
+                        | PageTableFlags::WRITABLE
                 }
             };
             for i in 0..num_blocks {
@@ -263,11 +274,13 @@ pub unsafe fn disassemble_and_launch(
                     }
                 }
             }
-            match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + PROG_OFFSET), _data){
+            match memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(address + PROG_OFFSET),
+                _data,
+            ) {
                 Ok(()) => (),
-                Err(a) => errorln!(
-                    "{:?} at section : {:?}", a, section
-                )
+                Err(a) => errorln!("{:?} at section : {:?}", a, section),
             };
         }
         // Allocate frames for the stack
@@ -325,18 +338,20 @@ pub unsafe fn disassemble_and_launch(
 
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
+/// It is based on the x86 structure of the TSS.
 ///
 /// # Fields
-/// * `id` - the id of the process (unique)
-/// * `pid` - its parent's (i.e. the process that spawned it) id
-/// * `priority` - the priority, used by the scheduler
-/// * `quantum` - tyhe number of consecutive quanta the process has already been running for
+/// * `pid` - the id of the process (unique)
+/// * `ppid` - its parent's (i.e. the process that spawned it) id
+/// * `priority` - the priority, used by the scheduler (not used for now)
+/// * `quantum` - the number of consecutive quanta the process has already been running for
 /// * `cr3` - pointer to its 1st order VM table. TO DO : replace it with a PhysFrame or PhysAddr
-/// * `state` - state of the process
+/// * `rip` - current value of the instruction pointer
+/// * `state` - state of the process (e.g. Zombie, Runnable...)
 /// * `children` - vec containing the processes it spawned.
 /// * `value` - return value
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
-#[derive(Debug)]
+#[derive(Clone,Debug)]
 #[repr(C)]
 pub struct Process {
     pid: ID,
@@ -349,9 +364,8 @@ pub struct Process {
     //pub stack_frame: InterruptStackFrameValue,
     //pub registers: Registers,
     state: State,
-    //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
     children: Vec<ID>,
-    value: usize,
+    value: usize, // Return value => only meaningful when the process has finished, perhaps put it in the State?
     owner: u64,
 }
 
@@ -408,6 +422,82 @@ impl Process {
         } // /!\
         launch_asm(f, 0);
     }
+
+    #[naked]
+    unsafe fn save_state() {
+        asm!(
+            "push rax", // save rax
+            "mov rax, [rsp+24]", // rax <- rip
+            "mov [{0}], rax", // store rip
+            "mov rax, cr3", // rax <- cr3
+            "mov [{0}+8], rax", // store cr3
+            "pop rax",
+
+            "sub rsp, 8", // remove rip from the stack : we want to add it manually after
+
+            // continue to save the other registers
+            "push rbx",
+            "push rcx",
+            "push rdx",
+            "push rbp",
+            "push rsp",
+            "push rsi",
+            "push rdi",
+            "push r8",
+            "push r9",
+            "push r10",
+            "push r11",
+            "push r12",
+            "push r13",
+            "push r14",
+            "push r15",
+
+            // save the flags
+            "pushfq",
+            sym CURRENT_PROCESS,
+            options(noreturn)
+        );
+    }
+
+    #[naked]
+    unsafe fn load_state() {
+        asm!(
+            // restore flags
+            "popfq",
+
+            //restore registers
+            "pop r15",
+            "pop r14",
+            "pop r13",
+            "pop r12",
+            "pop r11",
+            "pop r10",
+            "pop r9",
+            "pop r8",
+            "pop rdi",
+            "pop rsi",
+            "pop rsp",
+            "pop rbp",
+            "pop rdx",
+            "pop rcx",
+            "pop rbx",
+
+            //restore cr3 (paging)
+            "mov rax, [{0} + 8]", // cr3
+            "mov cr3, rax",
+
+            // restore rip
+            "mov rax, [{0}]", // rip
+            "mov [rsp+8], rax",
+
+            // restore rax
+            "pop rax",
+
+            "ret",
+            sym CURRENT_PROCESS,
+            options(noreturn)
+        );
+    }
 }
 
 /// A process's priority, used by the scheduler
@@ -430,6 +520,7 @@ pub enum State {
 ///
 /// It's uniqueness throughout the system is ensured by the atomic `fetch_add` operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct ID(u64);
 
 impl ID {
@@ -501,10 +592,11 @@ static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
 
 pub static mut CURRENT_PROCESS: usize = 0;
 
-/// # Safety depends of the usage of the data !
+/// # Safety
+/// Depends of the usage of the data !
 /// From the number of cycles executed, returns the current process
 /// data structure (as mutable) and the next process to run one's (non mut)
-/// Beware of not doing any think on this data !
+/// Beware of not doing anything on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
     for (new, new_id) in ID_TABLE
         .iter()
@@ -532,7 +624,8 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
 }
 
-/// # Safety depending on the current process situation. Use knowingly
+/// # Safety
+/// Depending on the current process situation. Use knowingly
 /// Function to duplicate the current process into two childs
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
@@ -561,11 +654,15 @@ pub unsafe fn fork() -> u64 {
     pid
 }
 
-/// # It is irreversible, you just can't improve the priority of a process
+/// # Safety
+/// It is irreversible, you just can't improve the priority of a process
 /// This will set the priority of the current process to
 /// the given value. It can be only decreasing
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
+    if prio > MAX_PRIO {
+        return usize::MAX
+    }
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
         prio
@@ -573,3 +670,48 @@ pub unsafe fn set_priority(prio: usize) -> usize {
         usize::MAX
     }
 }
+
+fn next_priority_to_run() -> usize {
+    let mut ticket = random::random_u8();
+    // Look for the most significant non null bit in the ticket
+    let mut idx = 7;
+    while idx > 0 || ticket != 0 {
+        ticket <<= 1;
+        idx += 1;
+    }
+    MAX_PRIO-idx
+}
+
+const MAX_PRIO:usize = 8;
+static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    ];
+
+#[allow(dead_code)]
+ /// # Safety
+ /// Needs sane `WAITING_QUEUES`. Should be safe to use.
+ unsafe fn next_process_to_run() -> usize {
+    let mut prio = next_priority_to_run();
+    // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
+    while WAITING_QUEUES[prio].is_empty(){
+        prio -= 1; // need to check priority
+    }
+    let old_pid = CURRENT_PROCESS;
+    let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail");
+    let mut old_priority = ID_TABLE[old_pid].priority.0;
+    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0{
+        old_priority -= 1
+    }
+    if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
+        panic!("Too many processes want to run at the same priority!")
+    }
+    WAITING_QUEUES[old_priority].push(old_pid).expect("Scheduler massive fail");
+    new_pid
+ }

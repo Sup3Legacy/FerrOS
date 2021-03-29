@@ -907,7 +907,6 @@ pub unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysA
 unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
     //let (level_4_table_frame, _) = Cr3::read();
     let mut virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET).as_u64();
-    let page_table_ptr: *mut PageTable = virt as *mut PageTable;
 
     let table_indexes = [
         addr.p4_index(),
@@ -919,13 +918,12 @@ unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<Phy
 
     for &index in &table_indexes {
         let table_ptr: *const PageTable = virt as *const PageTable;
-        let table = unsafe { &*table_ptr };
+        let table = &*table_ptr;
 
         let entry = &table[index];
         frame = match entry.frame() {
             Ok(frame) => frame,
             Err(_) => return None,
-            Err(_) => panic!("Huge frames not supported..."),
         };
         virt = PHYSICAL_OFFSET + frame.start_address().as_u64();
     }
