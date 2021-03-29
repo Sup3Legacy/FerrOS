@@ -6,10 +6,10 @@ static mut RAND_SEED: u8 = 42_u8;
 pub fn random_u8() -> u8 {
     unsafe{
         asm!(
-            "lsr {0} 1",
+            "shr {0}, 1",
             "jc random_end",
-            "xor {0} 0xB8",
-            "label random_end",
+            "xor {0}, 0xB8",
+            "random_end:",
             inout(reg_byte) RAND_SEED
         );
         RAND_SEED
