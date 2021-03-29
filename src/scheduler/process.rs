@@ -208,28 +208,18 @@ pub unsafe fn disassemble_and_launch(
             let size = section.size();
             println!(
                 "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-                address, offset, size, section.type_()
+                address,
+                offset,
+                size,
+                section.type_()
             );
 
-            
-            if (address - offset) == 0 {
+            if address == offset {
                 continue;
             }
 
             let _data = section.raw_data(&elf);
-            let data = transmute::<&[u8], &[u64]>(_data);
-            let mut prev_offset = Vec::new();
-            for _ in 0..(offset / 8) {
-                prev_offset.push(0_u64);
-            }
-            let mut last_offset = Vec::new();
-            for _ in 0..(512 - ((size + offset / 8) % 512)) {
-                last_offset.push(0_u64);
-            }
-            let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
-            assert_eq!(corrected_data.len() % 512, 0);
-            let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
-            let num_blocks = sliced.len();
+            let num_blocks = (_data.len() as u64 + offset) / 4096 + 1;
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
                 num_blocks * 512,
@@ -263,11 +253,13 @@ pub unsafe fn disassemble_and_launch(
                     }
                 }
             }
-            match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + PROG_OFFSET), _data){
+            match memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(address + PROG_OFFSET),
+                _data,
+            ) {
                 Ok(()) => (),
-                Err(a) => errorln!(
-                    "{:?} at section : {:?}", a, section
-                )
+                Err(a) => errorln!("{:?} at section : {:?}", a, section),
             };
         }
         // Allocate frames for the stack
