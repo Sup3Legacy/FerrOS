@@ -8,6 +8,9 @@
 #![feature(abi_x86_interrupt)]
 #![feature(naked_functions)]
 #![feature(asm)]
+#![feature(const_btree_new)]
+#![feature(option_result_unwrap_unchecked)]
+#![feature(const_raw_ptr_deref)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
@@ -16,6 +19,7 @@ pub mod allocator;
 pub mod data_storage;
 pub mod filesystem;
 pub mod gdt;
+pub mod hardware;
 pub mod interrupts;
 pub mod keyboard;
 pub mod memory;
@@ -27,6 +31,10 @@ pub mod task;
 pub mod vga;
 
 extern crate alloc;
+
+pub static _TEST_PROGRAM: &[u8; 2360] = include_bytes!("test_program");
+
+pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -45,7 +53,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 }
 
 pub trait Testable {
-    fn run(&self) -> ();
+    fn run(&self);
 }
 
 impl<T> Testable for T
@@ -53,28 +61,30 @@ where
     T: Fn(),
 {
     fn run(&self) {
-        serial_print!("{}...\t", core::any::type_name::<T>());
+        print!("{}...\t", core::any::type_name::<T>());
         self();
-        serial_println!("\x1B[32m[ok]\x1B[0m");
+        println!("\x1B[32m[ok]\x1B[0m");
     }
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {
-    serial_println!("Running {} tests.", tests.len());
+    println!("Running {} tests.", tests.len());
     for test in tests {
         test.run();
     }
     exit_qemu(QemuExitCode::Success);
 }
 
+#[allow(clippy::empty_loop)]
 pub fn test_panic(_info: &PanicInfo) -> ! {
-    serial_println!("[failed]\nError: {}\n", _info);
+    println!("[failed]\nError: {}\n", _info);
     exit_qemu(QemuExitCode::Failed);
     loop {}
 }
 
 #[cfg(test)]
 #[no_mangle]
+#[allow(clippy::empty_loop)]
 pub extern "C" fn _start() -> ! {
     test_main();
     loop {}

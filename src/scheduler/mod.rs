@@ -1,5 +1,3 @@
-use alloc::collections::BTreeSet;
-
 pub mod process;
 
 /// Maximum number of co-existing processes.
@@ -10,4 +8,4 @@ const PROCESS_MAX_NUMBER: u64 = 32;
 
 /// Number of consecutive time slices a process can use
 /// before another one is executed
-const QUANTUM: u64 = 10;
+pub const QUANTUM: u64 = 20;

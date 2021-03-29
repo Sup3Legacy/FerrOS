@@ -1,9 +1,9 @@
 #!/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
-disque = open("disk.disk", "w")
+disque = open("disk.img", "w")
 
-n = 100
-l1 = 'a'*512
-l2 = "je suis Samuel"
-l2 = l2 + '-'*(512-len(l2))
-print(l1+l2+'a'*n*512,end="", file = disque)
+n = 4096
+l1 = [0]*512
+l2 = []
+l2 = l2 + [0]*(512-len(l2))
+print('a'*512*n ,end="", file = disque)
 disque.close()

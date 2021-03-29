@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
 #![feature(abi_x86_interrupt)]
@@ -13,8 +14,10 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
+use bit_field::BitArray;
 use core::panic::PanicInfo;
-use filesystem::ustar::MemFile;
+use lazy_static::lazy_static;
+
 // use os_test::println;  TODO
 //use core::task::Poll;
 use bootloader::{entry_point, BootInfo};
@@ -27,9 +30,14 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use crate::task::{executor::Executor, Task};
 use ferr_os::{
-    allocator, data_storage, filesystem, gdt, halt_loop, interrupts, keyboard, long_halt, memory,
-    print, println, serial, sound, task, test_panic, vga,
+    allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
+    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
+    test_panic, vga, warningln, _TEST_PROGRAM,
 };
+use x86_64::instructions::random::RdRand;
+use x86_64::registers::control::Cr3;
+use x86_64::structures::paging::PageTableFlags;
+use xmas_elf::ElfFile;
 
 extern crate alloc;
 
@@ -40,28 +48,83 @@ use alloc::string::String;
 /// This function is called on panic.
 #[cfg(not(test))]
 #[panic_handler]
+#[allow(unreachable_code)]
 fn panic(_info: &PanicInfo) -> ! {
-    println!("{}", _info);
+    errorln!("{}", _info);
+    hardware::power::shutdown();
     halt_loop();
+}
+
+#[naked]
+/// # Just don't call it
+/// Test function that is given to launcher
+/// It forks itselfs :
+/// - the father loops
+/// - the son shuts down the computer
+/// Result : SUCCESS :D
+pub unsafe extern "C" fn test_syscall() {
+    asm!(
+        "mov rax, 42",
+        "mov rax, 1", // syscall 1 == test (good syscall)
+        "int 80h",
+        "mov rax, 5", // syscall 5 == fork
+        "int 80h",
+        "loop:", // the fathers loops
+        "cmp rax, 0",
+        "jnz loop",
+        "mov rdi, rax",
+        "mov rax, 9", // syscall 9 == shutdown
+        "int 80h",
+        "ret",
+        options(noreturn)
+    )
 }
 
 /// # Initialization
 /// Initializes the configurations
 pub fn init(_boot_info: &'static BootInfo) {
+    initdebugln!();
+    println!("Ceci est simplement un debug :)");
+    warningln!("Ceci est un warning :|");
+    errorln!("Ceci est une erreur :(");
     gdt::init();
 
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { memory::BootInfoAllocator::init(&_boot_info.memory_map) };
-    allocator::init(&mut mapper, &mut frame_allocator).expect("Heap init failed :((");
+    unsafe {
+        memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            allocator::init(&mut mapper, frame_allocator).expect("Heap init failed :((");
+        } else {
+            panic!("Frame allocator wasn't initialized");
+        }
+    };
 
     // I/O Initialization
     keyboard::init();
-    vga::init();
+    //vga::init();
+
+    println!(":(");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
+    println!(":( :(");
+
+    long_halt(5);
+
+    println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
+
+    /* unsafe {
+        asm!(
+            "mov rdi, 42",
+            "mov rax, 9", "int 80h",);
+    }*/
+    debug!("{:?}", unsafe { hardware::clock::Time::get() });
+    //hardware::power::shutdown();
+    //loop {}
+    //errorln!("Ousp");
+    //filesystem::init();
 }
 
 // test taks, to move out of here
@@ -87,48 +150,28 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-    // Why is this not in the init function ?
+    let elf = ElfFile::new(_TEST_PROGRAM).unwrap();
+    for e in elf.section_iter() {
+        println!("{:?}", e);
+    }
+    //println!("{:?}", elf);
 
-    // quelques tests de drive
-    filesystem::disk_operations::init();
     unsafe {
-        filesystem::ustar::LBA_TABLE_GLOBAL.init();
+        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            scheduler::process::launch_first_process(
+                frame_allocator,
+                test_syscall as *const u8,
+                1,
+                2,
+            );
+        }
     }
-    let head = filesystem::ustar::Header {
-        file_type: filesystem::ustar::Type::Dir,
-        flags: filesystem::ustar::HeaderFlags {
-            user_owner: 12,
-            group_misc: 12,
-        },
-        name: ['#' as u8; 32],
-        user: filesystem::ustar::UGOID(71),
-        owner: filesystem::ustar::UGOID(89),
-        group: filesystem::ustar::UGOID(21),
-        parent_adress: filesystem::ustar::Adress { lba: 0, block: 0 },
-        length: 413,
-        blocks_number: 2,
-        mode: filesystem::ustar::FileMode::Short,
-        padding: [999999999; 10],
-        blocks: [filesystem::ustar::Adress { lba: 0, block: 0 }; 100],
-    };
-    let mut data: Vec<u16> = vec![];
-    for i in 0..413 {
-        data.push(i / 256 + 1);
-    }
-    let file = filesystem::ustar::MemFile { header: head, data };
-    file.write_to_disk();
-    println!("{:?}", unsafe {
-        filesystem::ustar::MemFile::read_from_disk(filesystem::ustar::Adress { lba: 0, block: 0 })
-            .data
-    });
-    // fin des tests
-
+    //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]
     test_main();
-
-    sound::beep();
     // Yet again, some ugly tests in main
+    println!(":( :( :(");
     programs::shell::main_shell();
     println!();
     for i in 0..5 {
@@ -138,16 +181,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         println!("{},", i);
     }
 
-    for i in 0..10000 {
-        print!("{}/1000000", i);
-        vga::write_back();
-    }
     println!();
 
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
-    vga::_print_at(2, 2, "loul");
     let mut executor = Executor::new();
     executor.spawn(Task::new(task_1()));
     executor.spawn(Task::new(task_2()));

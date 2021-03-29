@@ -1,4 +1,4 @@
-use crate::{print, println};
+use crate::println;
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::{ArrayQueue, PopError, PushError};
 use lazy_static::lazy_static;
@@ -7,7 +7,7 @@ use x86_64::instructions::port::Port;
 
 mod keyboard_layout;
 
-pub mod keyboard_interraction;
+pub mod keyboard_interaction;
 
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static KEY_QUEUE: OnceCell<ArrayQueue<keyboard_layout::KeyEvent>> = OnceCell::uninit();
@@ -27,7 +27,7 @@ pub struct ScancodeStream {
 
 pub fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
-        if let Err(_) = queue.push(scancode) {
+        if queue.push(scancode).is_err() {
             println!("Scancode queue full; dropping keyboard input.");
         }
     } else {
@@ -90,20 +90,27 @@ impl ScancodeStream {
     }
 }
 
-pub fn set_keyboard_responce(freq: u8, tim: u8) {
+impl Default for ScancodeStream {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[allow(clippy::empty_loop)]
+pub fn set_keyboard_responce(freq: u8, _tim: u8) {
     disable_keyboard();
     let mut command_port = Port::new(0x64);
     let mut data_port = Port::new(0x60);
     unsafe {
         let mut i2: u8 = 0xFE;
         while i2 == 0xFE {
-            command_port.write(0xF3 as u8);
+            command_port.write(0xF3_u8);
             i2 = data_port.read();
             println!("{}", i2);
         }
         i2 = 0xFE;
         while i2 == 0xFE {
-            data_port.write(0 as u8);
+            data_port.write(0_u8);
             command_port.write(freq);
             i2 = data_port.read();
             println!("{}", i2);
@@ -131,8 +138,8 @@ pub fn disable_keyboard() {
     let mut data_port = Port::new(0x60);
 
     unsafe {
-        data_port.write(0 as u8);
-        command_port.write(0xF5 as u8);
+        data_port.write(0_u8);
+        command_port.write(0xF5_u8);
         let i2: u8 = data_port.read();
         println!("disable : {}", i2);
     }
@@ -142,8 +149,8 @@ pub fn enable_keyboard() {
     let mut command_port = Port::new(0x64);
     let mut data_port = Port::new(0x60);
     unsafe {
-        data_port.write(0 as u8);
-        command_port.write(0xF4 as u8);
+        data_port.write(0_u8);
+        command_port.write(0xF4_u8);
         let i2: u8 = data_port.read();
         println!("{} = disable", i2);
     }

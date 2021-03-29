@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! Our own implementation of Interruption Descriptor Table Structure (inspired by X86_64 lib's one)
 
 use core::mem::size_of;
@@ -6,6 +8,7 @@ use x86_64::instructions::{
     tables::{lidt, DescriptorTablePointer},
 };
 //use x86_64::structures::gdt::SegmentSelector;
+use crate::println;
 use bit_field::BitField;
 use bitflags::bitflags;
 use core::fmt;
@@ -47,7 +50,8 @@ pub struct Idt {
     reserved_21_29: [Entry<HandlerFunc>; 9], // reserved
     pub security_exception: Entry<HandlerFuncWithErrorCode>,
     interrupt_31: Entry<HandlerFunc>, // reserved
-    pub interrupt_32_: [Entry<HandlerFunc>; SYSCALL_POSITION - 32],
+    pub timer: Entry<NakedCHandler>,
+    pub interrupt_33_: [Entry<HandlerFunc>; SYSCALL_POSITION - 33],
     pub syscall: Entry<SyscallFunc>,
     pub interrupt_post_syscall_: [Entry<HandlerFunc>; 255 - SYSCALL_POSITION],
 }
@@ -80,7 +84,8 @@ impl Idt {
             reserved_21_29: [Entry::missing(); 9],
             security_exception: Entry::missing(),
             interrupt_31: Entry::missing(),
-            interrupt_32_: [Entry::missing(); SYSCALL_POSITION - 32],
+            timer: Entry::missing(),
+            interrupt_33_: [Entry::missing(); SYSCALL_POSITION - 33],
             syscall: Entry::missing(),
             interrupt_post_syscall_: [Entry::missing(); 255 - SYSCALL_POSITION],
         }
@@ -94,6 +99,11 @@ impl Idt {
         };
 
         unsafe { lidt(&ptr) };
+    }
+}
+impl Default for Idt {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -124,7 +134,8 @@ impl Index<usize> for Idt {
             _i @ 21..=29 => panic!("access not allowed! It is reserved"),
             30 => panic!("wrong function type"),
             31 => panic!("access not allowed! It is reserved"),
-            i @ 32..=SYSCALL_POSITION_1 => &self.interrupt_32_[i - 32],
+            32 => panic!("wrong function type"),
+            i @ 33..=SYSCALL_POSITION_1 => &self.interrupt_33_[i - 33],
             SYSCALL_POSITION => panic!("wrong function type"),
             i @ SYSCALL_POSITION_2..=255 => &self.interrupt_post_syscall_[i - SYSCALL_POSITION - 1],
             _i => panic!("no such entry"),
@@ -157,7 +168,8 @@ impl IndexMut<usize> for Idt {
             _i @ 21..=29 => panic!("access not allowed! It is reserved"),
             30 => panic!("wrong function type"),
             31 => panic!("access not allowed! It is reserved"),
-            i @ 32..=SYSCALL_POSITION_1 => &mut self.interrupt_32_[i - 32],
+            32 => panic!("wrong function type"),
+            i @ 33..=SYSCALL_POSITION_1 => &mut self.interrupt_33_[i - 33],
             SYSCALL_POSITION => panic!("wrong function type"),
             i @ SYSCALL_POSITION_2..=255 => {
                 &mut self.interrupt_post_syscall_[i - SYSCALL_POSITION - 1]
@@ -186,6 +198,8 @@ pub type DivergingFuncWithErrorCode =
 /// Type for Syscalls (this is duplicated and it shouldn't)
 pub type SyscallFunc = extern "C" fn();
 
+pub type NakedCHandler = SyscallFunc; //HandlerFunc;//extern "C" fn();
+
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
 /// Entry options containing the options of the interrupt handler
@@ -209,9 +223,9 @@ impl EntryOptions {
     /// Change the present status
     pub fn set_present(&mut self, present: bool) -> &mut Self {
         if present {
-            self.0 = self.0 | (1 << 15);
+            self.0 |= 1 << 15;
         } else {
-            self.0 = self.0 & !(1 << 15);
+            self.0 &= !(1 << 15);
         }
         //self.0.set(15, present);
         self
@@ -229,7 +243,9 @@ impl EntryOptions {
         self
     }
 
-    /// Select the stack associated with the interruption
+    /// # The safety depends on the validity of the stack in the TSS
+    /// Select which stack to use in the TSS for this stack
+    /// By default won't switch stack at interrupt entry
     pub unsafe fn set_stack_index(&mut self, index: u16) -> &mut Self {
         self.0.set_bits(0..3, index + 1); // from 1 to 7
         self
@@ -269,10 +285,31 @@ impl<FunctionType> Entry<FunctionType> {
     }
 }
 
+#[allow(unused_macros)]
+macro_rules! createEntry {
+    ($name : ident) => {
+        impl Entry<$name> {
+            /// Set the handler function to the associated entry of the Interruption Descriptor Table
+            pub fn set_handler_fn(&mut self, handler: $name) -> &mut EntryOptions {
+                let handler = handler as usize;
+                self.pointer_low = handler as u16;
+                self.pointer_middle = (handler >> 16) as u16;
+                self.pointer_high = (handler >> 32) as u32;
+                self.gdt_selector = segmentation::cs().0;
+                self.options.set_present(true);
+                &mut self.options
+            }
+        }
+    };
+}
+
+//createEntry!(HandlerFunc);
+//createEntry!(HandlerFuncWithErrorCode);
+
 impl Entry<HandlerFunc> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: HandlerFunc) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -285,7 +322,7 @@ impl Entry<HandlerFunc> {
 impl Entry<HandlerFuncWithErrorCode> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: HandlerFuncWithErrorCode) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -298,7 +335,7 @@ impl Entry<HandlerFuncWithErrorCode> {
 impl Entry<DivergingFunc> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: DivergingFunc) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -311,7 +348,7 @@ impl Entry<DivergingFunc> {
 impl Entry<DivergingFuncWithErrorCode> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: DivergingFuncWithErrorCode) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -320,11 +357,14 @@ impl Entry<DivergingFuncWithErrorCode> {
         &mut self.options
     }
 }
+//createEntry!(DivergingFunc);
+//createEntry!(DivergingFuncWithErrorCode);
+//createEntry!(PageFaultHandler);
 
 impl Entry<PageFaultHandler> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: PageFaultHandler) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
@@ -337,15 +377,18 @@ impl Entry<PageFaultHandler> {
 impl Entry<SyscallFunc> {
     /// Set the handler function to the associated entry of the Interruption Descriptor Table
     pub fn set_handler_fn(&mut self, handler: SyscallFunc) -> &mut EntryOptions {
-        let handler = handler as u64;
+        let handler = handler as usize;
         self.pointer_low = handler as u16;
         self.pointer_middle = (handler >> 16) as u16;
         self.pointer_high = (handler >> 32) as u32;
         self.gdt_selector = segmentation::cs().0;
+        println!("syscall segment {}", self.gdt_selector);
         self.options.set_present(true);
         &mut self.options
     }
 }
+
+//createEntry!(NakedCHandler);
 
 bitflags! {
     #[repr(transparent)]
@@ -365,9 +408,15 @@ pub struct InterruptStackFrame {
 }
 
 impl InterruptStackFrame {
+    /// # Should be only called once to prevent aliasing.
     /// Get a mutable reference of the Interrupt Stack Frame's Value
     pub unsafe fn as_mut(&mut self) -> &mut InterruptStackFrameValue {
         &mut self.value
+    }
+
+    /// Get a copy of the Interrupt Stack Frame's Value
+    pub fn as_real(&mut self) -> InterruptStackFrameValue {
+        InterruptStackFrameValue { ..self.value }
     }
 }
 impl fmt::Debug for InterruptStackFrame {
@@ -386,6 +435,18 @@ pub struct InterruptStackFrameValue {
     pub cpu_flags: u64,
     pub stack_pointer: VirtAddr,
     pub stack_segment: u64,
+}
+
+impl InterruptStackFrameValue {
+    pub const fn empty() -> Self {
+        InterruptStackFrameValue {
+            instruction_pointer: VirtAddr::zero(),
+            code_segment: 0, // See GDT for value
+            cpu_flags: 0,
+            stack_pointer: VirtAddr::zero(),
+            stack_segment: 0, // See GDT for value
+        }
+    }
 }
 
 impl fmt::Debug for InterruptStackFrameValue {
