@@ -14,8 +14,4 @@ Cargo.lock
 
 /target
 
-/artifacts/*.aux
-/artifacts/*.bbl
-/artifacts/*.blg
-/artifacts/*.log
-/artifacts/*.bib
+/artifacts
