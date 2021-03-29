@@ -13,3 +13,9 @@ Cargo.lock
 #Added by cargo
 
 /target
+
+/artifacts/*.aux
+/artifacts/*.bbl
+/artifacts/*.blg
+/artifacts/*.log
+/artifacts/*.bib
