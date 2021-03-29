@@ -16,11 +16,11 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
 
+use crate::data_storage::{queue::Queue, random};
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
-use crate::data_storage::{random,queue::Queue};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -209,10 +209,12 @@ pub unsafe fn disassemble_and_launch(
             let size = section.size();
             println!(
                 "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-                address, offset, size, section.type_()
+                address,
+                offset,
+                size,
+                section.type_()
             );
 
-            
             if (address - offset) == 0 {
                 continue;
             }
@@ -264,11 +266,13 @@ pub unsafe fn disassemble_and_launch(
                     }
                 }
             }
-            match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + PROG_OFFSET), _data){
+            match memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(address + PROG_OFFSET),
+                _data,
+            ) {
                 Ok(()) => (),
-                Err(a) => errorln!(
-                    "{:?} at section : {:?}", a, section
-                )
+                Err(a) => errorln!("{:?} at section : {:?}", a, section),
             };
         }
         // Allocate frames for the stack
@@ -339,7 +343,7 @@ pub unsafe fn disassemble_and_launch(
 /// * `children` - vec containing the processes it spawned.
 /// * `value` - return value
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct Process {
     pid: ID,
@@ -410,7 +414,6 @@ impl Process {
         } // /!\
         launch_asm(f, 0);
     }
-    
 
     #[naked]
     unsafe fn save_state() {
@@ -421,9 +424,9 @@ impl Process {
             "mov rax, cr3", // rax <- cr3
             "mov [{0}+8], rax", // store cr3
             "pop rax",
-            
+
             "sub rsp, 8", // remove rip from the stack : we want to add it manually after
-            
+
             // continue to save the other registers
             "push rbx",
             "push rcx",
@@ -440,22 +443,20 @@ impl Process {
             "push r13",
             "push r14",
             "push r15",
-            
+
             // save the flags
             "pushfq",
             sym CURRENT_PROCESS,
             options(noreturn)
         );
     }
-    
-    
-    
+
     #[naked]
     unsafe fn load_state() {
         asm!(
             // restore flags
             "popfq",
-            
+
             //restore registers
             "pop r15",
             "pop r14",
@@ -472,18 +473,18 @@ impl Process {
             "pop rdx",
             "pop rcx",
             "pop rbx",
-            
+
             //restore cr3 (paging)
             "mov rax, [{0} + 8]", // cr3
             "mov cr3, rax",
-            
+
             // restore rip
             "mov rax, [{0}]", // rip
             "mov [rsp+8], rax",
-            
+
             // restore rax
             "pop rax",
-            
+
             "ret",
             sym CURRENT_PROCESS,
             options(noreturn)
@@ -652,7 +653,7 @@ pub unsafe fn fork() -> u64 {
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
     if prio > MAX_PRIO {
-        return usize::MAX
+        return usize::MAX;
     }
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
@@ -670,11 +671,11 @@ fn next_priority_to_run() -> usize {
         ticket <<= 1;
         idx += 1;
     }
-    MAX_PRIO-idx
+    MAX_PRIO - idx
 }
 
-const MAX_PRIO:usize = 8;
-static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
+const MAX_PRIO: usize = 8;
+static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
     Queue::new(),
@@ -683,26 +684,28 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
     Queue::new(),
-    ];
+];
 
 #[allow(dead_code)]
- /// # Safety
- /// Needs sane `WAITING_QUEUES`. Should be safe to use.
- unsafe fn next_process_to_run() -> usize {
+/// # Safety
+/// Needs sane `WAITING_QUEUES`. Should be safe to use.
+unsafe fn next_process_to_run() -> usize {
     let mut prio = next_priority_to_run();
     // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
-    while WAITING_QUEUES[prio].is_empty(){
+    while WAITING_QUEUES[prio].is_empty() {
         prio -= 1; // need to check priority
     }
     let old_pid = CURRENT_PROCESS;
     let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail");
     let mut old_priority = ID_TABLE[old_pid].priority.0;
-    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0{
+    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0 {
         old_priority -= 1
     }
     if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
         panic!("Too many processes want to run at the same priority!")
     }
-    WAITING_QUEUES[old_priority].push(old_pid).expect("Scheduler massive fail");
+    WAITING_QUEUES[old_priority]
+        .push(old_pid)
+        .expect("Scheduler massive fail");
     new_pid
- }
+}
