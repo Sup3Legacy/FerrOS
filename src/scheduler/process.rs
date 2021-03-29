@@ -14,7 +14,8 @@ use x86_64::{
 };
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{sections::ShType, ElfFile};
+use xmas_elf::{sections::ShType, sections::ShType_, ElfFile};
+
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
@@ -185,6 +186,13 @@ pub unsafe fn launch_first_process(
     }
 }
 
+/// Takes in a slice containing an ELF file,
+/// disassembles it and executes the program.
+///
+/// TODO : maybe use `number_of_block` as the maximum
+/// number of frames allocated to the program?
+///
+/// PROG_OFFSET is set arbitrary and may need some fine-tuning.
 pub unsafe fn disassemble_and_launch(
     code: &[u8],
     frame_allocator: &mut memory::BootInfoAllocator,
@@ -192,51 +200,51 @@ pub unsafe fn disassemble_and_launch(
     stack_size: u64,
 ) -> ! {
     let PROG_OFFSET = 0x8048000000;
+    // TODO maybe consider changing this
+    let addr_stack: u64 = 0x63fffffffff8;
+    // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
+    // We get the main entry point and mmake sure it is
+    // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
         xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
         _ => panic!("Expected a 64-bit ELF!"),
     };
+    // This allocates a new level-4 table
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         ID_TABLE[0].state = State::Runnable;
-        // TODO maybe consider changing this
-        let addr_stack: u64 = 0x63fffffffff8;
-        // Allocate frames for each section
+        // Loop over each section
         for section in elf.section_iter() {
+            // Characteristics of the section
             let address = section.address();
             let offset = section.offset();
             let size = section.size();
+            // Section debug
             println!(
                 "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
                 address,
                 offset,
                 size,
-                section.type_()
+                section.get_type()
             );
 
-            if (address - offset) == 0 {
-                continue;
-            }
+            match section.get_type() {
+                Ok(ShType::Null) | Err(_) => continue,
+                Ok(_) => (),
+            };
 
             let _data = section.raw_data(&elf);
-            let data = transmute::<&[u8], &[u64]>(_data);
-            let mut prev_offset = Vec::new();
-            for _ in 0..(offset / 8) {
-                prev_offset.push(0_u64);
-            }
-            let mut last_offset = Vec::new();
-            for _ in 0..(512 - ((size + offset / 8) % 512)) {
-                last_offset.push(0_u64);
-            }
-            let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
-            assert_eq!(corrected_data.len() % 512, 0);
-            let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
-            let num_blocks = sliced.len();
+            let total_length = _data.len() as u64 + offset;
+            let num_blocks = total_length / 4096 + 1;
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
                 num_blocks * 512,
                 num_blocks
             );
+
+            // TODO : change this to respect the conventions
+            // For now, it is very probably wrong
+            // for certain writable segment types
             let flags = match section.get_type().unwrap() {
                 ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                 ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
@@ -245,6 +253,7 @@ pub unsafe fn disassemble_and_launch(
                     PageTableFlags::USER_ACCESSIBLE
                         | PageTableFlags::PRESENT
                         | PageTableFlags::NO_EXECUTE
+                        | PageTableFlags::WRITABLE
                 }
             };
             for i in 0..num_blocks {
