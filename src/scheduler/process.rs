@@ -352,7 +352,7 @@ pub struct Process {
     state: State,
     //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
     children: Vec<ID>,
-    value: usize,
+    value: usize, // Return value => only meaningful when the process has finished, perhaps put it in the State?
     owner: u64,
 }
 
@@ -506,7 +506,7 @@ pub static mut CURRENT_PROCESS: usize = 0;
 /// Depends of the usage of the data !
 /// From the number of cycles executed, returns the current process
 /// data structure (as mutable) and the next process to run one's (non mut)
-/// Beware of not doing any think on this data !
+/// Beware of not doing anything on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
     for (new, new_id) in ID_TABLE
         .iter()
