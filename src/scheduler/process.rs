@@ -1,20 +1,13 @@
 use super::PROCESS_MAX_NUMBER;
 
 use alloc::vec::Vec;
-use core::{
-    convert::TryInto,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
-use core::{mem::transmute, todo};
 use x86_64::structures::paging::PageTableFlags;
-use x86_64::{
-    registers::control::{Cr3, Cr3Flags},
-    structures::paging::Page,
-};
+use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{sections::ShType, sections::ShType_, ElfFile};
+use xmas_elf::{sections::ShType, ElfFile};
 
 use crate::errorln;
 use crate::hardware;
@@ -193,13 +186,16 @@ pub unsafe fn launch_first_process(
 /// number of frames allocated to the program?
 ///
 /// PROG_OFFSET is set arbitrary and may need some fine-tuning.
+/// # Safety
+/// TODO
+#[allow(clippy::empty_loop)]
 pub unsafe fn disassemble_and_launch(
     code: &[u8],
     frame_allocator: &mut memory::BootInfoAllocator,
-    number_of_block: u64,
+    _number_of_block: u64,
     stack_size: u64,
 ) -> ! {
-    let PROG_OFFSET = 0x8048000000;
+    const PROG_OFFSET:u64 = 0x8048000000;
     // TODO maybe consider changing this
     let addr_stack: u64 = 0x63fffffffff8;
     // We get the `ElfFile` from the raw slice
@@ -423,81 +419,81 @@ impl Process {
         launch_asm(f, 0);
     }
 
-    #[naked]
-    unsafe fn save_state() {
-        asm!(
-            "push rax", // save rax
-            "mov rax, [rsp+24]", // rax <- rip
-            "mov [{0}], rax", // store rip
-            "mov rax, cr3", // rax <- cr3
-            "mov [{0}+8], rax", // store cr3
-            "pop rax",
-
-            "sub rsp, 8", // remove rip from the stack : we want to add it manually after
-
-            // continue to save the other registers
-            "push rbx",
-            "push rcx",
-            "push rdx",
-            "push rbp",
-            "push rsp",
-            "push rsi",
-            "push rdi",
-            "push r8",
-            "push r9",
-            "push r10",
-            "push r11",
-            "push r12",
-            "push r13",
-            "push r14",
-            "push r15",
-
-            // save the flags
-            "pushfq",
-            sym CURRENT_PROCESS,
-            options(noreturn)
-        );
-    }
-
-    #[naked]
-    unsafe fn load_state() {
-        asm!(
-            // restore flags
-            "popfq",
-
-            //restore registers
-            "pop r15",
-            "pop r14",
-            "pop r13",
-            "pop r12",
-            "pop r11",
-            "pop r10",
-            "pop r9",
-            "pop r8",
-            "pop rdi",
-            "pop rsi",
-            "pop rsp",
-            "pop rbp",
-            "pop rdx",
-            "pop rcx",
-            "pop rbx",
-
-            //restore cr3 (paging)
-            "mov rax, [{0} + 8]", // cr3
-            "mov cr3, rax",
-
-            // restore rip
-            "mov rax, [{0}]", // rip
-            "mov [rsp+8], rax",
-
-            // restore rax
-            "pop rax",
-
-            "ret",
-            sym CURRENT_PROCESS,
-            options(noreturn)
-        );
-    }
+//     #[naked]
+//     unsafe fn save_state() {
+//         asm!(
+//             "push rax", // save rax
+//             "mov rax, [rsp+24]", // rax <- rip
+//             "mov [{0}], rax", // store rip
+//             "mov rax, cr3", // rax <- cr3
+//             "mov [{0}+8], rax", // store cr3
+//             "pop rax",
+// 
+//             "sub rsp, 8", // remove rip from the stack : we want to add it manually after
+// 
+//             // continue to save the other registers
+//             "push rbx",
+//             "push rcx",
+//             "push rdx",
+//             "push rbp",
+//             "push rsp",
+//             "push rsi",
+//             "push rdi",
+//             "push r8",
+//             "push r9",
+//             "push r10",
+//             "push r11",
+//             "push r12",
+//             "push r13",
+//             "push r14",
+//             "push r15",
+// 
+//             // save the flags
+//             "pushfq",
+//             sym CURRENT_PROCESS,
+//             options(noreturn)
+//         );
+//     }
+// 
+//     #[naked]
+//     unsafe fn load_state() {
+//         asm!(
+//             // restore flags
+//             "popfq",
+// 
+//             //restore registers
+//             "pop r15",
+//             "pop r14",
+//             "pop r13",
+//             "pop r12",
+//             "pop r11",
+//             "pop r10",
+//             "pop r9",
+//             "pop r8",
+//             "pop rdi",
+//             "pop rsi",
+//             "pop rsp",
+//             "pop rbp",
+//             "pop rdx",
+//             "pop rcx",
+//             "pop rbx",
+// 
+//             //restore cr3 (paging)
+//             "mov rax, [{0} + 8]", // cr3
+//             "mov cr3, rax",
+// 
+//             // restore rip
+//             "mov rax, [{0}]", // rip
+//             "mov [rsp+8], rax",
+// 
+//             // restore rax
+//             "pop rax",
+// 
+//             "ret",
+//             sym CURRENT_PROCESS,
+//             options(noreturn)
+//         );
+//     }
 }
 
 /// A process's priority, used by the scheduler
@@ -618,7 +614,8 @@ pub fn get_current() -> &'static Process {
     unsafe { &ID_TABLE[CURRENT_PROCESS] }
 }
 
-/// # Safety depends on the usage. May cause aliasing
+/// # Safety
+/// Depends on the usage. May cause aliasing
 /// Returns the current process data structure as mutable
 pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
