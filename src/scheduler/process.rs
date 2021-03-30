@@ -512,6 +512,7 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
 /// Function to duplicate the current process into two childs
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
+/// ? Shouldn't this return an `ID`, instead of a `u64`?
 pub unsafe fn fork() -> u64 {
     let mut son = Process::create_new(
         ID_TABLE[CURRENT_PROCESS].pid,
