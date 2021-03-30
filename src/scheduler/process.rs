@@ -489,19 +489,10 @@ pub static mut CURRENT_PROCESS: usize = 0;
 /// data structure (as mutable) and the next process to run one's (non mut)
 /// Beware of not doing anything on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
-    for (new, new_id) in ID_TABLE
-        .iter()
-        .enumerate()
-        .take(PROCESS_MAX_NUMBER as usize)
-    {
-        if new != CURRENT_PROCESS && new_id.state == State::Runnable {
-            let old = CURRENT_PROCESS;
-            CURRENT_PROCESS = new;
-            println!("{} <-> {}", old, new);
-            return (&new_id, &mut ID_TABLE[old]);
-        }
-    }
-    (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
+    let old_pid = CURRENT_PROCESS;
+    let new_pid = next_pid_to_run();
+    CURRENT_PROCESS = new_pid;
+    (&ID_TABLE[new_pid], &mut ID_TABLE[old_pid])
 }
 
 /// Returns the current process data structure as read only
@@ -613,9 +604,3 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
     // </debug>
     new_pid
  }
-
-#[allow(dead_code)]
-fn new_process_to_run() -> Process {
-    let pid = unsafe{ next_pid_to_run() };
-    unsafe{ID_TABLE[pid]}
-}
