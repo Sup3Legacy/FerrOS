@@ -1,17 +1,9 @@
 use super::PROCESS_MAX_NUMBER;
 
-use alloc::vec::Vec;
-use core::{
-    convert::TryInto,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
-use core::{mem::transmute, todo};
 use x86_64::structures::paging::PageTableFlags;
-use x86_64::{
-    registers::control::{Cr3, Cr3Flags},
-    structures::paging::Page,
-};
+use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
@@ -20,6 +12,8 @@ use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
+use crate::data_storage::{random,queue::Queue};
+use crate::alloc::collections::{BTreeMap,BTreeSet};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -120,7 +114,7 @@ pub unsafe fn launch_first_process(
     code_address: *const u8,
     number_of_block: u64,
     stack_size: u64,
-) -> ! {
+    ) -> ! {
     ID_TABLE[0].state = State::Runnable;
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         // addresses telling where the code and the stack starts
@@ -185,56 +179,68 @@ pub unsafe fn launch_first_process(
     }
 }
 
+/// Takes in a slice containing an ELF file,
+/// disassembles it and executes the program.
+///
+/// TODO : maybe use `number_of_block` as the maximum
+/// number of frames allocated to the program?
+///
+/// PROG_OFFSET is set arbitrary and may need some fine-tuning.
+/// # Safety
+/// TODO
+#[allow(clippy::empty_loop)]
 pub unsafe fn disassemble_and_launch(
     code: &[u8],
     frame_allocator: &mut memory::BootInfoAllocator,
-    number_of_block: u64,
+    _number_of_block: u64,
     stack_size: u64,
 ) -> ! {
-    let PROG_OFFSET = 0x8048000000;
+    const PROG_OFFSET:u64 = 0x8048000000;
+    // TODO maybe consider changing this
+    let addr_stack: u64 = 0x63fffffffff8;
+    // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
+    // We get the main entry point and mmake sure it is
+    // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
         xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
         _ => panic!("Expected a 64-bit ELF!"),
     };
+    // This allocates a new level-4 table
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         ID_TABLE[0].state = State::Runnable;
-        // TODO maybe consider changing this
-        let addr_stack: u64 = 0x63fffffffff8;
-        // Allocate frames for each section
+        // Loop over each section
         for section in elf.section_iter() {
+            // Characteristics of the section
             let address = section.address();
             let offset = section.offset();
             let size = section.size();
+            // Section debug
             println!(
                 "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-                address, offset, size, section.type_()
+                address,
+                offset,
+                size,
+                section.get_type()
             );
 
-            
-            if (address - offset) == 0 {
-                continue;
-            }
+            match section.get_type() {
+                Ok(ShType::Null) | Err(_) => continue,
+                Ok(_) => (),
+            };
 
             let _data = section.raw_data(&elf);
-            let data = transmute::<&[u8], &[u64]>(_data);
-            let mut prev_offset = Vec::new();
-            for _ in 0..(offset / 8) {
-                prev_offset.push(0_u64);
-            }
-            let mut last_offset = Vec::new();
-            for _ in 0..(512 - ((size + offset / 8) % 512)) {
-                last_offset.push(0_u64);
-            }
-            let corrected_data = [&prev_offset[..], data, &last_offset[..]].concat();
-            assert_eq!(corrected_data.len() % 512, 0);
-            let sliced: &[[u64; 512]] = corrected_data.as_chunks_unchecked();
-            let num_blocks = sliced.len();
+            let total_length = _data.len() as u64 + offset;
+            let num_blocks = total_length / 4096 + 1;
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
                 num_blocks * 512,
                 num_blocks
             );
+
+            // TODO : change this to respect the conventions
+            // For now, it is very probably wrong
+            // for certain writable segment types
             let flags = match section.get_type().unwrap() {
                 ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                 ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
@@ -243,6 +249,7 @@ pub unsafe fn disassemble_and_launch(
                     PageTableFlags::USER_ACCESSIBLE
                         | PageTableFlags::PRESENT
                         | PageTableFlags::NO_EXECUTE
+                        | PageTableFlags::WRITABLE
                 }
             };
             for i in 0..num_blocks {
@@ -263,11 +270,13 @@ pub unsafe fn disassemble_and_launch(
                     }
                 }
             }
-            match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + PROG_OFFSET), _data){
+            match memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(address + PROG_OFFSET),
+                _data,
+            ) {
                 Ok(()) => (),
-                Err(a) => errorln!(
-                    "{:?} at section : {:?}", a, section
-                )
+                Err(a) => errorln!("{:?} at section : {:?}", a, section),
             };
         }
         // Allocate frames for the stack
@@ -302,41 +311,21 @@ pub unsafe fn disassemble_and_launch(
     loop {}
 }
 
-/*
-    mov rsp, rdi
-    pop rbx
-    pop rcx
-    pop rbp
-    pop r11
-    pop r12
-    pop r13
-    pop r14
-    pop r15
-    pop r9
-    pop r8
-    pop r10
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    sti
-    iretq
-*/
-
 /// Main structure of a process.
 /// It contains all informations about a process and its operating frame.
+/// It is based on the x86 structure of the TSS.
 ///
 /// # Fields
-/// * `id` - the id of the process (unique)
-/// * `pid` - its parent's (i.e. the process that spawned it) id
-/// * `priority` - the priority, used by the scheduler
-/// * `quantum` - tyhe number of consecutive quanta the process has already been running for
+/// * `pid` - the id of the process (unique)
+/// * `ppid` - its parent's (i.e. the process that spawned it) id
+/// * `priority` - the priority, used by the scheduler (not used for now)
+/// * `quantum` - the number of consecutive quanta the process has already been running for
 /// * `cr3` - pointer to its 1st order VM table. TO DO : replace it with a PhysFrame or PhysAddr
-/// * `state` - state of the process
-/// * `children` - vec containing the processes it spawned.
-/// * `value` - return value
+/// * `cr3f` - cr3 flags ???
+/// * `rip` - current value of the instruction pointer
+/// * `state` - state of the process (e.g. Zombie, Runnable...)
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
-#[derive(Debug)]
+#[derive(Copy,Clone,Debug)]
 #[repr(C)]
 pub struct Process {
     pid: ID,
@@ -346,30 +335,25 @@ pub struct Process {
     pub cr3: PhysAddr,
     pub cr3f: Cr3Flags,
     pub rsp: u64, // every registers are saved on the stack
-    //pub stack_frame: InterruptStackFrameValue,
-    //pub registers: Registers,
     state: State,
-    //  children: Vec<Mutex<Process>>, // Maybe better to just store ID's
-    children: Vec<ID>,
-    value: usize,
     owner: u64,
 }
 
 impl Process {
     pub fn create_new(parent: ID, priority: Priority, owner: u64) -> Self {
+        let new_pid = ID::new();
+        unsafe{
+            CHILDREN.insert(new_pid,BTreeSet::new());
+        }
         Self {
-            pid: ID::new(),
+            pid: new_pid,
             ppid: parent,
             priority,
             quantum: 0_u64,
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
             rsp: 0,
-            //stack_frame: InterruptStackFrameValue::empty(),
-            //registers: Registers::new(),
             state: State::Runnable,
-            children: Vec::new(),
-            value: 0,
             owner,
         }
     }
@@ -383,20 +367,22 @@ impl Process {
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
             rsp: 0,
-            //stack_frame: InterruptStackFrameValue::empty(),
-            //registers: Registers::new(),
             state: State::SlotAvailable,
-            children: Vec::new(),
-            value: 0,
             owner: 0,
         }
     }
 
-    pub fn spawn(&mut self, priority: Priority) -> &ID {
+    /// Creates a new process and set it as a child of `self`.
+    /// `self` inherits a new child.
+    /// `spawn` returns the PID of the child that is newly created.
+    pub fn spawn(self, priority: Priority) -> ID {
         // -> &Mutex<Self> {
         let child = Process::create_new(self.pid, priority, self.owner);
-        self.children.push(child.pid); //Mutex::new(child));
-        &(self.children[self.children.len() - 1])
+        unsafe{
+            CHILDREN.entry(self.pid)
+                    .and_modify(|set| {set.insert(child.pid);});
+            child.pid
+        }
     }
 
     #[allow(clippy::empty_loop)]
@@ -408,7 +394,11 @@ impl Process {
         } // /!\
         launch_asm(f, 0);
     }
+
 }
+
+// Keeps track of the children of the processes, in order to keep the Process struct on the stack
+static mut CHILDREN : BTreeMap<ID,BTreeSet<ID>> = BTreeMap::new();
 
 /// A process's priority, used by the scheduler
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -419,7 +409,7 @@ pub struct Priority(usize);
 pub enum State {
     Runnable,
     Running,
-    Zombie,
+    Zombie(usize),
     SleepInterruptible,
     SleepUninterruptible,
     Stopped,
@@ -428,23 +418,15 @@ pub enum State {
 
 /// A process's ID.
 ///
-/// It's uniqueness throughout the system is ensured by the atomic `fetch_add` operation.
+/// Its uniqueness throughout the system is ensured by the atomic `fetch_add` operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct ID(u64);
 
 impl ID {
     /// Returns a fresh ID. It uses an atomic operation to make sure no two processes can have the same id.
     ///
     /// For now, a process's id isn't freed when it exits.
-    pub fn new_old() -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        let new = NEXT_ID.fetch_add(1, Ordering::Relaxed); // Maybe better to reallow previous numbers
-        if new >= PROCESS_MAX_NUMBER {
-            panic!("Reached maximum number of processes!");
-        }
-        Self(new)
-    }
-
     pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         for _i in 0..PROCESS_MAX_NUMBER {
@@ -501,24 +483,16 @@ static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
 
 pub static mut CURRENT_PROCESS: usize = 0;
 
-/// # Safety depends of the usage of the data !
+/// # Safety
+/// Depends of the usage of the data !
 /// From the number of cycles executed, returns the current process
 /// data structure (as mutable) and the next process to run one's (non mut)
-/// Beware of not doing any think on this data !
+/// Beware of not doing anything on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
-    for (new, new_id) in ID_TABLE
-        .iter()
-        .enumerate()
-        .take(PROCESS_MAX_NUMBER as usize)
-    {
-        if new != CURRENT_PROCESS && new_id.state == State::Runnable {
-            let old = CURRENT_PROCESS;
-            CURRENT_PROCESS = new;
-            println!("{} <-> {}", old, new);
-            return (&new_id, &mut ID_TABLE[old]);
-        }
-    }
-    (&ID_TABLE[CURRENT_PROCESS], &mut ID_TABLE[CURRENT_PROCESS])
+    let old_pid = CURRENT_PROCESS;
+    let new_pid = next_pid_to_run();
+    CURRENT_PROCESS = new_pid;
+    (&ID_TABLE[new_pid], &mut ID_TABLE[old_pid])
 }
 
 /// Returns the current process data structure as read only
@@ -526,13 +500,15 @@ pub fn get_current() -> &'static Process {
     unsafe { &ID_TABLE[CURRENT_PROCESS] }
 }
 
-/// # Safety depends on the usage. May cause aliasing
+/// # Safety
+/// Depends on the usage. May cause aliasing
 /// Returns the current process data structure as mutable
 pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
 }
 
-/// # Safety depending on the current process situation. Use knowingly
+/// # Safety
+/// Depending on the current process situation. Use knowingly
 /// Function to duplicate the current process into two childs
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
@@ -561,11 +537,15 @@ pub unsafe fn fork() -> u64 {
     pid
 }
 
-/// # It is irreversible, you just can't improve the priority of a process
+/// # Safety
+/// It is irreversible, you just can't improve the priority of a process
 /// This will set the priority of the current process to
 /// the given value. It can be only decreasing
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
+    if prio > MAX_PRIO {
+        return usize::MAX
+    }
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
         prio
@@ -573,3 +553,54 @@ pub unsafe fn set_priority(prio: usize) -> usize {
         usize::MAX
     }
 }
+
+fn next_priority_to_run() -> usize {
+    let mut ticket = random::random_u8();
+    // Look for the most significant non null bit in the ticket
+    let mut idx = 7;
+    while idx > 0 || ticket != 0 {
+        ticket <<= 1;
+        idx += 1;
+    }
+    MAX_PRIO-idx
+}
+
+const MAX_PRIO:usize = 8;
+static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    Queue::new(),
+    ];
+
+ /// # Safety
+ /// Needs sane `WAITING_QUEUES`. Should be safe to use.
+ unsafe fn next_pid_to_run() -> usize {
+    let mut prio = next_priority_to_run();
+    // <debug>
+    println!("Priority chosen: {}", prio);
+    // </debug>
+    // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
+    while WAITING_QUEUES[prio].is_empty(){
+        prio -= 1; // need to check priority
+    }
+    let old_pid = CURRENT_PROCESS;
+    let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail");
+    let mut old_priority = ID_TABLE[old_pid].priority.0;
+    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0{
+        old_priority -= 1
+    }
+    if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
+        panic!("Too many processes want to run at the same priority!")
+    }
+    WAITING_QUEUES[old_priority].push(old_pid).expect("Scheduler massive fail");
+    // <debug>
+    println!("Priority ran: {}", prio);
+    println!("Old PID: {},\tNew PID: {}",old_pid,new_pid);
+    // </debug>
+    new_pid
+ }

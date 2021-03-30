@@ -2,6 +2,7 @@
 
 const MAX_SIZE: usize = 32;
 
+#[derive(Debug)]
 pub enum Error {
     Overflow,
     Underflow,
@@ -14,9 +15,9 @@ pub struct Queue<T> {
     poping: usize,  // the next element to pop is in data[max]
     empty: bool,    // to distinguish empty from full
 }
-impl<T: Copy> Queue<T> {
+impl<T> Queue<T> where Option<T>:Copy{
     /// Returns a new bounded queue, freshly initialized
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Queue {
             data: [None; MAX_SIZE],
             pushing: 0,
@@ -62,7 +63,7 @@ impl<T: Copy> Queue<T> {
         }
     }
 }
-impl<T: Copy> Default for Queue<T> {
+impl<T> Default for Queue<T> where Option<T>:Copy{
     fn default() -> Self {
         Self::new()
     }
