@@ -1,6 +1,5 @@
 use super::PROCESS_MAX_NUMBER;
 
-use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
 use x86_64::structures::paging::PageTableFlags;
@@ -14,6 +13,7 @@ use crate::hardware;
 use crate::memory;
 use crate::println;
 use crate::data_storage::{random,queue::Queue};
+use crate::alloc::collections::{BTreeMap,BTreeSet};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -114,7 +114,7 @@ pub unsafe fn launch_first_process(
     code_address: *const u8,
     number_of_block: u64,
     stack_size: u64,
-) -> ! {
+    ) -> ! {
     ID_TABLE[0].state = State::Runnable;
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         // addresses telling where the code and the stack starts
@@ -347,7 +347,7 @@ pub unsafe fn disassemble_and_launch(
 /// * `children` - vec containing the processes it spawned.
 /// * `value` - return value
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
-#[derive(Clone,Debug)]
+#[derive(Copy,Clone,Debug)]
 #[repr(C)]
 pub struct Process {
     pid: ID,
@@ -360,15 +360,19 @@ pub struct Process {
     //pub stack_frame: InterruptStackFrameValue,
     //pub registers: Registers,
     state: State,
-    children: Vec<ID>,
+    //children: Vec<ID>,
     value: usize, // Return value => only meaningful when the process has finished, perhaps put it in the State?
     owner: u64,
 }
 
 impl Process {
     pub fn create_new(parent: ID, priority: Priority, owner: u64) -> Self {
+        let new_pid = ID::new();
+        unsafe{
+            CHILDREN.insert(new_pid,BTreeSet::new());
+        }
         Self {
-            pid: ID::new(),
+            pid: new_pid,
             ppid: parent,
             priority,
             quantum: 0_u64,
@@ -378,7 +382,7 @@ impl Process {
             //stack_frame: InterruptStackFrameValue::empty(),
             //registers: Registers::new(),
             state: State::Runnable,
-            children: Vec::new(),
+            // children: Vec::new(),
             value: 0,
             owner,
         }
@@ -396,17 +400,23 @@ impl Process {
             //stack_frame: InterruptStackFrameValue::empty(),
             //registers: Registers::new(),
             state: State::SlotAvailable,
-            children: Vec::new(),
+            // children: Vec::new(),
             value: 0,
             owner: 0,
         }
     }
 
-    pub fn spawn(&mut self, priority: Priority) -> &ID {
+    /// Creates a new process and set it as a child of `self`.
+    /// `self` inherits a new child.
+    /// `spawn` returns the PID of the child that is newly created.
+    pub fn spawn(self, priority: Priority) -> ID {
         // -> &Mutex<Self> {
         let child = Process::create_new(self.pid, priority, self.owner);
-        self.children.push(child.pid); //Mutex::new(child));
-        &(self.children[self.children.len() - 1])
+        unsafe{
+            CHILDREN.entry(self.pid)
+                    .and_modify(|set| {set.insert(child.pid);});
+            child.pid
+        }
     }
 
     #[allow(clippy::empty_loop)]
@@ -419,82 +429,87 @@ impl Process {
         launch_asm(f, 0);
     }
 
-//     #[naked]
-//     unsafe fn save_state() {
-//         asm!(
-//             "push rax", // save rax
-//             "mov rax, [rsp+24]", // rax <- rip
-//             "mov [{0}], rax", // store rip
-//             "mov rax, cr3", // rax <- cr3
-//             "mov [{0}+8], rax", // store cr3
-//             "pop rax",
-// 
-//             "sub rsp, 8", // remove rip from the stack : we want to add it manually after
-// 
-//             // continue to save the other registers
-//             "push rbx",
-//             "push rcx",
-//             "push rdx",
-//             "push rbp",
-//             "push rsp",
-//             "push rsi",
-//             "push rdi",
-//             "push r8",
-//             "push r9",
-//             "push r10",
-//             "push r11",
-//             "push r12",
-//             "push r13",
-//             "push r14",
-//             "push r15",
-// 
-//             // save the flags
-//             "pushfq",
-//             sym CURRENT_PROCESS,
-//             options(noreturn)
-//         );
-//     }
-// 
-//     #[naked]
-//     unsafe fn load_state() {
-//         asm!(
-//             // restore flags
-//             "popfq",
-// 
-//             //restore registers
-//             "pop r15",
-//             "pop r14",
-//             "pop r13",
-//             "pop r12",
-//             "pop r11",
-//             "pop r10",
-//             "pop r9",
-//             "pop r8",
-//             "pop rdi",
-//             "pop rsi",
-//             "pop rsp",
-//             "pop rbp",
-//             "pop rdx",
-//             "pop rcx",
-//             "pop rbx",
-// 
-//             //restore cr3 (paging)
-//             "mov rax, [{0} + 8]", // cr3
-//             "mov cr3, rax",
-// 
-//             // restore rip
-//             "mov rax, [{0}]", // rip
-//             "mov [rsp+8], rax",
-// 
-//             // restore rax
-//             "pop rax",
-// 
-//             "ret",
-//             sym CURRENT_PROCESS,
-//             options(noreturn)
-//         );
-//     }
+/*
+    #[naked]
+    unsafe fn save_state() {
+        asm!(
+            "push rax", // save rax
+            "mov rax, [rsp+24]", // rax <- rip
+            "mov [{0}], rax", // store rip
+            "mov rax, cr3", // rax <- cr3
+            "mov [{0}+8], rax", // store cr3
+            "pop rax",
+
+            "sub rsp, 8", // remove rip from the stack : we want to add it manually after
+
+            // continue to save the other registers
+            "push rbx",
+            "push rcx",
+            "push rdx",
+            "push rbp",
+            "push rsp",
+            "push rsi",
+            "push rdi",
+            "push r8",
+            "push r9",
+            "push r10",
+            "push r11",
+            "push r12",
+            "push r13",
+            "push r14",
+            "push r15",
+
+            // save the flags
+            "pushfq",
+            sym CURRENT_PROCESS,
+            options(noreturn)
+        );
+    }
+
+    #[naked]
+    unsafe fn load_state() {
+        asm!(
+            // restore flags
+            "popfq",
+
+            //restore registers
+            "pop r15",
+            "pop r14",
+            "pop r13",
+            "pop r12",
+            "pop r11",
+            "pop r10",
+            "pop r9",
+            "pop r8",
+            "pop rdi",
+            "pop rsi",
+            "pop rsp",
+            "pop rbp",
+            "pop rdx",
+            "pop rcx",
+            "pop rbx",
+
+            //restore cr3 (paging)
+            "mov rax, [{0} + 8]", // cr3
+            "mov cr3, rax",
+
+            // restore rip
+            "mov rax, [{0}]", // rip
+            "mov [rsp+8], rax",
+
+            // restore rax
+            "pop rax",
+
+            "ret",
+            sym CURRENT_PROCESS,
+            options(noreturn)
+        );
+    }
+*/
 }
+
+// Keeps track of the children of the processes, in order to keep the Process struct on the stack
+static mut CHILDREN : BTreeMap<ID,BTreeSet<ID>> = BTreeMap::new();
 
 /// A process's priority, used by the scheduler
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -691,11 +706,13 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     ];
 
-#[allow(dead_code)]
  /// # Safety
  /// Needs sane `WAITING_QUEUES`. Should be safe to use.
- unsafe fn next_process_to_run() -> usize {
+ unsafe fn next_pid_to_run() -> usize {
     let mut prio = next_priority_to_run();
+    // <debug>
+    println!("Priority chosen: {}", prio);
+    // </debug>
     // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
     while WAITING_QUEUES[prio].is_empty(){
         prio -= 1; // need to check priority
@@ -710,5 +727,15 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
         panic!("Too many processes want to run at the same priority!")
     }
     WAITING_QUEUES[old_priority].push(old_pid).expect("Scheduler massive fail");
+    // <debug>
+    println!("Priority ran: {}", prio);
+    println!("Old PID: {},\tNew PID: {}",old_pid,new_pid);
+    // </debug>
     new_pid
  }
+
+#[allow(dead_code)]
+fn new_process_to_run() -> Process {
+    let pid = unsafe{ next_pid_to_run() };
+    unsafe{ID_TABLE[pid]}
+}
