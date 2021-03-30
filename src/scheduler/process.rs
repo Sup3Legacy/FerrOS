@@ -192,7 +192,7 @@ pub unsafe fn launch_first_process(
 /// TODO : maybe use `number_of_block` as the maximum
 /// number of frames allocated to the program?
 ///
-/// PROG_OFFSET is set arbitrary and may need some fine-tuning.
+/// `PROG_OFFSET` is set arbitrary and may need some fine-tuning.
 pub unsafe fn disassemble_and_launch(
     code: &[u8],
     frame_allocator: &mut memory::BootInfoAllocator,
@@ -629,6 +629,7 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
 /// Function to duplicate the current process into two childs
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
+/// ? Shouldn't this return an `ID`, instead of a `u64`?
 pub unsafe fn fork() -> u64 {
     let mut son = Process::create_new(
         ID_TABLE[CURRENT_PROCESS].pid,
