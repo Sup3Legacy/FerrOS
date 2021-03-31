@@ -41,7 +41,7 @@ In practical, the main crates we used were :
 * `Bootloader` : a bootloader is something we didn't want to write at the beginning of the project. TODO on en fait un maintenant?
 * `xmas-elf` : an ELF parsing utility. This is something we could have written ourselves but it involves a lot of boilerplate code that would take a long time to write.
 
-Some other crates brought us some convinient structures and macros but can be considered as "accessories".
+Some other crates brought us some convenient structures and macros but can be considered as "accessories".
 
 
 
@@ -59,8 +59,14 @@ Whenever there is an interruption that pauses the execution of a process (clock,
 
 ### What scheduling schema is implemented?
 
-We opted for a lottery-based scheduler that is able to implement priories. The process are divided in several groups, one for each priority, and the scheduler randomly selects a priority. We have chosen 8 priorities, so the scheduler pick a random byte (*hopefully* selected uniformly), and the most significant non null byte gives the priority that should be ran (it means that priority $p$ has twice more chances of being ran than priority $p+1$). The choice among a same priority is simply a round-robin. If however, the selected priority $p$ is empty, then it is upgraded to run the priority $p-1$, and so on. A problem would arise if there was no process having a priority $\le p$, but it suffices to put a dummy process that does nothing but give the control back to the scheduler at priority $0$ to solve this issue.
+We opted for a lottery-based scheduler that is able to implement priories. The process are divided in several groups, one for each priority, and the scheduler randomly selects a priority. We have chosen 8 priorities, so the scheduler pick a random byte (*hopefully* selected uniformly), and the most significant non null bit gives the priority that should be ran (it means that priority $p$ has twice more chances of being ran than priority $p+1$). The choice among a same priority is simply a round-robin. If however, the selected priority $p$ is empty, then it is upgraded to run the priority $p-1$, and so on. A problem would arise if there was no process having a priority $\le p$, but it suffices to put a dummy process that does nothing but give the control back to the scheduler at priority $0$ to solve this issue.
 
 ### Why this choice?
 
-One of the main reasons is that it is a straightforward scheduling algorithm. It mostly consists of a 8-bit pseudo-random number generator, and a little boiler plate to link everything together. However, it still allows to implement an abstraction of the scheduling, so it is easy to change the algorithm in the future if need be. What's more, it also allowed us to use the clock interruptions, and get a better grasp on how process scheduling and, in particular, context switch, worked.
+One of the main reasons is that it is a straightforward scheduling algorithm. It mostly consists of a 8-bit pseudo-random number generator, and a little boiler plate to link everything together. However, it still allows to implement an abstraction of the scheduling, so it is easy to change the algorithm in the future if needed. What's more, it also allowed us to use the clock interruptions and get a better grasp on how process scheduling and, in particular, context switch, worked.
+
+## Virtual File system
+
+The VFS is kind of the central piece of our kernel. It’s an energy field created by all living user-programs. It surrounds them and penetrates them. It binds the OS together.
+
+Like in a real UNIX-like kernel, every device, be it hardware or software, can be accessed by an user-program through the abstract high-level interface of the VFS.
