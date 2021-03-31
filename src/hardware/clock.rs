@@ -53,13 +53,13 @@ impl WeekDay {
 
 #[derive(Debug)]
 pub struct Time {
-    century: usize,
     second: usize,
     minute: usize,
     hour: usize,
     day: usize,
     month: usize,
     year: usize,
+    century: usize,
 }
 
 impl Time {

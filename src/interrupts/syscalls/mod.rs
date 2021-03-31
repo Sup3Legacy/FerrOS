@@ -4,9 +4,9 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
-use crate::{debug, warningln};
 use crate::hardware;
 use crate::scheduler::process;
+use crate::{debug, warningln};
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
 
