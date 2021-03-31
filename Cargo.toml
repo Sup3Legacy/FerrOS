@@ -57,7 +57,7 @@ run-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
     "-serial", "stdio",  # Redirect the output of the serial port to stdout.
     "-cpu", "max,+ssse3,+sse4.1,+sse4.2", #,+avx512f,+avx512vl
-    "-rtc", "base=2006-06-17T16:01:21,clock=host",
+    "-rtc", "base=localtime,clock=host",
     "-display", "none"  # Hide the display in test mode.
 ]
 test-args = [
