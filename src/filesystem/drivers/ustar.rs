@@ -534,7 +534,7 @@ impl UsTar {
             }
 
             // Now we write all data blocks
-            let blocks_to_write = unsafe{slice_vec(&memfile.data)};
+            let blocks_to_write = unsafe { slice_vec(&memfile.data) };
             for i in 0..blocks_number {
                 let file_block = FileBlock {
                     data: blocks_to_write[i as usize],
@@ -559,7 +559,7 @@ impl UsTar {
             header,
             data: Vec::new(),
         };
-        println!("{:?}, {}", header.name, unsafe {header.length});
+        println!("{:?}, {}", header.name, unsafe { header.length });
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
             let mut compteur = 0;
