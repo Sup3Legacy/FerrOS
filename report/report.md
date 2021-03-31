@@ -46,3 +46,21 @@ Some other crates brought us some convinient structures and macros but can be co
 
 
 # Practical characteristics
+
+
+
+## Scheduler
+
+Here, we discuss the implementation we opted for our scheduler. As of now, it is a simple preemptive, lottery-based, single-core scheduler, though the concept could be adapted to the context of multi-core CPUs. 
+
+### When is the scheduler used?
+
+Whenever there is an interruption that pauses the execution of a process (clock, halt, normal end of a process, etc.), the OS safely saves all the context of the process (that is its registers, flags, and memory pages), asks the scheduler what to do, and then loads up the context of the selected process and gives it control back.
+
+### What scheduling schema is implemented?
+
+We opted for a lottery-based scheduler that is able to implement priories. The process are divided in several groups, one for each priority, and the scheduler randomly selects a priority. We have chosen 8 priorities, so the scheduler pick a random byte (*hopefully* selected uniformly), and the most significant non null byte gives the priority that should be ran (it means that priority $p$ has twice more chances of being ran than priority $p+1$). The choice among a same priority is simply a round-robin. If however, the selected priority $p$ is empty, then it is upgraded to run the priority $p-1$, and so on. A problem would arise if there was no process having a priority $\le p$, but it suffices to put a dummy process that does nothing but give the control back to the scheduler at priority $0$ to solve this issue.
+
+### Why this choice?
+
+One of the main reasons is that it is a straightforward scheduling algorithm. It mostly consists of a 8-bit pseudo-random number generator, and a little boiler plate to link everything together. However, it still allows to implement an abstraction of the scheduling, so it is easy to change the algorithm in the future if need be. What's more, it also allowed us to use the clock interruptions, and get a better grasp on how process scheduling and, in particular, context switch, worked.
