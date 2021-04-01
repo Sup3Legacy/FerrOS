@@ -9,6 +9,7 @@ use crate::scheduler::process;
 use crate::{debug, warningln};
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
+use alloc::string::String;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -87,7 +88,17 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
     }
 }
 
-extern "C" fn syscall_6_exec(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+/// arg0 : address of file name
+extern "C" fn syscall_6_exec(args: &mut RegistersMini, isf: &mut InterruptStackFrame) {
+    debug!("exec");
+    let addr: *const String = VirtAddr::new(args.rdi).as_ptr();
+    unsafe {
+        let new_rip = process::elf::load_elf_for_exec(&*addr);
+        let mut stack_value = isf.as_mut();
+        stack_value.instruction_pointer = new_rip;
+        stack_value.stack_pointer = VirtAddr::new(process::elf::ADDR_STACK);
+        process::leave_context(VirtAddr::from_ptr(args).as_u64());
+    }
     panic!("exec not implemented");
 }
 

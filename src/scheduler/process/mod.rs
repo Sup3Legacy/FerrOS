@@ -16,7 +16,7 @@ use crate::println;
 use crate::data_storage::{random,queue::Queue};
 use crate::alloc::collections::{BTreeMap,BTreeSet};
 
-mod elf;
+pub mod elf;
 
 #[allow(improper_ctypes)]
 extern "C" {

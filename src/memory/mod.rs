@@ -331,7 +331,7 @@ impl BootInfoAllocator {
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            if (allow_duplicate) {
+            if allow_duplicate {
                 table_1[p_1].set_flags(entry | flags);
                 Ok(())
             } else {
