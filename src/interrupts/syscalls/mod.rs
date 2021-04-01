@@ -15,7 +15,7 @@ use alloc::string::String;
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 19;
+const SYSCALL_NUMBER: u64 = 20;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -39,6 +39,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_16_rmdir,
     syscall_17_get_layer,
     syscall_18_set_layer,
+    syscall_19_set_focus
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -136,19 +137,23 @@ extern "C" fn syscall_14_chdir(_args: &mut RegistersMini, _isf: &mut InterruptSt
 }
 
 extern "C" fn syscall_15_mkdir(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("mkdir cwd not implemented");
+    panic!("mkdir not implemented");
 }
 
 extern "C" fn syscall_16_rmdir(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("rmdir cwd not implemented");
+    panic!("rmdir not implemented");
 }
 
 extern "C" fn syscall_17_get_layer(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("rmdir cwd not implemented");
+    panic!("get layer not implemented");
 }
 
 extern "C" fn syscall_18_set_layer(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("rmdir cwd not implemented");
+    panic!("set layer not implemented");
+}
+
+extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("set focus not implemented");
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
