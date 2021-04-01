@@ -37,25 +37,30 @@ impl GeneralFileTable {
         }
     }
 
-    /// Inserts an entry
+    /// Inserts an entry in the file table for the given file.
     pub fn insert(&mut self, openfile: OpenFileTable) {
-        self.tables[self.index] = Some(openfile);
-        loop {
+        for i in 0..MAX_TOTAL_OPEN_FILES {
+            if self.tables[self.index].is_none() {
+                self.tables[self.index] = Some(openfile);
+                return
+            }
             self.index += 1;
             if self.index == MAX_TOTAL_OPEN_FILES {
-                panic!("VFS : reached maximum number of opened files.");
-            }
-            if self.tables[self.index].is_none() {
-                break;
+                self.index == 0;
             }
         }
+        // need to be improved
+        panic!("file system is full");
     }
 
-    /// Deletes an entry
+    /// Deletes an entry in the table files.
+    /// Should close be added ?
     pub fn delete(&mut self, index: usize) {
         self.tables[index] = None;
-        self.index = min(index, self.index);
+        //self.index = min(index, self.index); // not needed anymore, can be bad for performances
     }
+
+    /// Returns mutable copy of a given entry
     pub fn get_file_table_ref(&'static self, index: usize) -> &'static OpenFileTable {
         &self.tables[index].as_ref().unwrap()
     }

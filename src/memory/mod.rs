@@ -1,26 +1,26 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{print, println};
+use crate::{debug, print, println};
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
 use x86_64::structures::paging::OffsetPageTable;
-use x86_64::structures::paging::{FrameAllocator, /*Page, Mapper,*/ PhysFrame, Size4KiB};
+use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB};
 use x86_64::{
     registers::control::Cr3,
     structures::paging::{PageTable, PageTableFlags},
     PhysAddr, VirtAddr,
 };
 
-//use core::ptr;
+use crate::warningln;
 
-//use lazy_static::lazy_static;
 
+/// Static structure holding the frame allocator. You can borrow it but never place it back to None !.
+/// You can asume it is never None.
 pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
 #[derive(Debug)]
 pub struct MemoryError(pub String);
 
-use crate::warningln;
 
 /// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
@@ -31,8 +31,6 @@ const MAX_PAGE_ALLOWED: usize = 65536;
 /// Number of allocatable tables
 static mut NUMBER_TABLES: u64 = 0;
 
-/// Structure of all available pages
-//static mut PAGE_AVAILABLE: [bool; MAX_PAGE_ALLOWED] = [false; MAX_PAGE_ALLOWED];
 
 /// Read Cr3 to give the current level_4 table
 /// Should only be called one
@@ -70,14 +68,12 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
             for i2 in 0..512 {
                 if !level_3_table[i2].is_unused() {
                     println!("{} at {} with {:?}", i2, i, level_3_table[i].flags());
-                    //if
                 }
             }
         }
     }
     println!("Nb Frame used : {}.", compte);
     print!("Phys_offset : {:?}", physical_memory_offset);
-    // loop {}
     // End of stats
 
     OffsetPageTable::new(level_4_table, physical_memory_offset)
@@ -184,10 +180,11 @@ impl BootInfoAllocator {
         table_4: PhysFrame,
         virt_4: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-        self.add_entry_to_table_4(&mut *page_table_ptr, virt_4, flags)
+        self.add_entry_to_table_4(&mut *page_table_ptr, virt_4, flags, allow_duplicate)
     }
 
     /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
@@ -198,6 +195,7 @@ impl BootInfoAllocator {
         table_4: &'static mut PageTable,
         virt_4: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_4 = virt_4.p4_index();
         let entry = table_4[p_4].flags();
@@ -207,7 +205,7 @@ impl BootInfoAllocator {
                 //warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags)
+                self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags, allow_duplicate)
             } else {
                 warningln!("already existed for kernel l.183 failure");
                 warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
@@ -226,8 +224,11 @@ impl BootInfoAllocator {
                     table_4[p_4].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     table_4[p_4].set_flags(entry | flags);
-                    self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags)
+                    self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags, allow_duplicate)
                 }
             }
         }
@@ -239,6 +240,7 @@ impl BootInfoAllocator {
         table_3: &'static mut PageTable,
         virt_3: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_3 = virt_3.p3_index();
         let entry = table_3[p_3].flags();
@@ -248,7 +250,7 @@ impl BootInfoAllocator {
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_3[p_3].set_flags(entry | flags);
-                self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
+                self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags, allow_duplicate)
             } else {
                 warningln!("line 240");
                 Err(MemoryError(String::from(
@@ -265,7 +267,10 @@ impl BootInfoAllocator {
                     table_3[p_3].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags, allow_duplicate)
                 }
             }
         }
@@ -277,6 +282,7 @@ impl BootInfoAllocator {
         table_2: &'static mut PageTable,
         virt_2: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_2 = virt_2.p2_index();
         let entry = table_2[p_2].flags();
@@ -286,7 +292,7 @@ impl BootInfoAllocator {
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_2[p_2].set_flags(entry | flags);
-                self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
+                self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags, allow_duplicate)
             } else {
                 warningln!("line 274");
                 Err(MemoryError(String::from(
@@ -301,7 +307,10 @@ impl BootInfoAllocator {
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags, allow_duplicate)
                 }
             }
         }
@@ -313,21 +322,26 @@ impl BootInfoAllocator {
         table_1: &'static mut PageTable,
         virt_1: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            warningln!("already here, l.301 {:#?}", virt_1);
-            Err(MemoryError(String::from(
-                "Level 1 entry is already present",
-            )))
+            if allow_duplicate {
+                table_1[p_1].set_flags(entry | flags);
+                Ok(())
+            } else {
+                warningln!("already here, l.301 {:#?}", virt_1);
+                Err(MemoryError(String::from(
+                    "Level 1 entry is already present",
+                )))
+            }
         } else {
             match self.allocate_4k_frame() {
                 None => Err(MemoryError(String::from(
                     "Could not allocate 4k frame @ level 1",
                 ))),
                 Some(addr) => {
-                    //let addr = phys_frame.start_address();
                     table_1[p_1].set_addr(addr, flags);
                     Ok(())
                 }
@@ -386,7 +400,9 @@ impl BootInfoAllocator {
                     table_4[p_4].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    table_4[p_4].set_flags(entry | flags);
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
                 }
             }
@@ -426,6 +442,9 @@ impl BootInfoAllocator {
                     table_3[p_3].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     self.add_entry_to_table_2_with_data(&mut *page_table_ptr, virt_3, flags, data)
                 }
             }
@@ -465,6 +484,9 @@ impl BootInfoAllocator {
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     self.add_entry_to_table_1_with_data(&mut *page_table_ptr, virt_2, flags, data)
                 }
             }
@@ -495,9 +517,7 @@ impl BootInfoAllocator {
                     table_1[p_1].set_addr(addr, flags);
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
                     let content: *mut [u64; 512] = virt.as_mut_ptr();
-                    //warningln!("starts copying");
                     (*content).clone_from_slice(&data[..512]);
-                    //warningln!("copied");
                     Ok(())
                 }
             }
@@ -505,7 +525,8 @@ impl BootInfoAllocator {
     }
 
     /// # Safety
-    /// TODO
+    /// Function to duplicate an level 4 table into a new one.
+    /// Give a level 4 table, it gives you a new one holding the same datas
     pub unsafe fn copy_table_entries(
         &mut self,
         table_4: PhysAddr,
@@ -518,7 +539,7 @@ impl BootInfoAllocator {
         }
     }
 
-    /// Function to copy a table of level 4 in order to allow fork operations
+    /// Inner function to copy a table of level 4 in order to allow fork operations
     unsafe fn copy_table_4(
         &mut self,
         table_4: &'static PageTable,
@@ -686,6 +707,7 @@ impl BootInfoAllocator {
         remove_flags: PageTableFlags,
     ) -> Result<bool, MemoryError> {
         let mut failed = false;
+
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
         let table_4 = &mut *page_table_ptr;
@@ -694,7 +716,14 @@ impl BootInfoAllocator {
             if !table_4[i].is_unused() {
                 let flags = table_4[i].flags();
                 if flags.contains(remove_flags) {
+                    debug!(
+                        "0x{:x?}, {:x?}, {}",
+                        table_4[i].addr().as_u64() + PHYSICAL_OFFSET,
+                        PHYSICAL_OFFSET,
+                        i
+                    );
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    debug!("qsd");
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     match self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags) {
                         Ok(flags_level_3) => {
@@ -900,11 +929,11 @@ pub unsafe fn write_into_virtual_memory(
     Ok(())
 }
 
-pub unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
-    translate_addr_inner(table_4, addr)
+pub unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+    translate_addr(table_4, addr)
 }
 
-unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
     //let (level_4_table_frame, _) = Cr3::read();
     let mut virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET).as_u64();
 
