@@ -8,7 +8,7 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
 
-use crate::data_storage::{queue::Queue, random};
+//use crate::data_storage::{queue::Queue, random};
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
@@ -16,6 +16,7 @@ use crate::println;
 use crate::data_storage::{random,queue::Queue};
 use crate::alloc::collections::{BTreeMap,BTreeSet};
 
+mod elf;
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -243,17 +244,7 @@ pub unsafe fn disassemble_and_launch(
             // TODO : change this to respect the conventions
             // For now, it is very probably wrong
             // for certain writable segment types
-            let flags = match section.get_type().unwrap() {
-                ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                _ => {
-                    PageTableFlags::USER_ACCESSIBLE
-                        | PageTableFlags::PRESENT
-                        | PageTableFlags::NO_EXECUTE
-                        | PageTableFlags::WRITABLE
-                }
-            };
+            let flags = elf::get_table_flags(section.get_type().unwrap());
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(
