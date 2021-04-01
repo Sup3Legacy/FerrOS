@@ -2,20 +2,20 @@ use super::PROCESS_MAX_NUMBER;
 
 use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
-use x86_64::structures::paging::PageTableFlags;
 use x86_64::registers::control::{Cr3, Cr3Flags};
+use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
 
 //use crate::data_storage::{queue::Queue, random};
+use crate::alloc::collections::{BTreeMap, BTreeSet};
+use crate::data_storage::{queue::Queue, random};
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
 use crate::warningln;
-use crate::data_storage::{random,queue::Queue};
-use crate::alloc::collections::{BTreeMap,BTreeSet};
 
 pub mod elf;
 
@@ -118,7 +118,7 @@ pub unsafe fn launch_first_process(
     code_address: *const u8,
     number_of_block: u64,
     stack_size: u64,
-    ) -> ! {
+) -> ! {
     ID_TABLE[0].state = State::Runnable;
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         // addresses telling where the code and the stack starts
@@ -156,7 +156,7 @@ pub unsafe fn launch_first_process(
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
                     | PageTableFlags::WRITABLE,
-                false
+                false,
             ) {
                 Ok(()) => (),
                 Err(memory::MemoryError(err)) => {
@@ -200,7 +200,7 @@ pub unsafe fn disassemble_and_launch(
     _number_of_block: u64,
     stack_size: u64,
 ) -> ! {
-    const PROG_OFFSET:u64 = 0x8048000000;
+    const PROG_OFFSET: u64 = 0x8048000000;
     // TODO maybe consider changing this
     let addr_stack: u64 = 0x63fffffffff8;
     // We get the `ElfFile` from the raw slice
@@ -246,7 +246,6 @@ pub unsafe fn disassemble_and_launch(
                 num_blocks
             );
             */
-
 
             let flags = elf::get_table_flags(section.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
@@ -324,7 +323,7 @@ pub unsafe fn disassemble_and_launch(
 /// * `rip` - current value of the instruction pointer
 /// * `state` - state of the process (e.g. Zombie, Runnable...)
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct Process {
     pid: ID,
@@ -341,8 +340,8 @@ pub struct Process {
 impl Process {
     pub fn create_new(parent: ID, priority: Priority, owner: u64) -> Self {
         let new_pid = ID::new();
-        unsafe{
-            CHILDREN.insert(new_pid,BTreeSet::new());
+        unsafe {
+            CHILDREN.insert(new_pid, BTreeSet::new());
         }
         Self {
             pid: new_pid,
@@ -377,9 +376,10 @@ impl Process {
     pub fn spawn(self, priority: Priority) -> ID {
         // -> &Mutex<Self> {
         let child = Process::create_new(self.pid, priority, self.owner);
-        unsafe{
-            CHILDREN.entry(self.pid)
-                    .and_modify(|set| {set.insert(child.pid);});
+        unsafe {
+            CHILDREN.entry(self.pid).and_modify(|set| {
+                set.insert(child.pid);
+            });
             child.pid
         }
     }
@@ -393,11 +393,10 @@ impl Process {
         } // /!\
         launch_asm(f, 0);
     }
-
 }
 
 // Keeps track of the children of the processes, in order to keep the Process struct on the stack
-static mut CHILDREN : BTreeMap<ID,BTreeSet<ID>> = BTreeMap::new();
+static mut CHILDREN: BTreeMap<ID, BTreeSet<ID>> = BTreeMap::new();
 
 /// A process's priority, used by the scheduler
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -440,7 +439,7 @@ impl ID {
     }
 
     /// Forges an `ID`, must *not* be used other than to build the first one.
-    pub fn forge(index : u64) -> Self {
+    pub fn forge(index: u64) -> Self {
         Self(index)
     }
 }
@@ -507,10 +506,10 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
     let new_pid = next_pid_to_run();
     if let Ok(new) = new_pid {
         CURRENT_PROCESS = new;
-        return (&ID_TABLE[new], &mut ID_TABLE[old_pid])
+        return (&ID_TABLE[new], &mut ID_TABLE[old_pid]);
     } else {
         warningln!("Reran the old process because couldn't find a new one");
-        return (&ID_TABLE[old_pid], &mut ID_TABLE[old_pid])
+        return (&ID_TABLE[old_pid], &mut ID_TABLE[old_pid]);
     }
 }
 
@@ -552,7 +551,9 @@ pub unsafe fn fork() -> u64 {
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
     ID_TABLE[pid as usize] = son;
     println!("new process of id {}", pid);
-    WAITING_QUEUES[son.priority.0].push(pid as usize).expect("Could not push son process into the queue");
+    WAITING_QUEUES[son.priority.0]
+        .push(pid as usize)
+        .expect("Could not push son process into the queue");
     // TODO
     pid
 }
@@ -597,9 +598,9 @@ static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
 ];
 
- /// # Safety
- /// Needs sane `WAITING_QUEUES`. Should be safe to use.
- unsafe fn next_pid_to_run() -> Result<usize, ()> {
+/// # Safety
+/// Needs sane `WAITING_QUEUES`. Should be safe to use.
+unsafe fn next_pid_to_run() -> Result<usize, ()> {
     let mut prio = next_priority_to_run();
     // <debug>
     // </debug>
@@ -607,13 +608,15 @@ static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     while WAITING_QUEUES[prio].is_empty() {
         // If we couldn't find any process to run
         if prio == 0 {
-            return Err(())
+            return Err(());
         }
         prio -= 1; // need to check priority
     }
 
     let old_pid = CURRENT_PROCESS;
-    let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail #0");
+    let new_pid = WAITING_QUEUES[prio]
+        .pop()
+        .expect("Scheduler massive fail #0");
     let mut old_priority = ID_TABLE[old_pid].priority.0;
     while WAITING_QUEUES[old_pid].is_full() && old_priority > 0 {
         old_priority -= 1
@@ -621,10 +624,12 @@ static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
         panic!("Too many processes want to run at the same priority!")
     }
-    WAITING_QUEUES[old_priority].push(old_pid).expect("Scheduler massive fail #1");
+    WAITING_QUEUES[old_priority]
+        .push(old_pid)
+        .expect("Scheduler massive fail #1");
     // <debug>
     println!("Priority ran: {}", prio);
-    println!("Old PID: {},\tNew PID: {}",old_pid,new_pid);
+    println!("Old PID: {},\tNew PID: {}", old_pid, new_pid);
     // </debug>
     Ok(new_pid)
 }

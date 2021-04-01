@@ -7,9 +7,9 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::hardware;
 use crate::scheduler::process;
 use crate::{debug, warningln};
+use alloc::string::String;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
-use alloc::string::String;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -39,7 +39,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_16_rmdir,
     syscall_17_get_layer,
     syscall_18_set_layer,
-    syscall_19_set_focus
+    syscall_19_set_focus,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing

@@ -1,13 +1,13 @@
-use x86_64::structures::paging::PageTableFlags;
-use xmas_elf::{sections::ShType, ElfFile};
-use x86_64::VirtAddr;
-use alloc::string::String;
-use x86_64::structures::paging::PhysFrame;
+use crate::debug;
+use crate::errorln;
 use crate::memory;
 use crate::println;
-use crate::errorln;
-use crate::debug;
 use crate::_TEST_PROGRAM;
+use alloc::string::String;
+use x86_64::structures::paging::PageTableFlags;
+use x86_64::structures::paging::PhysFrame;
+use x86_64::VirtAddr;
+use xmas_elf::{sections::ShType, ElfFile};
 
 use super::get_current;
 
@@ -30,7 +30,7 @@ pub fn get_table_flags(section: ShType) -> PageTableFlags {
     }
 }
 
-const PROG_OFFSET:u64 = 0x8048000000;
+const PROG_OFFSET: u64 = 0x8048000000;
 
 pub const ADDR_STACK: u64 = 0x63fffffffff8;
 
@@ -38,16 +38,19 @@ pub const ADDR_STACK: u64 = 0x63fffffffff8;
 /// Never safe ! You just need to know what you are doing before calling it
 pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
     let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
-    
+
     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
         let current = get_current();
         // deallocate precedent file
         match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
-            Ok(b) => if !b {debug!("page table is now empty")},
+            Ok(b) => {
+                if !b {
+                    debug!("page table is now empty")
+                }
+            }
             Err(_) => panic!("failed at deallocation"),
         };
 
-    
         // We get the `ElfFile` from the raw slice
         let elf = ElfFile::new(code).unwrap();
         // We get the main entry point and make sure it is
@@ -56,7 +59,6 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
             _ => panic!("Expected a 64-bit ELF!"),
         };
-
 
         let level_4_table_addr = PhysFrame::containing_address(current.cr3);
         // Loop over each section

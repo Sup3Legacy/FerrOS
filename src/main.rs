@@ -152,13 +152,13 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-    
+
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
             scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2);
         }
     }
-    
+
     //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]
