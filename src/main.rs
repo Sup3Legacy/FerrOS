@@ -108,11 +108,17 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     println!(":(");
 
+    println!("try to change counter");
+    unsafe {
+        hardware::timer::set_timer(0x8000);
+    }
+    println!("checked");
+
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
 
-    long_halt(5);
+    long_halt(0);
 
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
