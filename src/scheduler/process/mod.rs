@@ -10,11 +10,9 @@ use xmas_elf::{sections::ShType, ElfFile};
 
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::data_storage::{queue::Queue, random};
-use crate::errorln;
+use crate::{errorln, println, warningln, debug};
 use crate::hardware;
 use crate::memory;
-use crate::println;
-use crate::warningln;
 
 pub mod elf;
 
@@ -569,6 +567,7 @@ pub unsafe fn fork() -> u64 {
 /// the given value. It can be only decreasing
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
+    // TODO : change attribution in WAITING_QUEUES? Or do we wait till the next execution? Is the overhead worth it?
     if prio > MAX_PRIO {
         return usize::MAX
     }
@@ -582,13 +581,15 @@ pub unsafe fn set_priority(prio: usize) -> usize {
 
 fn next_priority_to_run() -> usize {
     let mut ticket = random::random_u8();
+    // debug!("Ticket = {:#b}", ticket);
     // Look for the most significant non null bit in the ticket
     let mut idx = 7;
-    while idx > 0 || ticket != 0 {
+    while idx > 0 && ticket != 0 {
         ticket <<= 1;
-        idx += 1;
+        idx -= 1;
     }
-    MAX_PRIO-idx
+    // debug!("final idx: {}",idx);
+    idx
 }
 
 const MAX_PRIO:usize = 8;
