@@ -405,7 +405,9 @@ impl BootInfoAllocator {
                     table_4[p_4].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    table_4[p_4].set_flags(entry | flags);
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     self.add_entry_to_table_3_with_data(&mut *page_table_ptr, virt_4, flags, data)
                 }
             }
@@ -445,6 +447,9 @@ impl BootInfoAllocator {
                     table_3[p_3].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     self.add_entry_to_table_2_with_data(&mut *page_table_ptr, virt_3, flags, data)
                 }
             }
@@ -484,6 +489,9 @@ impl BootInfoAllocator {
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(addr.as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     self.add_entry_to_table_1_with_data(&mut *page_table_ptr, virt_2, flags, data)
                 }
             }
