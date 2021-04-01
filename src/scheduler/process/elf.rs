@@ -6,6 +6,8 @@ use x86_64::structures::paging::PhysFrame;
 use crate::memory;
 use crate::println;
 use crate::errorln;
+use crate::debug;
+use crate::_TEST_PROGRAM;
 
 use super::get_current;
 
@@ -35,17 +37,17 @@ pub const ADDR_STACK: u64 = 0x63fffffffff8;
 /// # Safety
 /// Never safe ! You just need to know what you are doing before calling it
 pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
-    let code: &[u8] = &[]; // /!\ need to be implemented in the filesystem
+    let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
     
     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-    
         let current = get_current();
         // deallocate precedent file
         match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
-            Ok(b) => if !b {panic!("page table is now empty")},
+            Ok(b) => if !b {debug!("page table is now empty")},
             Err(_) => panic!("failed at deallocation"),
         };
 
+    
         // We get the `ElfFile` from the raw slice
         let elf = ElfFile::new(code).unwrap();
         // We get the main entry point and make sure it is
@@ -55,6 +57,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             _ => panic!("Expected a 64-bit ELF!"),
         };
 
+
         let level_4_table_addr = PhysFrame::containing_address(current.cr3);
         // Loop over each section
         for section in elf.section_iter() {
@@ -63,6 +66,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             let offset = section.offset();
             let size = section.size();
             // Section debug
+            /*
             println!(
                 "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
                 address,
@@ -70,6 +74,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
                 size,
                 section.get_type()
             );
+            */
 
             match section.get_type() {
                 Ok(ShType::Null) | Err(_) => continue,
@@ -79,12 +84,13 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             let _data = section.raw_data(&elf);
             let total_length = _data.len() as u64 + offset;
             let num_blocks = total_length / 4096 + 1;
+            /*
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
                 num_blocks * 512,
                 num_blocks
             );
-
+            */
 
             let flags = get_table_flags(section.get_type().unwrap()) | MODIFY_WITH_EXEC;
             for i in 0..num_blocks {

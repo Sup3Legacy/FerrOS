@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{print, println};
+use crate::{print, println, debug};
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -713,6 +713,7 @@ impl BootInfoAllocator {
         remove_flags: PageTableFlags,
     ) -> Result<bool, MemoryError> {
         let mut failed = false;
+        
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
         let table_4 = &mut *page_table_ptr;
@@ -721,7 +722,9 @@ impl BootInfoAllocator {
             if !table_4[i].is_unused() {
                 let flags = table_4[i].flags();
                 if flags.contains(remove_flags) {
+                    debug!("0x{:x?}, {:x?}, {}", table_4[i].addr().as_u64() + PHYSICAL_OFFSET, PHYSICAL_OFFSET, i);
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
+                    debug!("qsd");
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     match self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags) {
                         Ok(flags_level_3) => {
@@ -927,11 +930,11 @@ pub unsafe fn write_into_virtual_memory(
     Ok(())
 }
 
-pub unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
-    translate_addr_inner(table_4, addr)
+pub unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+    translate_addr(table_4, addr)
 }
 
-unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
+unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
     //let (level_4_table_frame, _) = Cr3::read();
     let mut virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET).as_u64();
 

@@ -122,6 +122,7 @@ pub fn init(_boot_info: &'static BootInfo) {
             "mov rax, 9", "int 80h",);
     }*/
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
+    scheduler::process::spawn_first_process();
     //hardware::power::shutdown();
     //loop {}
     //errorln!("Ousp");
@@ -151,28 +152,13 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-    let elf = ElfFile::new(_TEST_PROGRAM).unwrap();
-    for e in elf.section_iter() {
-        println!("{:x?}", e);
-    }
-    //println!("{:?}", elf);
-
+    
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
             scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2);
         }
     }
-
-    unsafe {
-        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::launch_first_process(
-                frame_allocator,
-                test_syscall as *const u8,
-                1,
-                2,
-            );
-        }
-    }
+    
     //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]

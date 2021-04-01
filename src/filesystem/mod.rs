@@ -51,6 +51,11 @@ pub fn write_file(_path: Path, _data: &'static [u8]) {
     todo!();
 }
 
+
+pub fn get_data(path : Path) -> &'static [u8] {
+    todo!()
+}
+
 fn test() {
     println!(
         "{:?}",
