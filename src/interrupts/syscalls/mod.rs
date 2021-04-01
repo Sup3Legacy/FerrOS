@@ -4,9 +4,9 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
-use crate::{debug, warningln};
 use crate::hardware;
 use crate::scheduler::process;
+use crate::{debug, warningln};
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
 
@@ -14,7 +14,7 @@ use x86_64::VirtAddr;
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 11;
+const SYSCALL_NUMBER: u64 = 19;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -29,7 +29,15 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_7_exit,
     syscall_8_wait,
     syscall_9_shutdown,
-    syscall_test,
+    syscall_10_get_puid,
+    syscall_11_get_screen,
+    syscall_12_set_screen,
+    syscall_13_getcwd,
+    syscall_14_chdir,
+    syscall_15_mkdir,
+    syscall_16_rmdir,
+    syscall_17_get_layer,
+    syscall_18_set_layer,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -94,6 +102,42 @@ extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStac
 extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("Shutting the computer of with output {}", args.rdi);
     hardware::power::shutdown();
+}
+
+extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("puid not implemented");
+}
+
+extern "C" fn syscall_11_get_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("Get screen not implemented");
+}
+
+extern "C" fn syscall_12_set_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("Set screen not implemented");
+}
+
+extern "C" fn syscall_13_getcwd(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("Get cwd not implemented");
+}
+
+extern "C" fn syscall_14_chdir(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("Chdir not implemented");
+}
+
+extern "C" fn syscall_15_mkdir(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("mkdir cwd not implemented");
+}
+
+extern "C" fn syscall_16_rmdir(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("rmdir cwd not implemented");
+}
+
+extern "C" fn syscall_17_get_layer(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("rmdir cwd not implemented");
+}
+
+extern "C" fn syscall_18_set_layer(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    panic!("rmdir cwd not implemented");
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

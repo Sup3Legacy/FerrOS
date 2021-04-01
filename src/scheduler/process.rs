@@ -8,12 +8,14 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
 
+use crate::data_storage::{queue::Queue, random};
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
 use crate::data_storage::{random,queue::Queue};
 use crate::alloc::collections::{BTreeMap,BTreeSet};
+
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -545,7 +547,7 @@ pub unsafe fn fork() -> u64 {
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
     if prio > MAX_PRIO {
-        return usize::MAX
+        return usize::MAX;
     }
     if ID_TABLE[CURRENT_PROCESS].priority.0 <= prio {
         ID_TABLE[CURRENT_PROCESS].priority.0 = prio;
@@ -563,11 +565,11 @@ fn next_priority_to_run() -> usize {
         ticket <<= 1;
         idx += 1;
     }
-    MAX_PRIO-idx
+    MAX_PRIO - idx
 }
 
-const MAX_PRIO:usize = 8;
-static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
+const MAX_PRIO: usize = 8;
+static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
     Queue::new(),
@@ -576,7 +578,7 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
     Queue::new(),
-    ];
+];
 
  /// # Safety
  /// Needs sane `WAITING_QUEUES`. Should be safe to use.
@@ -586,13 +588,13 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
     println!("Priority chosen: {}", prio);
     // </debug>
     // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
-    while WAITING_QUEUES[prio].is_empty(){
+    while WAITING_QUEUES[prio].is_empty() {
         prio -= 1; // need to check priority
     }
     let old_pid = CURRENT_PROCESS;
     let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail");
     let mut old_priority = ID_TABLE[old_pid].priority.0;
-    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0{
+    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0 {
         old_priority -= 1
     }
     if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
@@ -604,4 +606,4 @@ static mut WAITING_QUEUES : [Queue<usize>; MAX_PRIO] = [
     println!("Old PID: {},\tNew PID: {}",old_pid,new_pid);
     // </debug>
     new_pid
- }
+}
