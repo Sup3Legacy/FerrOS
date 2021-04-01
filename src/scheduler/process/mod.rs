@@ -155,6 +155,7 @@ pub unsafe fn launch_first_process(
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
                     | PageTableFlags::WRITABLE,
+                false
             ) {
                 Ok(()) => (),
                 Err(memory::MemoryError(err)) => {
@@ -241,9 +242,7 @@ pub unsafe fn disassemble_and_launch(
                 num_blocks
             );
 
-            // TODO : change this to respect the conventions
-            // For now, it is very probably wrong
-            // for certain writable segment types
+
             let flags = elf::get_table_flags(section.get_type().unwrap());
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
@@ -251,6 +250,7 @@ pub unsafe fn disassemble_and_launch(
                     level_4_table_addr,
                     VirtAddr::new(address + (i as u64) * 4096 + PROG_OFFSET),
                     flags,
+                    true,
                 ) {
                     Ok(()) => (),
                     Err(memory::MemoryError(err)) => {
@@ -281,6 +281,7 @@ pub unsafe fn disassemble_and_launch(
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
                     | PageTableFlags::WRITABLE,
+                false,
             ) {
                 Ok(()) => (),
                 Err(memory::MemoryError(err)) => {

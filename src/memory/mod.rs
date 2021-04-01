@@ -184,10 +184,11 @@ impl BootInfoAllocator {
         table_4: PhysFrame,
         virt_4: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-        self.add_entry_to_table_4(&mut *page_table_ptr, virt_4, flags)
+        self.add_entry_to_table_4(&mut *page_table_ptr, virt_4, flags, allow_duplicate)
     }
 
     /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
@@ -198,6 +199,7 @@ impl BootInfoAllocator {
         table_4: &'static mut PageTable,
         virt_4: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate : bool,
     ) -> Result<(), MemoryError> {
         let p_4 = virt_4.p4_index();
         let entry = table_4[p_4].flags();
@@ -207,7 +209,7 @@ impl BootInfoAllocator {
                 //warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags)
+                self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags, allow_duplicate)
             } else {
                 warningln!("already existed for kernel l.183 failure");
                 warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
@@ -226,8 +228,11 @@ impl BootInfoAllocator {
                     table_4[p_4].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
                     table_4[p_4].set_flags(entry | flags);
-                    self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags)
+                    self.add_entry_to_table_3(&mut *page_table_ptr, virt_4, flags, allow_duplicate)
                 }
             }
         }
@@ -239,6 +244,7 @@ impl BootInfoAllocator {
         table_3: &'static mut PageTable,
         virt_3: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_3 = virt_3.p3_index();
         let entry = table_3[p_3].flags();
@@ -248,7 +254,7 @@ impl BootInfoAllocator {
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_3[p_3].set_flags(entry | flags);
-                self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
+                self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags, allow_duplicate)
             } else {
                 warningln!("line 240");
                 Err(MemoryError(String::from(
@@ -265,7 +271,10 @@ impl BootInfoAllocator {
                     table_3[p_3].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags)
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags, allow_duplicate)
                 }
             }
         }
@@ -277,6 +286,7 @@ impl BootInfoAllocator {
         table_2: &'static mut PageTable,
         virt_2: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_2 = virt_2.p2_index();
         let entry = table_2[p_2].flags();
@@ -286,7 +296,7 @@ impl BootInfoAllocator {
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                 table_2[p_2].set_flags(entry | flags);
-                self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
+                self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags, allow_duplicate)
             } else {
                 warningln!("line 274");
                 Err(MemoryError(String::from(
@@ -301,7 +311,10 @@ impl BootInfoAllocator {
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags)
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags, allow_duplicate)
                 }
             }
         }
@@ -313,14 +326,20 @@ impl BootInfoAllocator {
         table_1: &'static mut PageTable,
         virt_1: VirtAddr,
         flags: PageTableFlags,
+        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            warningln!("already here, l.301 {:#?}", virt_1);
-            Err(MemoryError(String::from(
-                "Level 1 entry is already present",
-            )))
+            if (allow_duplicate) {
+                table_1[p_1].set_flags(entry | flags);
+                Ok(())
+            } else {
+                warningln!("already here, l.301 {:#?}", virt_1);
+                Err(MemoryError(String::from(
+                    "Level 1 entry is already present",
+                )))
+            }
         } else {
             match self.allocate_4k_frame() {
                 None => Err(MemoryError(String::from(
