@@ -7,15 +7,12 @@ use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
-
-use crate::data_storage::{queue::Queue, random};
 use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
 use crate::data_storage::{random,queue::Queue};
 use crate::alloc::collections::{BTreeMap,BTreeSet};
-
 
 #[allow(improper_ctypes)]
 extern "C" {
