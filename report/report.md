@@ -70,3 +70,9 @@ One of the main reasons is that it is a straightforward scheduling algorithm. It
 The VFS is kind of the central piece of our kernel. It’s an energy field created by all living user-programs. It surrounds them and penetrates them. It binds the OS together.
 
 Like in a real UNIX-like kernel, every device, be it hardware or software, can be accessed by an user-program through the abstract high-level interface of the VFS.
+
+## Program/kernel interaction
+
+A program cannot by itself interact with the user or with the underlying hardware, as all software and hardware ressources are managed by the kernel (our drivers are all part of the kernel space for simplicity sakes). Every interaction between a program and the kernel is done via either a forced context switch or a software interrupt, implementing a syscall.
+
+When a program requires a ressource from the kernel, it generates a syscall, whose number corresponds to a pre-defined list of possible syscalls
