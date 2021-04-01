@@ -110,7 +110,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     println!("try to change counter");
     unsafe {
-        hardware::timer::set_timer(0x8000);
+        hardware::timer::set_timer(0x0000); // 0 = 0x10000 = frequence min
     }
     println!("checked");
 
