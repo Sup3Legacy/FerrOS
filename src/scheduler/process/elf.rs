@@ -86,7 +86,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             );
 
 
-            let flags = get_table_flags(section.get_type().unwrap());
+            let flags = get_table_flags(section.get_type().unwrap()) | MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(
