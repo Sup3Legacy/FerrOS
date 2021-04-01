@@ -20,7 +20,7 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
-use crate::{print, println};
+use crate::{print, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -318,11 +318,14 @@ unsafe extern "C" fn timer_interrupt_handler(
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
     //println!("r12:{} r11:{} rbp:{} rcx:{} rbx:{}", registers.r12, registers.r11, registers.rbp, registers.rcx, registers.rbx);
     if COUNTER == QUANTUM {
+        warningln!("Gonna change process");
         COUNTER = 0;
         //println!("{:#?}", stack_frame);
         let _stack_frame_2 = stack_frame.as_mut();
         //println!("entered");
         let (next, mut old) = process::gives_switch(COUNTER);
+
+        println!("???");
         //println!("here");
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();

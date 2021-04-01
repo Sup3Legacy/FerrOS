@@ -24,7 +24,7 @@ where
         Queue {
             data: [None; MAX_SIZE],
             pushing: 0,
-            poping: (MAX_SIZE - 1),
+            poping: 0,
             empty: true,
         }
     }
@@ -36,7 +36,7 @@ where
 
     pub fn is_full(&self) -> bool {
         //! Returns true iff the queue is full
-        !self.is_empty() && (self.poping - self.pushing + 1) % MAX_SIZE == 0
+        !self.is_empty() && self.poping == self.pushing
     }
 
     pub fn push(&mut self, elt: T) -> Result<(), Error> {
@@ -58,8 +58,8 @@ where
         } else {
             let res = self.data[self.poping].unwrap();
             self.data[self.poping] = None;
-            self.poping = (self.poping - 1) % MAX_SIZE;
-            if (self.poping - self.pushing + 1) % MAX_SIZE == 0 {
+            self.poping = (self.poping + 1) % MAX_SIZE;
+            if self.poping == self.pushing {
                 self.empty = true;
             }
             Ok(res)

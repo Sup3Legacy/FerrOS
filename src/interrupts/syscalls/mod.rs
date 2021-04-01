@@ -7,6 +7,7 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::hardware;
 use crate::scheduler::process;
 use crate::{debug, warningln};
+use alloc::string::String;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
 
@@ -38,7 +39,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_16_rmdir,
     syscall_17_get_layer,
     syscall_18_set_layer,
-    syscall_19_set_focus
+    syscall_19_set_focus,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -88,7 +89,17 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
     }
 }
 
-extern "C" fn syscall_6_exec(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+/// arg0 : address of file name
+extern "C" fn syscall_6_exec(args: &mut RegistersMini, isf: &mut InterruptStackFrame) {
+    debug!("exec");
+    let addr: *const String = VirtAddr::new(args.rdi).as_ptr();
+    unsafe {
+        let new_rip = process::elf::load_elf_for_exec(&*addr);
+        let mut stack_value = isf.as_mut();
+        stack_value.instruction_pointer = new_rip;
+        stack_value.stack_pointer = VirtAddr::new(process::elf::ADDR_STACK);
+        process::leave_context(VirtAddr::from_ptr(args).as_u64());
+    }
     panic!("exec not implemented");
 }
 
