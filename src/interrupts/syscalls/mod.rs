@@ -6,10 +6,11 @@ use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::hardware;
 use crate::scheduler::process;
-use crate::{debug, warningln};
+use crate::{debug, warningln, println};
 use alloc::string::String;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
+use core::char;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -54,8 +55,40 @@ extern "C" fn syscall_0_read(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
-extern "C" fn syscall_1_write(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("write congrats you just called the good syscall!")
+extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    warningln!("printing");
+    if (args.rdi  == 1) {
+        let address = args.rsi;
+        let mut data_addr = VirtAddr::new(address);
+        let mut t = String::new();
+        let mut index = 0_u64;
+        unsafe {
+            while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
+                t.push(*data_addr.as_ptr::<char>());
+                data_addr += 1_usize;
+                index += 1;
+            }
+        }
+        warningln!("on screen : {}", t);
+        args.rax = index;
+    } else if (args.rdi == 2) {
+        let address = args.rsi;
+        let mut data_addr = VirtAddr::new(address);
+        let mut t = String::new();
+        let mut index = 0_u64;
+        unsafe {
+            while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
+                t.push(*data_addr.as_ptr::<char>());
+                data_addr += 1_usize;
+                index += 1;
+            }
+        }
+        println!("on screen : {}", t);
+        args.rax = index;
+    } else {
+        warningln!("Unknow file descriptor");
+        args.rax = 0;
+    }
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
