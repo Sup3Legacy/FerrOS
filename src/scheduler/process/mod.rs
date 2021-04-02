@@ -8,7 +8,6 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
 
-
 //use crate::data_storage::{queue::Queue, random};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::data_storage::{queue::Queue, random};
@@ -20,7 +19,6 @@ use crate::println;
 use crate::warningln;
 
 pub mod elf;
-
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -601,7 +599,6 @@ static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
 ];
-
 
 /// # Safety
 /// Needs sane `WAITING_QUEUES`. Should be safe to use.

@@ -13,14 +13,12 @@ use x86_64::{
 
 use crate::warningln;
 
-
 /// Static structure holding the frame allocator. You can borrow it but never place it back to None !.
 /// You can asume it is never None.
 pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
 #[derive(Debug)]
 pub struct MemoryError(pub String);
-
 
 /// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
@@ -30,7 +28,6 @@ const MAX_PAGE_ALLOWED: usize = 65536;
 
 /// Number of allocatable tables
 static mut NUMBER_TABLES: u64 = 0;
-
 
 /// Read Cr3 to give the current level_4 table
 /// Should only be called one

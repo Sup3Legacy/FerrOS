@@ -16,7 +16,7 @@ use core::char;
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 20;
+const SYSCALL_NUMBER: u64 = 21;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -41,6 +41,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_17_get_layer,
     syscall_18_set_layer,
     syscall_19_set_focus,
+    syscall_20_debug,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -187,6 +188,10 @@ extern "C" fn syscall_18_set_layer(_args: &mut RegistersMini, _isf: &mut Interru
 
 extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     panic!("set focus not implemented");
+}
+
+extern "C" fn syscall_20_debug(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    debug!("rdi : {}, rsi : {}", _args.rdi, _args.rsi);
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
