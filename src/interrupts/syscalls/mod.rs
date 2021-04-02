@@ -51,7 +51,12 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
-extern "C" fn syscall_0_read(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    if let Ok(f) = crate::keyboard::get_top_keyEvent() {
+        args.rax = f as u64;
+    } else {
+        args.rax = 0;
+    }
     warningln!("read not implemented")
 }
 
@@ -84,7 +89,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 index += 1;
             }
         }
-        println!("on screen : {}", t);
+        println!("on shell : {}", t);
         args.rax = 
         index;
     } else {
