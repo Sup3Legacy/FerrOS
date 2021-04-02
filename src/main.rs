@@ -108,11 +108,17 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     println!(":(");
 
+    println!("try to change counter");
+    unsafe {
+        hardware::timer::set_timer(0x0000); // 0 = 0x10000 = frequence min
+    }
+    println!("checked");
+
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
     println!(":( :(");
 
-    long_halt(5);
+    long_halt(0);
 
     println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
@@ -122,6 +128,7 @@ pub fn init(_boot_info: &'static BootInfo) {
             "mov rax, 9", "int 80h",);
     }*/
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
+    scheduler::process::spawn_first_process();
     //hardware::power::shutdown();
     //loop {}
     //errorln!("Ousp");
@@ -151,11 +158,6 @@ entry_point!(kernel_main);
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
 fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     init(_boot_info);
-    let elf = ElfFile::new(_TEST_PROGRAM).unwrap();
-    for e in elf.section_iter() {
-        println!("{:x?}", e);
-    }
-    //println!("{:?}", elf);
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
@@ -163,16 +165,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
         }
     }
 
-    unsafe {
-        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::launch_first_process(
-                frame_allocator,
-                test_syscall as *const u8,
-                1,
-                2,
-            );
-        }
-    }
     //unsafe{asm!("mov rcx, 0","div rcx");}
     // This enables the tests
     #[cfg(test)]
