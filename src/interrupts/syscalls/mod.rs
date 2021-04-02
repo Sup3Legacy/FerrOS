@@ -65,7 +65,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         let mut index = 0_u64;
         unsafe {
             while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
-                t.push(*data_addr.as_ptr::<char>());
+                t.push(*(data_addr.as_ptr::<char>()));
                 data_addr += 1_usize;
                 index += 1;
             }
@@ -73,19 +73,20 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         warningln!("on screen : {}", t);
         args.rax = index;
     } else if (args.rdi == 2) {
-        let address = args.rsi;
+        let mut address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
         let mut t = String::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
-                t.push(*data_addr.as_ptr::<char>());
-                data_addr += 1_usize;
+            while index < args.rdx + 20 && *(address as *const u8) != 0 {
+                t.push(*(address as *const u8) as char);
+                address += 1_u64;
                 index += 1;
             }
         }
         println!("on screen : {}", t);
-        args.rax = index;
+        args.rax = 
+        index;
     } else {
         warningln!("Unknow file descriptor");
         args.rax = 0;
