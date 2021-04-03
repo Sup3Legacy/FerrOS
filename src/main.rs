@@ -28,11 +28,10 @@ use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
                             //use x86_64::structures::paging::Translate;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
-use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
-    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
-    test_panic, vga, warningln, _TEST_PROGRAM,
+    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, test_panic,
+    vga, warningln, _TEST_PROGRAM,
 };
 use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
@@ -192,10 +191,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
-    let mut executor = Executor::new();
-    executor.spawn(Task::new(task_1()));
-    executor.spawn(Task::new(task_2()));
-    executor.run();
 }
 
 #[cfg(test)]

@@ -16,6 +16,7 @@ use crate::errorln;
 use crate::hardware;
 use crate::memory;
 use crate::println;
+use alloc::vec::Vec;
 
 use crate::warningln;
 
@@ -268,7 +269,16 @@ pub unsafe fn disassemble_and_launch(
                 Ok(_) => (),
             };
 
-            let _data = section.raw_data(&elf);
+            let mut zeroed_data = Vec::new();
+            let _data = match section.get_type().unwrap() {
+                ShType::NoBits => {
+                    for _ in 0..size {
+                        zeroed_data.push(0)
+                    }
+                    &zeroed_data[..]
+                }
+                _ => section.raw_data(&elf),
+            };
             let num_blocks = (size + offset) / 4096 + 1;
             /*
             println!(
