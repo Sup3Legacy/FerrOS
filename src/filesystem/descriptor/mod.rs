@@ -42,7 +42,7 @@ impl GeneralFileTable {
         for i in 0..MAX_TOTAL_OPEN_FILES {
             if self.tables[self.index].is_none() {
                 self.tables[self.index] = Some(openfile);
-                return
+                return;
             }
             self.index += 1;
             if self.index == MAX_TOTAL_OPEN_FILES {

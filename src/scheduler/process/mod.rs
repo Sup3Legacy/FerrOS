@@ -1,5 +1,6 @@
 use super::PROCESS_MAX_NUMBER;
 
+use bit_field::BitField;
 use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
 use x86_64::registers::control::{Cr3, Cr3Flags};
@@ -7,7 +8,6 @@ use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{sections::ShType, ElfFile};
-
 
 //use crate::data_storage::{queue::Queue, random};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
@@ -20,7 +20,6 @@ use crate::println;
 use crate::warningln;
 
 pub mod elf;
-
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -187,6 +186,36 @@ pub unsafe fn launch_first_process(
     }
 }
 
+pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
+    let mut res = elf::MODIFY_WITH_EXEC | PageTableFlags::PRESENT;
+    if flags.get_bit(1) {
+        res |= PageTableFlags::WRITABLE;
+    }
+    res |= PageTableFlags::USER_ACCESSIBLE;
+    if flags.get_bit(3) {
+        res |= PageTableFlags::WRITE_THROUGH;
+    }
+    if flags.get_bit(4) {
+        res |= PageTableFlags::NO_CACHE;
+    }
+    if flags.get_bit(5) {
+        res |= PageTableFlags::ACCESSED;
+    }
+    if flags.get_bit(6) {
+        res |= PageTableFlags::DIRTY;
+    }
+    if flags.get_bit(7) {
+        res |= PageTableFlags::HUGE_PAGE;
+    }
+    if flags.get_bit(8) {
+        res |= PageTableFlags::GLOBAL;
+    }
+    if flags.get_bit(63) {
+        res |= PageTableFlags::NO_EXECUTE;
+    }
+    res
+}
+
 /// Takes in a slice containing an ELF file,
 /// disassembles it and executes the program.
 ///
@@ -240,8 +269,7 @@ pub unsafe fn disassemble_and_launch(
             };
 
             let _data = section.raw_data(&elf);
-            let total_length = _data.len() as u64 + offset;
-            let num_blocks = total_length / 4096 + 1;
+            let num_blocks = (size + offset) / 4096 + 1;
             /*
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
@@ -250,13 +278,20 @@ pub unsafe fn disassemble_and_launch(
             );
             */
 
+            println!(
+                "Section : {}, flags : {:?}, link : {}",
+                section.get_name(&elf).unwrap(),
+                page_table_flags_from_u64(section.flags()),
+                section.link()
+            );
+
             let flags = elf::get_table_flags(section.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(
                     level_4_table_addr,
-                    VirtAddr::new(address + (i as u64) * 4096 + PROG_OFFSET),
-                    flags,
+                    VirtAddr::new(address + (i as u64) * 0x1000),
+                    page_table_flags_from_u64(section.flags()),
                     true,
                 ) {
                     Ok(()) => (),
@@ -272,7 +307,7 @@ pub unsafe fn disassemble_and_launch(
             }
             match memory::write_into_virtual_memory(
                 level_4_table_addr,
-                VirtAddr::new(address + PROG_OFFSET),
+                VirtAddr::new(address),
                 _data,
             ) {
                 Ok(()) => (),
@@ -305,8 +340,8 @@ pub unsafe fn disassemble_and_launch(
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
-        println!("target : {:x}", towards_user as usize);
-        towards_user(addr_stack, prog_entry + PROG_OFFSET); // good luck user ;)
+        println!("target : {:x}", prog_entry);
+        towards_user(addr_stack, prog_entry); // good luck user ;)
         hardware::power::shutdown();
     }
     loop {}
@@ -601,7 +636,6 @@ static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
 ];
-
 
 /// # Safety
 /// Needs sane `WAITING_QUEUES`. Should be safe to use.

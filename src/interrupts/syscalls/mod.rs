@@ -6,8 +6,9 @@ use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::hardware;
 use crate::scheduler::process;
-use crate::{debug, warningln};
+use crate::{debug, println, warningln};
 use alloc::string::String;
+use core::char;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
 
@@ -15,7 +16,7 @@ use x86_64::VirtAddr;
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 20;
+const SYSCALL_NUMBER: u64 = 21;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -40,6 +41,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_17_get_layer,
     syscall_18_set_layer,
     syscall_19_set_focus,
+    syscall_20_debug,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -49,13 +51,50 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
-extern "C" fn syscall_0_read(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    if let Ok(f) = crate::keyboard::get_top_key_event() {
+        args.rax = f as u64;
+    } else {
+        args.rax = 0;
+    }
     warningln!("read not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
-extern "C" fn syscall_1_write(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("write congrats you just called the good syscall!")
+extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    warningln!("printing");
+    if args.rdi == 1 {
+        let address = args.rsi;
+        let mut data_addr = VirtAddr::new(address);
+        let mut t = String::new();
+        let mut index = 0_u64;
+        unsafe {
+            while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
+                t.push(*(data_addr.as_ptr::<char>()));
+                data_addr += 1_usize;
+                index += 1;
+            }
+        }
+        warningln!("on screen : {}", t);
+        args.rax = index;
+    } else if args.rdi == 2 {
+        let mut address = args.rsi;
+        //let mut data_addr = VirtAddr::new(address);
+        let mut t = String::new();
+        let mut index = 0_u64;
+        unsafe {
+            while index < args.rdx + 20 && *(address as *const u8) != 0 {
+                t.push(*(address as *const u8) as char);
+                address += 1_u64;
+                index += 1;
+            }
+        }
+        debug!("on shell : {}", t);
+        args.rax = index;
+    } else {
+        warningln!("Unknow file descriptor");
+        args.rax = 0;
+    }
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
@@ -154,6 +193,10 @@ extern "C" fn syscall_18_set_layer(_args: &mut RegistersMini, _isf: &mut Interru
 
 extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     panic!("set focus not implemented");
+}
+
+extern "C" fn syscall_20_debug(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    debug!("rdi : {}, rsi : {}", _args.rdi, _args.rsi);
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
