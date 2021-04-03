@@ -109,12 +109,21 @@ impl MainScreen {
         }
     }
 
-    pub fn new_screen(&mut self, row_top: usize, col_left: usize, height: usize, width: usize, layer: VirtualScreenLayer) -> VirtualScreenID {
+    pub fn new_screen(
+        &mut self,
+        row_top: usize,
+        col_left: usize,
+        height: usize,
+        width: usize,
+        layer: VirtualScreenLayer,
+    ) -> VirtualScreenID {
         let vs_id = VirtualScreenID::new();
-        let screen = VirtualScreen::new(ColorCode(0),
-                Coord::new(col_left, row_top),
-                Coord::new(width, height),
-                layer);
+        let screen = VirtualScreen::new(
+            ColorCode(0),
+            Coord::new(col_left, row_top),
+            Coord::new(width, height),
+            layer,
+        );
         self.map.insert(vs_id, screen);
         self.queue.push(vs_id, layer);
         vs_id
