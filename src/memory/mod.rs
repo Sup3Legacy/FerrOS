@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{debug, print, println};
+use crate::{debug, println};
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -57,11 +57,11 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
     for i in 0..512 {
         if level_4_table[i].flags().contains(PageTableFlags::PRESENT) {
             compte -= 1;
-            let addr = level_4_table[i].addr();
+            /*let addr = level_4_table[i].addr();
             let virt = physical_memory_offset + addr.as_u64();
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_3_table = &mut *page_table_ptr;
-            /*println!("{} with {:?}", i, level_4_table[i].flags());
+            println!("{} with {:?}", i, level_4_table[i].flags());
             for i2 in 0..512 {
                 if !level_3_table[i2].is_unused() {
                     println!("{} at {} with {:?}", i2, i, level_3_table[i2].flags());
@@ -77,7 +77,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
                     }
                 }
             }*/
-            if (i < 250) {
+            if i < 256 {
                 let flags = level_4_table[i].flags();
                 level_4_table[i].set_flags(flags | PageTableFlags::BIT_9);
                 let virt = physical_memory_offset + level_4_table[i].addr().as_u64();

@@ -72,7 +72,7 @@ pub fn get_top_value() -> Result<keyboard_layout::KeyEvent, PopError> {
     }
 }
 
-pub fn get_top_keyEvent() -> Result<u8, PopError> {
+pub fn get_top_key_event() -> Result<u8, PopError> {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         queue.pop()
     } else {

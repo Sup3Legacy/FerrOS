@@ -52,7 +52,7 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    if let Ok(f) = crate::keyboard::get_top_keyEvent() {
+    if let Ok(f) = crate::keyboard::get_top_key_event() {
         args.rax = f as u64;
     } else {
         args.rax = 0;
@@ -63,7 +63,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     warningln!("printing");
-    if (args.rdi  == 1) {
+    if args.rdi  == 1 {
         let address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
         let mut t = String::new();
@@ -77,9 +77,9 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         }
         warningln!("on screen : {}", t);
         args.rax = index;
-    } else if (args.rdi == 2) {
+    } else if args.rdi == 2 {
         let mut address = args.rsi;
-        let mut data_addr = VirtAddr::new(address);
+        //let mut data_addr = VirtAddr::new(address);
         let mut t = String::new();
         let mut index = 0_u64;
         unsafe {

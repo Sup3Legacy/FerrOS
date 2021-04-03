@@ -1,7 +1,6 @@
 use crate::debug;
 use crate::errorln;
 use crate::memory;
-use crate::println;
 use crate::_TEST_PROGRAM;
 use alloc::string::String;
 use x86_64::structures::paging::PageTableFlags;
@@ -66,7 +65,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             // Characteristics of the section
             let address = section.address();
             let offset = section.offset();
-            let size = section.size();
+            //let size = section.size();
             // Section debug
             /*
             println!(

@@ -220,7 +220,7 @@ pub unsafe fn disassemble_and_launch(
             // Characteristics of the section
             let address = section.address();
             let offset = section.offset();
-            let size = section.size();
+            //let size = section.size();
             // Section debug
             /*
             println!(
