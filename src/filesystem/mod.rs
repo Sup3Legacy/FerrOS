@@ -22,7 +22,7 @@ pub use vfs::VFS;
 
 use crate::println;
 
-static mut VFS: Option<VFS> = None;
+pub static mut VFS: Option<VFS> = None;
 
 /// Initializes the VFS with the basic filetree and partitions.
 /// TODO

@@ -7,7 +7,10 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::hardware;
 use crate::scheduler::process;
 use crate::{debug, println, warningln};
+use crate::filesystem;
+use crate::data_storage::path::Path;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::char;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
@@ -66,16 +69,18 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
     if args.rdi == 1 {
         let address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
-        let mut t = String::new();
+        let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
-                t.push(*(data_addr.as_ptr::<char>()));
+            while index < args.rdx && ((*(data_addr.as_ptr::<u8>())) != 0) {
+                t.push(*(data_addr.as_ptr::<u8>()));
                 data_addr += 1_usize;
                 index += 1;
             }
+            if let Some(vfs) = &mut filesystem::VFS {
+                vfs.write(Path::from("screen/screenfull"), t);
+            }
         }
-        warningln!("on screen : {}", t);
         args.rax = index;
     } else if args.rdi == 2 {
         let mut address = args.rsi;

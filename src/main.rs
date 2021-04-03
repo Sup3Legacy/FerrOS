@@ -191,6 +191,8 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     let _x = Box::new([0, 1]);
     let y = String::from("Loul");
     println!("{}", y);
+
+    panic!("should not reach here !");
 }
 
 #[cfg(test)]

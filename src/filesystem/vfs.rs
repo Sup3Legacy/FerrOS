@@ -128,8 +128,12 @@ impl VFS {
         todo!()
     }
 
-    pub fn write(&self) {
-        todo!()
+    pub fn write(&'static mut self, path: Path, data: Vec<u8>) {
+        let sliced = path.slice();
+        let res_partition = self.partitions.root
+            .get_partition(sliced, 0);
+        let partition = res_partition.unwrap();
+        partition.write(path, data);
     }
 
     pub fn lseek(&self) {
