@@ -62,10 +62,24 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
             let virt = physical_memory_offset + addr.as_u64();
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_3_table = &mut *page_table_ptr;
+            println!("{} with {:?}", i, level_4_table[i].flags());
             for i2 in 0..512 {
                 if !level_3_table[i2].is_unused() {
-                    println!("{} at {} with {:?}", i2, i, level_3_table[i].flags());
+                    println!("{} at {} with {:?}", i2, i, level_3_table[i2].flags());
+                    if i < 250 {
+                        for i3 in 0..512 {
+                            let virt = physical_memory_offset + level_3_table[i2].addr().as_u64();
+                            let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                            let level_2_table = &mut *page_table_ptr;
+                            if !level_2_table[i3].is_unused() {
+                                println!(" -> {} at {} with {:?}", i3, i2, level_2_table[i3].flags());
+                            }
+                        }
+                    }
                 }
+            }
+            if (i < 250) {
+                level_4_table[i].set_flags(PageTableFlags::empty());
             }
         }
     }

@@ -3,7 +3,7 @@
 ENTRY(_start)
 
 SECTIONS {
-  . = 0x800000000;
+  . = 0xFFFFFFF000000000;
 
   .rodata :
   {

@@ -67,3 +67,7 @@ test-args = [
 ]
 test-success-exit-code = 33
 
+[package.metadata.bootloader]
+kernel-stack-size = 128
+kernel-stack-address =   "0xFFFFFF8000000000"
+physical-memory-offset = "0xFFFFFF0000000000"
