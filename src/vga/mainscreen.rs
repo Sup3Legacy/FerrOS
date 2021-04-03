@@ -6,8 +6,11 @@ use hashbrown::hash_map::DefaultHashBuilder;
 use priority_queue::PriorityQueue;
 
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
+use crate::data_storage::screen::Coord;
 
 use crate::println;
+
+pub static mut MAIN_SCREEN: Option<MainScreen> = None;
 
 /// Height of the screen
 const BUFFER_HEIGHT: usize = 25;
@@ -16,7 +19,7 @@ const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct VirtualScreenID(u64);
+pub struct VirtualScreenID(u64);
 
 impl VirtualScreenID {
     fn new() -> Self {
@@ -104,6 +107,21 @@ impl MainScreen {
                 self.alpha[i][j] = false;
             }
         }
+    }
+
+    pub fn new_screen(&mut self, row_top: usize, col_left: usize, height: usize, width: usize, layer: VirtualScreenLayer) -> VirtualScreenID {
+        let vs_id = VirtualScreenID::new();
+        let screen = VirtualScreen::new(ColorCode(0),
+                Coord::new(col_left, row_top),
+                Coord::new(width, height),
+                layer);
+        self.map.insert(vs_id, screen);
+        self.queue.push(vs_id, layer);
+        vs_id
+    }
+
+    pub fn get_screen(&mut self, id: &VirtualScreenID) -> Option<&mut VirtualScreen> {
+        self.map.get_mut(id)
     }
 }
 

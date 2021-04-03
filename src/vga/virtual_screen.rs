@@ -145,6 +145,16 @@ impl VirtualScreen {
         }
     }
 
+    pub fn write_byte_vec(&mut self, s: Vec<u8>) {
+        for byte in s {
+            match byte {
+                // useless match ?
+                0x20..=0x7e | b'\n' | b'\r' => self.write_byte(byte as u8),
+                _ => self.write_byte(byte as u8),
+            }
+        }
+    }
+
     /// This function writes a string on the screen of the given color, starting at the current position of the cursor.
     ///
     /// # Arguments
@@ -159,7 +169,7 @@ impl VirtualScreen {
     }
 
     /// Initializes a new screen, with a given color and buffer.
-    fn new(color: ColorCode, position: Coord, size: Coord, layer: VirtualScreenLayer) -> Self {
+    pub fn new(color: ColorCode, position: Coord, size: Coord, layer: VirtualScreenLayer) -> Self {
         let blank = CHAR { code: b' ', color };
         let col_size = size.get_col();
         let row_size = size.get_row();
