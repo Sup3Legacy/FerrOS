@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{debug, print, println};
+use crate::{debug, println};
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -50,27 +50,69 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 /// Must be called at least once to avoid `&mut` aliasing
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
     PHYSICAL_OFFSET = physical_memory_offset.as_u64();
-    let level_4_table = active_level_4_table(physical_memory_offset);
+    let level_4_table: &'static mut PageTable = active_level_4_table(physical_memory_offset);
 
     // Just for the stats, can be removed
-    let mut compte = 0;
+    let mut compte = 512;
     for i in 0..512 {
-        if level_4_table[i].is_unused() {
-            compte += 1
-        } else {
-            let addr = level_4_table[i].addr();
+        if level_4_table[i].flags().contains(PageTableFlags::PRESENT) {
+            compte -= 1;
+            /*let addr = level_4_table[i].addr();
             let virt = physical_memory_offset + addr.as_u64();
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_3_table = &mut *page_table_ptr;
+            println!("{} with {:?}", i, level_4_table[i].flags());
             for i2 in 0..512 {
                 if !level_3_table[i2].is_unused() {
-                    println!("{} at {} with {:?}", i2, i, level_3_table[i].flags());
+                    println!("{} at {} with {:?}", i2, i, level_3_table[i2].flags());
+                    if i < 250 {
+                        for i3 in 0..512 {
+                            let virt = physical_memory_offset + level_3_table[i2].addr().as_u64();
+                            let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                            let level_2_table = &mut *page_table_ptr;
+                            if !level_2_table[i3].is_unused() {
+                                println!(" -> {} at {} with {:?}", i3, i2, level_2_table[i3].flags());
+                            }
+                        }
+                    }
+                }
+            }*/
+            if i < 256 {
+                let flags = level_4_table[i].flags();
+                level_4_table[i].set_flags(flags | PageTableFlags::BIT_9);
+                let virt = physical_memory_offset + level_4_table[i].addr().as_u64();
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                let level_3_table = &mut *page_table_ptr;
+                for i3 in 0..512 {
+                    if level_3_table[i3].flags().contains(PageTableFlags::PRESENT) {
+                        let flags = level_3_table[i3].flags();
+                        level_3_table[i3].set_flags(flags | PageTableFlags::BIT_9);
+                        let virt = physical_memory_offset + level_3_table[i3].addr().as_u64();
+                        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                        let level_2_table = &mut *page_table_ptr;
+                        for i2 in 0..512 {
+                            if level_2_table[i2].flags().contains(PageTableFlags::PRESENT) {
+                                let flags = level_2_table[i2].flags();
+                                level_2_table[i2].set_flags(flags | PageTableFlags::BIT_9);
+                                let virt =
+                                    physical_memory_offset + level_2_table[i2].addr().as_u64();
+                                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                                let level_1_table = &mut *page_table_ptr;
+                                for i1 in 0..512 {
+                                    if level_1_table[i1].flags().contains(PageTableFlags::PRESENT) {
+                                        let flags = level_1_table[i1].flags();
+                                        level_1_table[i1].set_flags(flags | PageTableFlags::BIT_9);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    println!("Nb Frame used : {}.", compte);
-    print!("Phys_offset : {:?}", physical_memory_offset);
+    println!("Nb Frame unused in level 4 table : {}.", compte);
+    println!("Phys_offset : {:?}", physical_memory_offset);
     // End of stats
 
     OffsetPageTable::new(level_4_table, physical_memory_offset)
@@ -107,7 +149,7 @@ impl BootInfoAllocator {
             maxi = max((i >> 12) as usize, maxi);
             next = min((i >> 12) as usize, next);
         }
-        println!("Num tables : {}", NUMBER_TABLES); // just for show, should be removed
+        println!("Number of available tables in RAM : {}", NUMBER_TABLES); // just for show, should be removed
 
         FRAME_ALLOCATOR = Some(BootInfoAllocator {
             pages_available,

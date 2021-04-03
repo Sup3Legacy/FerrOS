@@ -1,7 +1,6 @@
 use crate::debug;
 use crate::errorln;
 use crate::memory;
-use crate::println;
 use crate::_TEST_PROGRAM;
 use alloc::string::String;
 use x86_64::structures::paging::PageTableFlags;
@@ -21,6 +20,9 @@ pub fn get_table_flags(section: ShType) -> PageTableFlags {
         ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
         ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
         ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+        ShType::NoBits => {
+            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT | PageTableFlags::ACCESSED
+        }
         _ => {
             PageTableFlags::USER_ACCESSIBLE
                 | PageTableFlags::PRESENT
@@ -66,7 +68,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> VirtAddr {
             // Characteristics of the section
             let address = section.address();
             let offset = section.offset();
-            let size = section.size();
+            //let size = section.size();
             // Section debug
             /*
             println!(
