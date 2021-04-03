@@ -3,12 +3,12 @@
 //! Part of the OS responsible for handling syscalls
 
 use super::idt::InterruptStackFrame;
+use crate::data_storage::path::Path;
 use crate::data_storage::registers::{Registers, RegistersMini};
+use crate::filesystem;
 use crate::hardware;
 use crate::scheduler::process;
-use crate::{debug, println, warningln};
-use crate::filesystem;
-use crate::data_storage::path::Path;
+use crate::{debug, errorln, println, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -79,6 +79,8 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             }
             if let Some(vfs) = &mut filesystem::VFS {
                 vfs.write(Path::from("screen/screenfull"), t);
+            } else {
+                errorln!("Could not find VFS");
             }
         }
         args.rax = index;

@@ -24,8 +24,12 @@ use bootloader::{entry_point, BootInfo};
 extern crate vga as vga_video;
 //use vga as vga_video;
 mod programs;
-use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
-                            //use x86_64::structures::paging::Translate;
+use x86_64::{
+    addr::PhysAddr,
+    addr::VirtAddr,
+    structures::paging::{Page, PhysFrame},
+}; //, VirtAddrNotValid};
+   //use x86_64::structures::paging::Translate;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
 use ferr_os::{
@@ -99,6 +103,17 @@ pub fn init(_boot_info: &'static BootInfo) {
             frame_allocator
                 .deallocate_level_4_page(level_4_frame.start_address(), PageTableFlags::BIT_9)
                 .expect("Didn't manage to clean bootloader data");
+            frame_allocator
+                .add_forced_entry_to_table(
+                    level_4_frame,
+                    PhysAddr::new(0xb8000),
+                    VirtAddr::new(0xb8000),
+                    PageTableFlags::PRESENT
+                        | PageTableFlags::WRITABLE
+                        | PageTableFlags::USER_ACCESSIBLE,
+                    false,
+                )
+                .expect("Could not allocate screen buffer :(");
             allocator::init(&mut mapper, frame_allocator).expect("Heap init failed :((");
         } else {
             panic!("Frame allocator wasn't initialized");

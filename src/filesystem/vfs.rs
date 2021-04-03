@@ -1,5 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
+use crate::debug;
+
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -91,7 +93,7 @@ impl PartitionNode {
                     next.insert(String::from(sliced_path[index].as_str()), Box::new(tree));
                     Ok(())
                 }
-            },
+            }
             PartitionNode::Leaf(_) => Err(()),
         }
     }
@@ -104,8 +106,7 @@ impl VFS {
     /// Returns the index of file descriptor. -1 if error
     pub fn open(&'static mut self, path: Path) -> isize {
         let sliced = path.slice();
-        let res_partition = self.partitions.root
-            .get_partition(sliced, 0);
+        let res_partition = self.partitions.root.get_partition(sliced, 0);
         // If the VFS couldn't find the corresponding partition, return -1
         if res_partition.is_err() {
             return -1;
@@ -130,10 +131,10 @@ impl VFS {
 
     pub fn write(&'static mut self, path: Path, data: Vec<u8>) {
         let sliced = path.slice();
-        let res_partition = self.partitions.root
-            .get_partition(sliced, 0);
+        let res_partition = self.partitions.root.get_partition(sliced, 0);
         let partition = res_partition.unwrap();
         partition.write(path, data);
+        debug!("Debug #0");
     }
 
     pub fn lseek(&self) {
@@ -142,7 +143,10 @@ impl VFS {
 
     pub fn new() -> Self {
         let mut map = BTreeMap::new();
-        map.insert(String::from("null"), Box::new(PartitionNode::Leaf(Box::new(NoPart::new()))));
+        map.insert(
+            String::from("null"),
+            Box::new(PartitionNode::Leaf(Box::new(NoPart::new()))),
+        );
         let parts = PartitionTree {
             root: PartitionNode::Node(map),
         };

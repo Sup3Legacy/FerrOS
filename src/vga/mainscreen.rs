@@ -38,7 +38,7 @@ pub struct MainScreen {
     /// back-up queue
     roll_queue: PriorityQueue<VirtualScreenID, VirtualScreenLayer, DefaultHashBuilder>,
 
-    buffer: [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    buffer: &'static mut [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT],
 
     /// true if the case is occupied
     alpha: [[bool; BUFFER_WIDTH]; BUFFER_HEIGHT],
@@ -51,7 +51,7 @@ impl MainScreen {
             map: BTreeMap::new(),
             queue: PriorityQueue::with_default_hasher(),
             roll_queue: PriorityQueue::with_default_hasher(),
-            buffer: [[blank; BUFFER_WIDTH]; BUFFER_HEIGHT],
+            buffer: unsafe { &mut *(0xb8000 as *mut [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT]) },
             alpha: [[false; BUFFER_WIDTH]; BUFFER_HEIGHT],
         }
     }
@@ -78,6 +78,14 @@ impl MainScreen {
                             && j + col_origin < BUFFER_WIDTH
                             && !self.alpha[i + row_origin][j + col_origin]
                         {
+                            if i < 3 {
+                                println!(
+                                    "{}, {} : {:?}",
+                                    i + row_origin,
+                                    j + col_origin,
+                                    v_screen.get_char(i, j)
+                                );
+                            }
                             self.buffer[i + row_origin][j + col_origin] = v_screen.get_char(i, j);
                             self.alpha[i + row_origin][j + col_origin] = true;
                         }
@@ -119,7 +127,7 @@ impl MainScreen {
     ) -> VirtualScreenID {
         let vs_id = VirtualScreenID::new();
         let screen = VirtualScreen::new(
-            ColorCode(0),
+            ColorCode(15),
             Coord::new(col_left, row_top),
             Coord::new(width, height),
             layer,

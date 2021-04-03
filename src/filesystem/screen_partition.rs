@@ -1,8 +1,8 @@
-use crate::data_storage::path::Path;
 use super::partition::Partition;
-use alloc::vec::Vec;
 use crate::vga::mainscreen;
 use crate::vga::virtual_screen::VirtualScreenLayer;
+use crate::{data_storage::path::Path, debug, errorln, programs::ascii_fluid::main};
+use alloc::vec::Vec;
 
 /// Used to define an empty partition
 #[derive(Debug)]
@@ -15,7 +15,13 @@ impl ScreenPartition {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 Self {
-                    screen_id: main_screen.new_screen(row_top, col_left, height, width, VirtualScreenLayer(layer)),
+                    screen_id: main_screen.new_screen(
+                        row_top,
+                        col_left,
+                        height,
+                        width,
+                        VirtualScreenLayer(layer),
+                    ),
                 }
             } else {
                 mainscreen::MAIN_SCREEN = Some(mainscreen::MainScreen::new());
@@ -34,8 +40,11 @@ impl Partition for ScreenPartition {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 if let Some(mut screen) = main_screen.get_screen(&self.screen_id) {
-                    screen.write_byte_vec(_buffer)
+                    let a = screen.write_byte_vec(_buffer);
+                    main_screen.draw();
+                    a
                 } else {
+                    errorln!("Could not get screen.");
                     0
                 }
             } else {
