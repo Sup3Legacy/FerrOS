@@ -94,14 +94,15 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
                             if level_2_table[i2].flags().contains(PageTableFlags::PRESENT) {
                                 let flags = level_2_table[i2].flags();
                                 level_2_table[i2].set_flags(flags | PageTableFlags::BIT_9);
-                                let virt = physical_memory_offset + level_2_table[i2].addr().as_u64();
+                                let virt =
+                                    physical_memory_offset + level_2_table[i2].addr().as_u64();
                                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                                 let level_1_table = &mut *page_table_ptr;
                                 for i1 in 0..512 {
                                     if level_1_table[i1].flags().contains(PageTableFlags::PRESENT) {
                                         let flags = level_1_table[i1].flags();
                                         level_1_table[i1].set_flags(flags | PageTableFlags::BIT_9);
-                                    }        
+                                    }
                                 }
                             }
                         }

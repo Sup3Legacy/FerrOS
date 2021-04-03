@@ -6,11 +6,11 @@ use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::hardware;
 use crate::scheduler::process;
-use crate::{debug, warningln, println};
+use crate::{debug, println, warningln};
 use alloc::string::String;
+use core::char;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
-use core::char;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -63,7 +63,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     warningln!("printing");
-    if args.rdi  == 1 {
+    if args.rdi == 1 {
         let address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
         let mut t = String::new();
@@ -89,9 +89,8 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 index += 1;
             }
         }
-        println!("on shell : {}", t);
-        args.rax = 
-        index;
+        debug!("on shell : {}", t);
+        args.rax = index;
     } else {
         warningln!("Unknow file descriptor");
         args.rax = 0;

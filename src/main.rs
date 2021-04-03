@@ -97,7 +97,9 @@ pub fn init(_boot_info: &'static BootInfo) {
         memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
             let (level_4_frame, _) = Cr3::read();
-            frame_allocator.deallocate_level_4_page(level_4_frame.start_address(), PageTableFlags::BIT_9).expect("Didn't manage to clean bootloader data");
+            frame_allocator
+                .deallocate_level_4_page(level_4_frame.start_address(), PageTableFlags::BIT_9)
+                .expect("Didn't manage to clean bootloader data");
             allocator::init(&mut mapper, frame_allocator).expect("Heap init failed :((");
         } else {
             panic!("Frame allocator wasn't initialized");

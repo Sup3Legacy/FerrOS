@@ -20,6 +20,9 @@ pub fn get_table_flags(section: ShType) -> PageTableFlags {
         ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
         ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
         ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
+        ShType::NoBits => {
+            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT | PageTableFlags::ACCESSED
+        }
         _ => {
             PageTableFlags::USER_ACCESSIBLE
                 | PageTableFlags::PRESENT
