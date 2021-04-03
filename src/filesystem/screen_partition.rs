@@ -1,23 +1,26 @@
 use crate::data_storage::path::Path;
 use super::partition::Partition;
+use alloc::vec::Vec;
 use crate::vga::mainscreen;
-use crate::vga::video_mode::VirtualScreenLayer;
+use crate::vga::virtual_screen::VirtualScreenLayer;
 
 /// Used to define an empty partition
 #[derive(Debug)]
 pub struct ScreenPartition {
-    screen_id = VirtualScreenID;
+    pub screen_id: mainscreen::VirtualScreenID,
 }
 
 impl ScreenPartition {
-    pub const fn new(row_top: usize, col_left: usize, height: usize, width: usize, layer: usize) -> Self {
-        if let mut Some(main_screen) = mainscreen::MAIN_SCREEN {
-            Self {
-                screen_id : main_screen.new_screen(row_top, col_left, height, width, VirtualScreenLayer(layer)),
+    pub fn new(row_top: usize, col_left: usize, height: usize, width: usize, layer: usize) -> Self {
+        unsafe {
+            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+                Self {
+                    screen_id: main_screen.new_screen(row_top, col_left, height, width, VirtualScreenLayer(layer)),
+                }
+            } else {
+                mainscreen::MAIN_SCREEN = Some(mainscreen::MainScreen::new());
+                ScreenPartition::new(row_top, col_left, height, width, layer)
             }
-        } else {
-            mainscreen::MAIN_SCREEN = Some(mainscreen::MainScreen::new())
-            ScreenPartition::new(row_top, col_left, height, width)
         }
     }
 }
@@ -28,15 +31,16 @@ impl Partition for ScreenPartition {
     }
 
     fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
-        if let mut Some(main_screen) = mainscreen::MAIN_SCREEN {
-            if let mut Some(screen) = main_screen.get_screen(self.screen_id) {
-                screen.write_byte_vec(_buffer);
-                _buffer.size()
+        unsafe {
+            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+                if let Some(mut screen) = main_screen.get_screen(&self.screen_id) {
+                    screen.write_byte_vec(_buffer)
+                } else {
+                    0
+                }
             } else {
-                0
+                panic!("should never happen")
             }
-        } else {
-            panic!("should never happen")
         }
     }
 

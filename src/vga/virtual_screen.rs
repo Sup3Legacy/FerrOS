@@ -37,7 +37,7 @@ impl CHAR {
 /// A higher layer index means the virtual screen will be
 /// displayed more on the foreground.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VirtualScreenLayer(usize);
+pub struct VirtualScreenLayer(pub usize);
 
 /// This is the virtual screen assigned to a process
 #[derive(Debug, Clone, Hash, PartialEq)]
@@ -145,7 +145,8 @@ impl VirtualScreen {
         }
     }
 
-    pub fn write_byte_vec(&mut self, s: Vec<u8>) {
+    pub fn write_byte_vec(&mut self, s: Vec<u8>) -> usize {
+        let l = s.len();
         for byte in s {
             match byte {
                 // useless match ?
@@ -153,6 +154,7 @@ impl VirtualScreen {
                 _ => self.write_byte(byte as u8),
             }
         }
+        l
     }
 
     /// This function writes a string on the screen of the given color, starting at the current position of the cursor.

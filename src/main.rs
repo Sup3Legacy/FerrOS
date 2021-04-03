@@ -133,6 +133,9 @@ pub fn init(_boot_info: &'static BootInfo) {
     }*/
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     scheduler::process::spawn_first_process();
+    unsafe {
+        filesystem::init_vfs();
+    }
     //hardware::power::shutdown();
     //loop {}
     //errorln!("Ousp");
