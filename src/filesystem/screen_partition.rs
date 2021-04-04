@@ -1,7 +1,7 @@
 use super::partition::Partition;
 use crate::vga::mainscreen;
 use crate::vga::virtual_screen::VirtualScreenLayer;
-use crate::{data_storage::path::Path, debug, errorln, programs::ascii_fluid::main};
+use crate::{data_storage::path::Path, errorln};
 use alloc::vec::Vec;
 
 /// Used to define an empty partition
@@ -39,7 +39,7 @@ impl Partition for ScreenPartition {
     fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                if let Some(mut screen) = main_screen.get_screen(&self.screen_id) {
+                if let Some(screen) = main_screen.get_screen(&self.screen_id) {
                     let a = screen.write_byte_vec(_buffer);
                     main_screen.draw();
                     a

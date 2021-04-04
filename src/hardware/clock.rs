@@ -1,6 +1,5 @@
 use x86_64::instructions::port::Port;
 
-use crate::println;
 
 const CMOS_ADDRESS: u16 = 0x70;
 static mut CMOS_ADDRESS_PORT: Port<u8> = Port::new(CMOS_ADDRESS);
@@ -22,7 +21,7 @@ unsafe fn wait_update() {
 }
 
 fn cvt_bcd(value: usize) -> usize {
-    ((value & 0xF) + ((value / 16) * 10))
+    (value & 0xF) + ((value / 16) * 10)
 }
 
 #[derive(Debug)]

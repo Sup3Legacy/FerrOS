@@ -30,7 +30,7 @@ pub unsafe fn init_vfs() {
     VFS = Some(VFS::new());
     if let Some(vfs) = &mut VFS {
         let s1 = screen_partition::ScreenPartition::new(0, 0, 20, 80, 0);
-        vfs.add_file(Path::from("screen/screenfull"), Box::new(s1));
+        vfs.add_file(Path::from("screen/screenfull"), Box::new(s1)).expect("could not create screen");
     } else {
         panic!("should not happen")
     }
@@ -61,7 +61,7 @@ pub fn write_file(_path: Path, _data: &'static [u8]) {
     todo!();
 }
 
-pub fn get_data(path: Path) -> &'static [u8] {
+pub fn get_data(_path: Path) -> &'static [u8] {
     todo!()
 }
 

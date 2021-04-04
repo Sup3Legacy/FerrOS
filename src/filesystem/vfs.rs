@@ -1,6 +1,5 @@
 #![allow(clippy::upper_case_acronyms)]
 
-use crate::debug;
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
@@ -134,7 +133,7 @@ impl VFS {
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         let partition = res_partition.unwrap();
         partition.write(path, data);
-        debug!("Debug #0");
+        //debug!("Debug #0");
     }
 
     pub fn lseek(&self) {

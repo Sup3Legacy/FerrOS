@@ -295,7 +295,7 @@ pub unsafe fn disassemble_and_launch(
                 section.link()
             );
 
-            let flags = elf::get_table_flags(section.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
+            let _flags = elf::get_table_flags(section.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(

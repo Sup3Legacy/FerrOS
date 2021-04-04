@@ -46,7 +46,7 @@ pub struct MainScreen {
 
 impl MainScreen {
     pub fn new() -> Self {
-        let blank = CHAR::new(b' ', ColorCode(0_u8));
+        //let blank = CHAR::new(b' ', ColorCode(0_u8));
         Self {
             map: BTreeMap::new(),
             queue: PriorityQueue::with_default_hasher(),
@@ -78,14 +78,14 @@ impl MainScreen {
                             && j + col_origin < BUFFER_WIDTH
                             && !self.alpha[i + row_origin][j + col_origin]
                         {
-                            if i < 3 {
+                            /*if i < 3 {
                                 println!(
                                     "{}, {} : {:?}",
                                     i + row_origin,
                                     j + col_origin,
                                     v_screen.get_char(i, j)
                                 );
-                            }
+                            }*/
                             self.buffer[i + row_origin][j + col_origin] = v_screen.get_char(i, j);
                             self.alpha[i + row_origin][j + col_origin] = true;
                         }

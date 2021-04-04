@@ -8,7 +8,7 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::filesystem;
 use crate::hardware;
 use crate::scheduler::process;
-use crate::{debug, errorln, println, warningln};
+use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
