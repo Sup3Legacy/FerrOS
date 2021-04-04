@@ -7,7 +7,7 @@ use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{sections::ShType, ElfFile};
+use xmas_elf::{ElfFile, program::SegmentData, program::{ProgramIter, Type}, sections::ShType};
 
 //use crate::data_storage::{queue::Queue, random};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
@@ -189,6 +189,9 @@ pub unsafe fn launch_first_process(
 
 pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
     let mut res = elf::MODIFY_WITH_EXEC | PageTableFlags::PRESENT;
+    if flags.get_bit(0) {
+        res |= PageTableFlags::PRESENT;
+    }
     if flags.get_bit(1) {
         res |= PageTableFlags::WRITABLE;
     }
@@ -249,11 +252,11 @@ pub unsafe fn disassemble_and_launch(
         // TODO Change this
         ID_TABLE[0].state = State::Runnable;
         // Loop over each section
-        for section in elf.section_iter() {
+        for program in elf.program_iter() {
             // Characteristics of the section
-            let address = section.address();
-            let offset = section.offset();
-            let size = section.size();
+            let address = program.virtual_addr();
+            let offset = program.offset();
+            let size = program.mem_size();
             // Section debug
             /*
             println!(
@@ -265,20 +268,29 @@ pub unsafe fn disassemble_and_launch(
             );
             */
 
-            match section.get_type() {
-                Ok(ShType::Null) | Err(_) => continue,
+            match program.get_type() {
+                Ok(Type::Null) | Err(_) => continue,
                 Ok(_) => (),
             };
+            if address == 0 {
+                continue
+            }
 
             let mut zeroed_data = Vec::new();
-            let _data = match section.get_type().unwrap() {
-                ShType::NoBits => {
+            let _data = match program.get_type().unwrap() {
+                Type::Load => {
+                    match program.get_data(&elf).unwrap() {
+                        SegmentData::Undefined(a) => a,
+                        SegmentData::Note64(_, a) => a,
+                        _ => panic!(":(")
+                    }
+                },
+                _ => {
                     for _ in 0..size {
                         zeroed_data.push(0)
                     }
                     &zeroed_data[..]
                 }
-                _ => section.raw_data(&elf),
             };
             let num_blocks = (size + offset) / 4096 + 1;
             /*
@@ -288,22 +300,24 @@ pub unsafe fn disassemble_and_launch(
                 num_blocks
             );
             */
-
             println!(
-                "Section : {}, flags : {:?}, link : {}, address : {}",
-                section.get_name(&elf).unwrap(),
-                page_table_flags_from_u64(section.flags()),
-                section.link(),
+                "Section : type : {:?}, flags : {:?}, address : {}, size : {}",
+                program.get_type(),
+                program.flags(),
                 address,
+                size,
             );
-
-            let _flags = elf::get_table_flags(section.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
+            let mut flags = PageTableFlags::PRESENT;
+            if program.flags().is_write() {
+                flags |= PageTableFlags::WRITABLE;
+            }
+            //let _flags = elf::get_table_flags(program.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(
                     level_4_table_addr,
                     VirtAddr::new(address + (i as u64) * 0x1000),
-                    page_table_flags_from_u64(section.flags()),
+                    flags,
                     true,
                 ) {
                     Ok(()) => (),
@@ -323,7 +337,7 @@ pub unsafe fn disassemble_and_launch(
                 _data,
             ) {
                 Ok(()) => (),
-                Err(a) => errorln!("{:?} at section : {:?}", a, section),
+                Err(a) => errorln!("{:?} at section : {:?}", a, 0),
             };
         }
         // Allocate frames for the stack
