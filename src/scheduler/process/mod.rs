@@ -7,7 +7,12 @@ use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{ElfFile, program::SegmentData, program::{ProgramIter, Type}, sections::ShType};
+use xmas_elf::{
+    program::SegmentData,
+    program::{ProgramIter, Type},
+    sections::ShType,
+    ElfFile,
+};
 
 //use crate::data_storage::{queue::Queue, random};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
@@ -257,6 +262,7 @@ pub unsafe fn disassemble_and_launch(
             let address = program.virtual_addr();
             let offset = program.offset();
             let size = program.mem_size();
+            let file_size = program.file_size();
             // Section debug
             /*
             println!(
@@ -269,21 +275,19 @@ pub unsafe fn disassemble_and_launch(
             */
 
             match program.get_type() {
-                Ok(Type::Null) | Err(_) => continue,
+                Err(_) => continue,
                 Ok(_) => (),
             };
             if address == 0 {
-                continue
+                continue;
             }
 
             let mut zeroed_data = Vec::new();
             let _data = match program.get_type().unwrap() {
-                Type::Load => {
-                    match program.get_data(&elf).unwrap() {
-                        SegmentData::Undefined(a) => a,
-                        SegmentData::Note64(_, a) => a,
-                        _ => panic!(":(")
-                    }
+                Type::Load => match program.get_data(&elf).unwrap() {
+                    SegmentData::Undefined(a) => a,
+                    SegmentData::Note64(_, a) => a,
+                    _ => panic!(":("),
                 },
                 _ => {
                     for _ in 0..size {
@@ -307,9 +311,12 @@ pub unsafe fn disassemble_and_launch(
                 address,
                 size,
             );
-            let mut flags = PageTableFlags::PRESENT;
+            let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE;
             if program.flags().is_write() {
                 flags |= PageTableFlags::WRITABLE;
+            }
+            if !program.flags().is_execute() {
+                flags |= PageTableFlags::NO_EXECUTE;
             }
             //let _flags = elf::get_table_flags(program.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
@@ -339,6 +346,17 @@ pub unsafe fn disassemble_and_launch(
                 Ok(()) => (),
                 Err(a) => errorln!("{:?} at section : {:?}", a, 0),
             };
+            if size != file_size {
+                println!(
+                    "file_size and mem_size differ : file {}, mem {}",
+                    file_size, size
+                );
+                let mut padding = Vec::new();
+                for _ in 0..(size - file_size) {
+                    padding.push(0_u8);
+                }
+                memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + size), &padding[..]).unwrap();
+            }
         }
         // Allocate frames for the stack
         for i in 0..stack_size {
