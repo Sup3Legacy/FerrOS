@@ -235,7 +235,7 @@ pub unsafe fn disassemble_and_launch(
 ) -> ! {
     const PROG_OFFSET: u64 = 0x8048000000;
     // TODO maybe consider changing this
-    let addr_stack: u64 = 0x63fffffffff8;
+    let addr_stack: u64 = 0x63ff_ffff_fff8;
     // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
     // We get the main entry point and mmake sure it is
@@ -246,6 +246,7 @@ pub unsafe fn disassemble_and_launch(
     };
     // This allocates a new level-4 table
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
+        // TODO Change this
         ID_TABLE[0].state = State::Runnable;
         // Loop over each section
         for section in elf.section_iter() {
@@ -289,10 +290,11 @@ pub unsafe fn disassemble_and_launch(
             */
 
             println!(
-                "Section : {}, flags : {:?}, link : {}",
+                "Section : {}, flags : {:?}, link : {}, address : {}",
                 section.get_name(&elf).unwrap(),
                 page_table_flags_from_u64(section.flags()),
-                section.link()
+                section.link(),
+                address,
             );
 
             let _flags = elf::get_table_flags(section.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
@@ -345,6 +347,35 @@ pub unsafe fn disassemble_and_launch(
                     hardware::power::shutdown();
                 }
             }
+        }
+        let heap_address = 0x8888_0000_u64;
+        let heap_size = 100;
+        for i in 0..heap_size {
+            match frame_allocator.add_entry_to_table(
+                level_4_table_addr,
+                VirtAddr::new(heap_address + i * 0x1000),
+                PageTableFlags::USER_ACCESSIBLE
+                    | PageTableFlags::PRESENT
+                    | PageTableFlags::WRITABLE,
+                false,
+            ) {
+                Ok(()) => (),
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the heap. Error : {:?}",
+                        i,
+                        err
+                    );
+                }
+            }
+            match memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(heap_address + i * 0x1000),
+                &[0_u8; 4096],
+            ) {
+                Ok(()) => (),
+                Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+            };
         }
 
         let (_cr3, cr3f) = Cr3::read();

@@ -1164,7 +1164,7 @@ pub unsafe fn write_into_virtual_memory(
         Some(a) => a,
         None => {
             return Err(MemoryError(String::from(
-                "Could not convert process-virtual to physical memory",
+                "Could not convert process-virtual to physical memory #0",
             )))
         }
     };
@@ -1177,7 +1177,7 @@ pub unsafe fn write_into_virtual_memory(
                 Some(a) => a,
                 None => {
                     return Err(MemoryError(String::from(
-                        "Could not convert process-virtual to physical memory",
+                        "Could not convert process-virtual to physical memory #1",
                     )))
                 }
             };
