@@ -107,7 +107,7 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "mov gs, eax",
         "mov rsp, rdi",
         "add rsp, 8",
-        "push 0",
+        "push 0x42",
         "push rax",  // stack segment
         "push rdi",  // stack pointer
         "push 518",  // cpu flags

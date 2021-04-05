@@ -358,7 +358,7 @@ extern "x86-interrupt" fn page_fault_handler(
     error_code: PageFaultErrorCode,
 ) {
     let read_addr = Cr2::read();
-    if read_addr.as_u64() == 0 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
+    if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
         println!("terminated normally");
         /* // This launch a new process when the other one has finished.
         unsafe {
