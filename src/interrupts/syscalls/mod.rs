@@ -59,7 +59,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
     if args.rdi == 0 {
         args.rax = 0;
         let mut address = args.rsi;
-        for _i in 0..min(1024, args.rsi) {
+        for _i in 0..min(1023, args.rsi) {
             if let Ok(k) = crate::keyboard::get_top_key_event() {
                 unsafe {
                     *(address as *mut u8) = k;
@@ -67,6 +67,9 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
                 address += 1;
                 args.rax += 1;
             }
+        }
+        unsafe {
+            *(address as *mut u8) = 0;
         }
     } else {
         warningln!("Unkown file descriptor in read");
