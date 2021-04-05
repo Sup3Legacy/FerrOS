@@ -3,18 +3,19 @@
 //! Part of the OS responsible for handling syscalls
 
 use super::idt::InterruptStackFrame;
-use crate::data_storage::path::Path;
 use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::filesystem;
 use crate::hardware;
+use crate::interrupts;
 use crate::scheduler::process;
+use crate::{data_storage::path::Path, scheduler};
 use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
+use core::cmp::min;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
-use core::cmp::min;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -168,7 +169,9 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("wait not implemented");
+    unsafe {
+        interrupts::COUNTER = interrupts::QUANTUM - 1;
+    }
 }
 
 extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
