@@ -275,7 +275,7 @@ pub unsafe fn disassemble_and_launch(
             */
 
             match program.get_type() {
-                Err(_) => continue,
+                Ok(Type::Phdr) | Err(_) => continue,
                 Ok(_) => (),
             };
             if address == 0 {
