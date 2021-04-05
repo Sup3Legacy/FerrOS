@@ -559,7 +559,7 @@ impl UsTar {
             header,
             data: Vec::new(),
         };
-        println!("{:?}, {}", header.name, unsafe { header.length });
+        println!("{:?}, {}", header.name, header.length);
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
             let mut compteur = 0;

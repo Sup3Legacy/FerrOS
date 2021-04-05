@@ -9,8 +9,7 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{
     program::SegmentData,
-    program::{ProgramIter, Type},
-    sections::ShType,
+    program::Type,
     ElfFile,
 };
 
@@ -119,6 +118,43 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "mov rdx, 0",
         "mov rdi, 0",
         "mov rsi, 0",
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
+#[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn towards_user_give_heap(_heap_addr: u64, _heap_size: u64, _rsp: u64, _rip: u64) {
+    asm!(
+        // Ceci n'est pas exécuté
+        "mov rax, 0x0", // data segment
+        "mov ds, eax",
+        "mov es, eax",
+        "mov fs, eax",
+        "mov gs, eax",
+        "mov rsp, rdx",
+        "add rsp, 8",
+        "push 0x42",
+        "push rax",  // stack segment
+        "push rdx",  // stack pointer
+        "push 518",  // cpu flags
+        "push 0x08", // code segment
+        "push rcx",  // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        "mov rdx, 0",
         "mov rbp, 0",
         "mov r8, 0",
         "mov r9, 0",
@@ -256,7 +292,6 @@ pub unsafe fn disassemble_and_launch(
     _number_of_block: u64,
     stack_size: u64,
 ) -> ! {
-    const PROG_OFFSET: u64 = 0x8048000000;
     // TODO maybe consider changing this
     let addr_stack: u64 = 0x1ffff8;
     // We get the `ElfFile` from the raw slice
@@ -319,13 +354,13 @@ pub unsafe fn disassemble_and_launch(
                 num_blocks
             );
             */
-            println!(
+            /*println!(
                 "Section : type : {:?}, flags : {:?}, address : {}, size : {}",
                 program.get_type(),
                 program.flags(),
                 address,
                 size,
-            );
+            );*/
             let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE;
             if program.flags().is_write() {
                 flags |= PageTableFlags::WRITABLE;
@@ -425,24 +460,12 @@ pub unsafe fn disassemble_and_launch(
             };
         }
 
-        match frame_allocator.add_entry_to_table(
-            level_4_table_addr,
-            VirtAddr::new(0),
-            PageTableFlags::PRESENT
-                |PageTableFlags::NO_EXECUTE,
-            false,
-        ) {
-            Ok(()) => (),
-            Err(memory::MemoryError(err)) => {
-                errorln!("Could not allocate page 0");
-            }
-        }
-
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
         println!("target : {:x}", prog_entry);
-        towards_user(addr_stack, prog_entry); // good luck user ;)
+
+        towards_user_give_heap(heap_address, heap_size, addr_stack, prog_entry); // good luck user ;)
         hardware::power::shutdown();
     }
     loop {}

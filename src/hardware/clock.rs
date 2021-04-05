@@ -72,7 +72,7 @@ impl Time {
         let mut day;
         let mut month;
         let mut year;
-        let mut century;
+        let century;
         let register_b;
         wait_update();
         second = get_rtc(0x00) as usize;
@@ -81,7 +81,7 @@ impl Time {
         day = get_rtc(0x07) as usize;
         month = get_rtc(0x08) as usize;
         year = get_rtc(0x09) as usize;
-        century = 20_usize;
+        century = 21_usize;
         register_b = get_rtc(0x0b);
 
         if register_b & 4 != 4 {
@@ -105,7 +105,7 @@ impl Time {
             hour,
             day,
             month,
-            year: year + 100 * century,
+            year: year + 100 * (century - 1),
         }
     }
 }

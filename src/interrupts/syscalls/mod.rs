@@ -8,7 +8,7 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::filesystem;
 use crate::hardware;
 use crate::scheduler::process;
-use crate::{debug, errorln, warningln, print, println};
+use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -202,13 +202,8 @@ extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut Interru
     panic!("set focus not implemented");
 }
 
-extern "C" fn syscall_20_debug(args: &mut RegistersMini, isf: &mut InterruptStackFrame) {
-
-    unsafe {
-        debug!("rdi : {}, rsi : {}, rsp : {:#?}", args.rdi, args.rsi, isf.as_mut().stack_pointer);
-        //debug!("rdi : {}, rsi : {}", args.rdi, args.rsi);
-
-    }
+extern "C" fn syscall_20_debug(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    debug!("rdi : {}, rsi : {}", args.rdi, args.rsi);
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
@@ -221,15 +216,6 @@ extern "C" fn syscall_not_implemented(_args: &mut RegistersMini, _isf: &mut Inte
 
 /// dispatch function who gives control to the good syscall function
 pub extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut RegistersMini) {
-    debug!("syscall {}", args.rax);
-    unsafe {
-        let rip = VirtAddr::new(0x203b04);
-        for i in 0..10 {
-            print!("{:x} ", *((rip + i as u64).as_ptr() as *const u8))
-        }
-        println!("");
-    }
-
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall : {:?}", args);
     } else {

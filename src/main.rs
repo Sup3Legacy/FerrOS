@@ -124,61 +124,39 @@ pub fn init(_boot_info: &'static BootInfo) {
     keyboard::init();
     //vga::init();
 
-    println!(":(");
+    //println!(":(");
 
-    println!("try to change counter");
+    println!("Changing timer frequence");
     unsafe {
         hardware::timer::set_timer(0x0000); // 0 = 0x10000 = frequence min
     }
-    println!("checked");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
-    println!(":( :(");
+    //println!(":( :(");
 
     long_halt(0);
 
-    println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
+    //println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
-    /* unsafe {
-        asm!(
-            "mov rdi, 42",
-            "mov rax, 9", "int 80h",);
-    }*/
+
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     scheduler::process::spawn_first_process();
     unsafe {
         filesystem::init_vfs();
     }
-    //hardware::power::shutdown();
-    //loop {}
-    //errorln!("Ousp");
+
     //filesystem::init();
 }
 
-// test taks, to move out of here
-async fn task_1() {
-    loop {
-        ferr_os::print!("X");
-        long_halt(16);
-    }
-}
-
-// test task, to move out of here
-async fn task_2() {
-    loop {
-        print!("0");
-        long_halt(16);
-    }
-}
 
 entry_point!(kernel_main);
 // We use it to check at compile time that we are doing everything correctly with the arguments of `kernel_main`
 
 /// # Entry point
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
-fn kernel_main(_boot_info: &'static BootInfo) -> ! {
-    init(_boot_info);
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    init(boot_info);
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
@@ -190,22 +168,6 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     // This enables the tests
     #[cfg(test)]
     test_main();
-    // Yet again, some ugly tests in main
-    println!(":( :( :(");
-    programs::shell::main_shell();
-    println!();
-    for i in 0..5 {
-        println!("{}", i);
-    }
-    for i in 0..5 {
-        println!("{},", i);
-    }
-
-    println!();
-
-    let _x = Box::new([0, 1]);
-    let y = String::from("Loul");
-    println!("{}", y);
 
     panic!("should not reach here !");
 }
