@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 use core::char;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
+use core::cmp::min;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -55,12 +56,22 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    if let Ok(f) = crate::keyboard::get_top_key_event() {
-        args.rax = f as u64;
+    if args.rdi == 0 {
+        args.rax = 0;
+        let mut address = args.rsi;
+        for _i in 0..min(1024, args.rsi) {
+            if let Ok(k) = crate::keyboard::get_top_key_event() {
+                unsafe {
+                    *(address as *mut u8) = k;
+                }
+                address += 1;
+                args.rax += 1;
+            }
+        }
     } else {
+        warningln!("Unkown file descriptor in read");
         args.rax = 0;
     }
-    warningln!("read not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
@@ -72,7 +83,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx && ((*(data_addr.as_ptr::<u8>())) != 0) {
+            while index < args.rdx && index < 1024 && ((*(data_addr.as_ptr::<u8>())) != 0) {
                 t.push(*(data_addr.as_ptr::<u8>()));
                 data_addr += 1_usize;
                 index += 1;
@@ -90,7 +101,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         let mut t = String::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx + 20 && *(address as *const u8) != 0 {
+            while index < args.rdx && index < 1024 && *(address as *const u8) != 0 {
                 t.push(*(address as *const u8) as char);
                 address += 1_u64;
                 index += 1;
