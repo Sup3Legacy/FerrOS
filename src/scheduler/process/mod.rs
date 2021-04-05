@@ -57,8 +57,8 @@ pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
         "pop r13",
         "pop r14",
         "pop r15",
-        "add rsp, 32",
         "vmovaps ymm0, [rsp]",
+        "add rsp, 32",
         //"sti",
         "iretq",
         options(noreturn,),
@@ -86,8 +86,8 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         "pop r13",
         "pop r14",
         "pop r15",
-        "add rsp, 32",
         "vmovaps ymm0, [rsp]",
+        "add rsp, 32",
         //"sti",
         "iretq",
         options(noreturn,),
@@ -113,6 +113,21 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "push 518",  // cpu flags
         "push 0x08", // code segment
         "push rsi",  // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        "mov rdx, 0",
+        "mov rdi, 0",
+        "mov rsi, 0",
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
         "iretq",
         options(noreturn,),
     )
@@ -243,7 +258,7 @@ pub unsafe fn disassemble_and_launch(
 ) -> ! {
     const PROG_OFFSET: u64 = 0x8048000000;
     // TODO maybe consider changing this
-    let addr_stack: u64 = 0x63ff_ffff_fff8;
+    let addr_stack: u64 = 0x1ffff8;
     // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
     // We get the main entry point and mmake sure it is
@@ -408,6 +423,19 @@ pub unsafe fn disassemble_and_launch(
                 Ok(()) => (),
                 Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
             };
+        }
+
+        match frame_allocator.add_entry_to_table(
+            level_4_table_addr,
+            VirtAddr::new(0),
+            PageTableFlags::PRESENT
+                |PageTableFlags::NO_EXECUTE,
+            false,
+        ) {
+            Ok(()) => (),
+            Err(memory::MemoryError(err)) => {
+                errorln!("Could not allocate page 0");
+            }
         }
 
         let (_cr3, cr3f) = Cr3::read();

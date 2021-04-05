@@ -378,6 +378,12 @@ extern "x86-interrupt" fn page_fault_handler(
         println!("PAGE FAULT! {:#?}", stack_frame);
         println!("TRIED TO READ : {:#?}", Cr2::read());
         println!("ERROR : {:#?}", error_code);
+        unsafe {
+            let rip = stack_frame.as_mut().instruction_pointer;
+            for i in 0..10 {
+                println!("{:?} -> {:x} ", rip + i as u64, *((rip + i as u64).as_ptr() as *const u8))
+            }
+        }
     }
     crate::halt_loop();
 }

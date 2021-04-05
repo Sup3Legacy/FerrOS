@@ -1154,7 +1154,7 @@ pub unsafe fn write_into_virtual_memory(
     virt_4: VirtAddr,
     data: &[u8],
 ) -> Result<(), MemoryError> {
-    let offset: u64 = virt_4.page_offset().into();
+    let offset: usize = virt_4.page_offset().into();
     let length = data.len();
     let mut virtaddr: VirtAddr = virt_4;
     let mut physaddr: PhysAddr = match translate_addr(table_4, virtaddr) {
@@ -1165,11 +1165,8 @@ pub unsafe fn write_into_virtual_memory(
             )))
         }
     };
-    for i in 0..length {
-        let content: *mut u8 = (physaddr.as_u64() + i as u64 + PHYSICAL_OFFSET) as *mut u8;
-        (*content) = data[i];
-        virtaddr += 1_u64;
-        if (i as u64 + offset) % 4096 == 0 {
+    for i in offset..(length + offset) {
+        if virtaddr.as_u64() & 0xfff == 0 {
             physaddr = match translate_addr(table_4, virtaddr) {
                 Some(a) => a,
                 None => {
@@ -1179,6 +1176,9 @@ pub unsafe fn write_into_virtual_memory(
                 }
             };
         }
+        let content: *mut u8 = (physaddr.as_u64() + (i & 0xfff) as u64 + PHYSICAL_OFFSET) as *mut u8;
+        (*content) = data[i - offset];
+        virtaddr += 1_u64;
     }
     Ok(())
 }
@@ -1210,7 +1210,7 @@ unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr>
         };
         virt = PHYSICAL_OFFSET + frame.start_address().as_u64();
     }
-    Some(frame.start_address() + u64::from(addr.page_offset()))
+    Some(frame.start_address())
 }
 
 
