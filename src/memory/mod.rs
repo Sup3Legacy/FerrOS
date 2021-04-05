@@ -240,7 +240,7 @@ impl BootInfoAllocator {
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_4[p_4].set_flags(entry | flags);
+                table_4[p_4].set_flags(flag_union(entry, flags));
                 //warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -285,10 +285,9 @@ impl BootInfoAllocator {
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_3[p_3].set_flags(entry | flags);
+                table_3[p_3].set_flags(flag_union(entry, flags));
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                table_3[p_3].set_flags(entry | flags);
                 self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags, allow_duplicate)
             } else {
                 warningln!("line 240");
@@ -327,10 +326,9 @@ impl BootInfoAllocator {
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_2[p_2].set_flags(entry | flags);
+                table_2[p_2].set_flags(flag_union(entry, flags));
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                table_2[p_2].set_flags(entry | flags);
                 self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags, allow_duplicate)
             } else {
                 warningln!("line 274");
@@ -342,7 +340,6 @@ impl BootInfoAllocator {
             match self.allocate_4k_frame() {
                 None => Err(MemoryError(String::from("Could not allocate 4k #2"))),
                 Some(addr) => {
-                    //let addr = phys_frame.start_address();
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -367,7 +364,7 @@ impl BootInfoAllocator {
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if allow_duplicate {
-                table_1[p_1].set_flags(entry | flags);
+                table_1[p_1].set_flags(flag_union(entry, flags));
                 Ok(())
             } else {
                 warningln!("already here, l.301 {:#?}", virt_1);
@@ -1214,4 +1211,15 @@ unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr>
         virt = PHYSICAL_OFFSET + frame.start_address().as_u64();
     }
     Some(frame.start_address() + u64::from(addr.page_offset()))
+}
+
+
+fn flag_union(f1: PageTableFlags, f2: PageTableFlags) -> PageTableFlags {
+    if f1.contains(PageTableFlags::NO_EXECUTE) == f2.contains(PageTableFlags::NO_EXECUTE) {
+        f1 | f2
+    } else {
+        let mut f = f1 | f2;
+        f.remove(PageTableFlags::NO_EXECUTE);
+        f
+    }
 }
