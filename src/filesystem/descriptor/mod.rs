@@ -1,4 +1,3 @@
-use core::cmp::min;
 
 use crate::data_storage::path::Path;
 use alloc::vec::Vec;
@@ -38,15 +37,15 @@ impl GeneralFileTable {
     }
 
     /// Inserts an entry in the file table for the given file.
-    pub fn insert(&mut self, openfile: OpenFileTable) {
-        for i in 0..MAX_TOTAL_OPEN_FILES {
+    pub fn insert(&mut self, openfile: OpenFileTable) -> usize {
+        for _i in 0..MAX_TOTAL_OPEN_FILES {
             if self.tables[self.index].is_none() {
                 self.tables[self.index] = Some(openfile);
-                return;
+                return self.index;
             }
             self.index += 1;
             if self.index == MAX_TOTAL_OPEN_FILES {
-                self.index == 0;
+                self.index = 0;
             }
         }
         // need to be improved

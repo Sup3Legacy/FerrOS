@@ -354,11 +354,11 @@ unsafe extern "C" fn timer_interrupt_handler(
 
 /// Page fault handler, should verify wether killing the current process or allocating a new page !
 extern "x86-interrupt" fn page_fault_handler(
-    _stack_frame: &mut InterruptStackFrame,
-    _error_code: PageFaultErrorCode,
+    stack_frame: &mut InterruptStackFrame,
+    error_code: PageFaultErrorCode,
 ) {
     let read_addr = Cr2::read();
-    if read_addr.as_u64() == 0 {
+    if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
         println!("terminated normally");
         /* // This launch a new process when the other one has finished.
         unsafe {
@@ -375,9 +375,9 @@ extern "x86-interrupt" fn page_fault_handler(
         
         hardware::power::shutdown();
     } else {
-        println!("PAGE FAULT! {:#?}", _stack_frame);
+        println!("PAGE FAULT! {:#?}", stack_frame);
         println!("TRIED TO READ : {:#?}", Cr2::read());
-        println!("ERROR : {:#?}", _error_code);
+        println!("ERROR : {:#?}", error_code);
     }
     crate::halt_loop();
 }

@@ -28,7 +28,6 @@ pub mod programs;
 pub mod scheduler;
 pub mod serial;
 pub mod sound;
-pub mod task;
 pub mod vga;
 
 extern crate alloc;

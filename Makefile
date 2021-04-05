@@ -1,6 +1,9 @@
 all:
 	cargo run --release
 
+doc :
+	cargo doc --document-private-items --open
+
 clean:
 	cargo clean
 

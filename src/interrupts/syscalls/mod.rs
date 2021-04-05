@@ -4,11 +4,16 @@
 
 use super::idt::InterruptStackFrame;
 use crate::data_storage::registers::{Registers, RegistersMini};
+use crate::filesystem;
 use crate::hardware;
+use crate::interrupts;
 use crate::scheduler::process;
-use crate::{debug, println, warningln};
+use crate::{data_storage::path::Path, scheduler};
+use crate::{debug, errorln, warningln, println};
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::char;
+use core::cmp::min;
 use x86_64::registers::control::Cr3;
 use x86_64::VirtAddr;
 
@@ -52,30 +57,49 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    if let Ok(f) = crate::keyboard::get_top_key_event() {
-        args.rax = f as u64;
+    if args.rdi == 0 {
+        args.rax = 0;
+        let mut address = VirtAddr::new(args.rsi) + 1_u64;
+        for _i in 0..min(1023, args.rsi) {
+            if let Ok(k) = crate::keyboard::get_top_key_event() {
+                println!("About to print : {}", k);
+                unsafe {
+                    *(address.as_mut_ptr::<u8>()) = k;
+                }
+                address += 1_u64;
+                args.rax += 1;
+            }
+        }
+        
     } else {
+        warningln!("Unkown file descriptor in read");
         args.rax = 0;
     }
-    warningln!("read not implemented")
 }
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("printing");
+    //warningln!("printing");
     if args.rdi == 1 {
         let address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
-        let mut t = String::new();
+        let mut t = Vec::new();
         let mut index = 0_u64;
+        if args.rdx > 0 {
+            debug!("Got bytes to write!");
+        }
         unsafe {
-            while index < args.rdx && ((*(data_addr.as_ptr::<u64>())) != 0) {
-                t.push(*(data_addr.as_ptr::<char>()));
+            while index < args.rdi && index < 1024 && ((*(data_addr.as_ptr::<u8>())) != 0) {
+                t.push(*(data_addr.as_ptr::<u8>()));
                 data_addr += 1_usize;
                 index += 1;
             }
+            if let Some(vfs) = &mut filesystem::VFS {
+                vfs.write(Path::from("screen/screenfull"), t);
+            } else {
+                errorln!("Could not find VFS");
+            }
         }
-        warningln!("on screen : {}", t);
         args.rax = index;
     } else if args.rdi == 2 {
         let mut address = args.rsi;
@@ -83,7 +107,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         let mut t = String::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx + 20 && *(address as *const u8) != 0 {
+            while index < args.rdx && index < 1024 && *(address as *const u8) != 0 {
                 t.push(*(address as *const u8) as char);
                 address += 1_u64;
                 index += 1;
@@ -147,7 +171,9 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("wait not implemented");
+    unsafe {
+        interrupts::COUNTER = interrupts::QUANTUM - 1;
+    }
 }
 
 extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
@@ -195,8 +221,8 @@ extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut Interru
     panic!("set focus not implemented");
 }
 
-extern "C" fn syscall_20_debug(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("rdi : {}, rsi : {}", _args.rdi, _args.rsi);
+extern "C" fn syscall_20_debug(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    debug!("rdi : {}, rsi : {}", args.rdi, args.rsi);
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
