@@ -76,6 +76,9 @@ impl VirtualScreen {
                     }
                     self.scroll_up();
                 }
+                if self.col_pos == self.width {
+                    self.new_line()
+                }
                 self.buffer[self.row_pos][self.col_pos] = CHAR {
                     code: byte,
                     color: self.color,

@@ -9,7 +9,7 @@ use crate::hardware;
 use crate::interrupts;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, scheduler};
-use crate::{debug, errorln, warningln};
+use crate::{debug, errorln, warningln, println};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -59,19 +59,18 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     if args.rdi == 0 {
         args.rax = 0;
-        let mut address = args.rsi;
+        let mut address = VirtAddr::new(args.rsi) + 1_u64;
         for _i in 0..min(1023, args.rsi) {
             if let Ok(k) = crate::keyboard::get_top_key_event() {
+                println!("About to print : {}", k);
                 unsafe {
-                    *(address as *mut u8) = k;
+                    *(address.as_mut_ptr::<u8>()) = k;
                 }
-                address += 1;
+                address += 1_u64;
                 args.rax += 1;
             }
         }
-        unsafe {
-            *(address as *mut u8) = 0;
-        }
+        
     } else {
         warningln!("Unkown file descriptor in read");
         args.rax = 0;
@@ -80,14 +79,17 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("printing");
+    //warningln!("printing");
     if args.rdi == 1 {
         let address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
         let mut t = Vec::new();
         let mut index = 0_u64;
+        if args.rdx > 0 {
+            debug!("Got bytes to write!");
+        }
         unsafe {
-            while index < args.rdx && index < 1024 && ((*(data_addr.as_ptr::<u8>())) != 0) {
+            while index < args.rdi && index < 1024 && ((*(data_addr.as_ptr::<u8>())) != 0) {
                 t.push(*(data_addr.as_ptr::<u8>()));
                 data_addr += 1_usize;
                 index += 1;

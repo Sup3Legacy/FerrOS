@@ -99,6 +99,7 @@ impl MainScreen {
             }
             self.roll_queue.push(v_screen_id, _layer);
         }
+        self.spill_queue();
     }
 
     /// Puts all item in `roll_queue` back in the `queue`
