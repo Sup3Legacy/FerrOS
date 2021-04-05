@@ -216,6 +216,7 @@ extern "C" fn syscall_not_implemented(_args: &mut RegistersMini, _isf: &mut Inte
 
 /// dispatch function who gives control to the good syscall function
 pub extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut RegistersMini) {
+    debug!("syscall {}", args.rax);
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall : {:?}", args);
     } else {
