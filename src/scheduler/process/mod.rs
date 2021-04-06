@@ -1,12 +1,17 @@
 use super::PROCESS_MAX_NUMBER;
 
+use bit_field::BitField;
 use core::sync::atomic::{AtomicU64, Ordering};
 //use lazy_static::lazy_static;
 use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{sections::ShType, ElfFile};
+use xmas_elf::{
+    program::SegmentData,
+    program::Type,
+    ElfFile,
+};
 
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
@@ -14,6 +19,11 @@ use crate::data_storage::{queue::Queue, random};
 use crate::{errorln, println, warningln, debug};
 use crate::hardware;
 use crate::memory;
+use crate::println;
+use alloc::vec::Vec;
+
+use crate::warningln;
+
 
 pub mod elf;
 
@@ -47,8 +57,8 @@ pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
         "pop r13",
         "pop r14",
         "pop r15",
-        "add rsp, 32",
         "vmovaps ymm0, [rsp]",
+        "add rsp, 32",
         //"sti",
         "iretq",
         options(noreturn,),
@@ -76,8 +86,8 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
         "pop r13",
         "pop r14",
         "pop r15",
-        "add rsp, 32",
         "vmovaps ymm0, [rsp]",
+        "add rsp, 32",
         //"sti",
         "iretq",
         options(noreturn,),
@@ -97,12 +107,64 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
         "mov gs, eax",
         "mov rsp, rdi",
         "add rsp, 8",
-        "push 0",
+        "push 0x42",
         "push rax",  // stack segment
         "push rdi",  // stack pointer
         "push 518",  // cpu flags
         "push 0x08", // code segment
         "push rsi",  // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        "mov rdx, 0",
+        "mov rdi, 0",
+        "mov rsi, 0",
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
+#[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn towards_user_give_heap(_heap_addr: u64, _heap_size: u64, _rsp: u64, _rip: u64) {
+    asm!(
+        // Ceci n'est pas exécuté
+        "mov rax, 0x0", // data segment
+        "mov ds, eax",
+        "mov es, eax",
+        "mov fs, eax",
+        "mov gs, eax",
+        "mov rsp, rdx",
+        "add rsp, 8",
+        "push 0x42",
+        "push rax",  // stack segment
+        "push rdx",  // stack pointer
+        "push 518",  // cpu flags
+        "push 0x08", // code segment
+        "push rcx",  // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        "mov rdx, 0",
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
         "iretq",
         options(noreturn,),
     )
@@ -182,6 +244,39 @@ pub unsafe fn launch_first_process(
     }
 }
 
+pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
+    let mut res = elf::MODIFY_WITH_EXEC | PageTableFlags::PRESENT;
+    if flags.get_bit(0) {
+        res |= PageTableFlags::PRESENT;
+    }
+    if flags.get_bit(1) {
+        res |= PageTableFlags::WRITABLE;
+    }
+    res |= PageTableFlags::USER_ACCESSIBLE;
+    if flags.get_bit(3) {
+        res |= PageTableFlags::WRITE_THROUGH;
+    }
+    if flags.get_bit(4) {
+        res |= PageTableFlags::NO_CACHE;
+    }
+    if flags.get_bit(5) {
+        res |= PageTableFlags::ACCESSED;
+    }
+    if flags.get_bit(6) {
+        res |= PageTableFlags::DIRTY;
+    }
+    if flags.get_bit(7) {
+        res |= PageTableFlags::HUGE_PAGE;
+    }
+    if flags.get_bit(8) {
+        res |= PageTableFlags::GLOBAL;
+    }
+    if flags.get_bit(63) {
+        res |= PageTableFlags::NO_EXECUTE;
+    }
+    res
+}
+
 /// Takes in a slice containing an ELF file,
 /// disassembles it and executes the program.
 ///
@@ -198,9 +293,8 @@ pub unsafe fn disassemble_and_launch(
     _number_of_block: u64,
     stack_size: u64,
 ) -> ! {
-    const PROG_OFFSET: u64 = 0x8048000000;
     // TODO maybe consider changing this
-    let addr_stack: u64 = 0x63fffffffff8;
+    let addr_stack: u64 = 0x1ffff8;
     // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
     // We get the main entry point and mmake sure it is
@@ -211,13 +305,15 @@ pub unsafe fn disassemble_and_launch(
     };
     // This allocates a new level-4 table
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
+        // TODO Change this
         ID_TABLE[0].state = State::Runnable;
         // Loop over each section
-        for section in elf.section_iter() {
+        for program in elf.program_iter() {
             // Characteristics of the section
-            let address = section.address();
-            let offset = section.offset();
-            let size = section.size();
+            let address = program.virtual_addr();
+            let offset = program.offset();
+            let size = program.mem_size();
+            let file_size = program.file_size();
             // Section debug
             /*
             println!(
@@ -229,39 +325,57 @@ pub unsafe fn disassemble_and_launch(
             );
             */
 
-            match section.get_type() {
-                Ok(ShType::Null) | Err(_) => continue,
+            match program.get_type() {
+                Ok(Type::Phdr) | Err(_) => continue,
                 Ok(_) => (),
             };
+            if address == 0 {
+                continue;
+            }
 
-            let _data = section.raw_data(&elf);
-            let total_length = _data.len() as u64 + offset;
-            let num_blocks = total_length / 4096 + 1;
+
+            let mut zeroed_data = Vec::new();
+            let _data = match program.get_type().unwrap() {
+                Type::Load => match program.get_data(&elf).unwrap() {
+                    SegmentData::Undefined(a) => a,
+                    SegmentData::Note64(_, a) => a,
+                    _ => panic!(":("),
+                },
+                _ => {
+                    for _ in 0..size {
+                        zeroed_data.push(0)
+                    }
+                    &zeroed_data[..]
+                }
+            };
+            let num_blocks = (size + offset) / 4096 + 1;
+            /*
             println!(
                 "Total len of 0x{:x?}, {:?} blocks",
                 num_blocks * 512,
                 num_blocks
             );
-
-            // TODO : change this to respect the conventions
-            // For now, it is very probably wrong
-            // for certain writable segment types
-            let flags = match section.get_type().unwrap() {
-                ShType::ProgBits => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                ShType::SymTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                ShType::StrTab => PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                _ => {
-                    PageTableFlags::USER_ACCESSIBLE
-                        | PageTableFlags::PRESENT
-                        | PageTableFlags::NO_EXECUTE
-                        | PageTableFlags::WRITABLE
-                }
-            };
+            */
+            /*println!(
+                "Section : type : {:?}, flags : {:?}, address : {}, size : {}",
+                program.get_type(),
+                program.flags(),
+                address,
+                size,
+            );*/
+            let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE;
+            if program.flags().is_write() {
+                flags |= PageTableFlags::WRITABLE;
+            }
+            if !program.flags().is_execute() {
+                flags |= PageTableFlags::NO_EXECUTE;
+            }
+            //let _flags = elf::get_table_flags(program.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(
                     level_4_table_addr,
-                    VirtAddr::new(address + (i as u64) * 4096 + PROG_OFFSET),
+                    VirtAddr::new(address + (i as u64) * 0x1000),
                     flags,
                     true,
                 ) {
@@ -278,12 +392,23 @@ pub unsafe fn disassemble_and_launch(
             }
             match memory::write_into_virtual_memory(
                 level_4_table_addr,
-                VirtAddr::new(address + PROG_OFFSET),
+                VirtAddr::new(address),
                 _data,
             ) {
                 Ok(()) => (),
-                Err(a) => errorln!("{:?} at section : {:?}", a, section),
+                Err(a) => errorln!("{:?} at section : {:?}", a, 0),
             };
+            if size != file_size {
+                println!(
+                    "file_size and mem_size differ : file {}, mem {}",
+                    file_size, size
+                );
+                let mut padding = Vec::new();
+                for _ in 0..(size - file_size) {
+                    padding.push(0_u8);
+                }
+                memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + size), &padding[..]).unwrap();
+            }
         }
         // Allocate frames for the stack
         for i in 0..stack_size {
@@ -307,12 +432,42 @@ pub unsafe fn disassemble_and_launch(
                 }
             }
         }
+        let heap_address = 0x8888_0000_u64;
+        let heap_size = 100;
+        for i in 0..heap_size {
+            match frame_allocator.add_entry_to_table(
+                level_4_table_addr,
+                VirtAddr::new(heap_address + i * 0x1000),
+                PageTableFlags::USER_ACCESSIBLE
+                    | PageTableFlags::PRESENT
+                    | PageTableFlags::WRITABLE,
+                false,
+            ) {
+                Ok(()) => (),
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the heap. Error : {:?}",
+                        i,
+                        err
+                    );
+                }
+            }
+            match memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(heap_address + i * 0x1000),
+                &[0_u8; 4096],
+            ) {
+                Ok(()) => (),
+                Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+            };
+        }
 
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
-        println!("target : {:x}", towards_user as usize);
-        towards_user(addr_stack, prog_entry + PROG_OFFSET); // good luck user ;)
+        println!("target : {:x}", prog_entry);
+
+        towards_user_give_heap(heap_address, heap_size, addr_stack, prog_entry); // good luck user ;)
         hardware::power::shutdown();
     }
     loop {}
@@ -332,6 +487,7 @@ pub unsafe fn disassemble_and_launch(
 /// * `rip` - current value of the instruction pointer
 /// * `state` - state of the process (e.g. Zombie, Runnable...)
 /// * `owner` - owner ID of the process (can be root or user) usefull for syscalls
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct Process {

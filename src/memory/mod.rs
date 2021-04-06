@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{debug, print, println};
+use crate::{debug, println};
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -13,14 +13,12 @@ use x86_64::{
 
 use crate::warningln;
 
-
 /// Static structure holding the frame allocator. You can borrow it but never place it back to None !.
 /// You can asume it is never None.
 pub static mut FRAME_ALLOCATOR: Option<BootInfoAllocator> = None;
 
 #[derive(Debug)]
 pub struct MemoryError(pub String);
-
 
 /// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
@@ -30,7 +28,6 @@ const MAX_PAGE_ALLOWED: usize = 65536;
 
 /// Number of allocatable tables
 static mut NUMBER_TABLES: u64 = 0;
-
 
 /// Read Cr3 to give the current level_4 table
 /// Should only be called one
@@ -53,27 +50,69 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 /// Must be called at least once to avoid `&mut` aliasing
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
     PHYSICAL_OFFSET = physical_memory_offset.as_u64();
-    let level_4_table = active_level_4_table(physical_memory_offset);
+    let level_4_table: &'static mut PageTable = active_level_4_table(physical_memory_offset);
 
     // Just for the stats, can be removed
-    let mut compte = 0;
+    let mut compte = 512;
     for i in 0..512 {
-        if level_4_table[i].is_unused() {
-            compte += 1
-        } else {
-            let addr = level_4_table[i].addr();
+        if level_4_table[i].flags().contains(PageTableFlags::PRESENT) {
+            compte -= 1;
+            /*let addr = level_4_table[i].addr();
             let virt = physical_memory_offset + addr.as_u64();
             let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
             let level_3_table = &mut *page_table_ptr;
+            println!("{} with {:?}", i, level_4_table[i].flags());
             for i2 in 0..512 {
                 if !level_3_table[i2].is_unused() {
-                    println!("{} at {} with {:?}", i2, i, level_3_table[i].flags());
+                    println!("{} at {} with {:?}", i2, i, level_3_table[i2].flags());
+                    if i < 250 {
+                        for i3 in 0..512 {
+                            let virt = physical_memory_offset + level_3_table[i2].addr().as_u64();
+                            let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                            let level_2_table = &mut *page_table_ptr;
+                            if !level_2_table[i3].is_unused() {
+                                println!(" -> {} at {} with {:?}", i3, i2, level_2_table[i3].flags());
+                            }
+                        }
+                    }
+                }
+            }*/
+            if i < 256 {
+                let flags = level_4_table[i].flags();
+                level_4_table[i].set_flags(flags | PageTableFlags::BIT_9);
+                let virt = physical_memory_offset + level_4_table[i].addr().as_u64();
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                let level_3_table = &mut *page_table_ptr;
+                for i3 in 0..512 {
+                    if level_3_table[i3].flags().contains(PageTableFlags::PRESENT) {
+                        let flags = level_3_table[i3].flags();
+                        level_3_table[i3].set_flags(flags | PageTableFlags::BIT_9);
+                        let virt = physical_memory_offset + level_3_table[i3].addr().as_u64();
+                        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                        let level_2_table = &mut *page_table_ptr;
+                        for i2 in 0..512 {
+                            if level_2_table[i2].flags().contains(PageTableFlags::PRESENT) {
+                                let flags = level_2_table[i2].flags();
+                                level_2_table[i2].set_flags(flags | PageTableFlags::BIT_9);
+                                let virt =
+                                    physical_memory_offset + level_2_table[i2].addr().as_u64();
+                                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                                let level_1_table = &mut *page_table_ptr;
+                                for i1 in 0..512 {
+                                    if level_1_table[i1].flags().contains(PageTableFlags::PRESENT) {
+                                        let flags = level_1_table[i1].flags();
+                                        level_1_table[i1].set_flags(flags | PageTableFlags::BIT_9);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    println!("Nb Frame used : {}.", compte);
-    print!("Phys_offset : {:?}", physical_memory_offset);
+    println!("Nb Frame unused in level 4 table : {}.", compte);
+    println!("Phys_offset : {:?}", physical_memory_offset);
     // End of stats
 
     OffsetPageTable::new(level_4_table, physical_memory_offset)
@@ -110,7 +149,7 @@ impl BootInfoAllocator {
             maxi = max((i >> 12) as usize, maxi);
             next = min((i >> 12) as usize, next);
         }
-        println!("Num tables : {}", NUMBER_TABLES); // just for show, should be removed
+        println!("Number of available tables in RAM : {}", NUMBER_TABLES); // just for show, should be removed
 
         FRAME_ALLOCATOR = Some(BootInfoAllocator {
             pages_available,
@@ -201,7 +240,7 @@ impl BootInfoAllocator {
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_4[p_4].set_flags(entry | flags);
+                table_4[p_4].set_flags(flag_union(entry, flags));
                 //warningln!("already existed for user l.178");
                 let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -246,10 +285,9 @@ impl BootInfoAllocator {
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_3[p_3].set_flags(entry | flags);
+                table_3[p_3].set_flags(flag_union(entry, flags));
                 let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                table_3[p_3].set_flags(entry | flags);
                 self.add_entry_to_table_2(&mut *page_table_ptr, virt_3, flags, allow_duplicate)
             } else {
                 warningln!("line 240");
@@ -288,10 +326,9 @@ impl BootInfoAllocator {
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_2[p_2].set_flags(entry | flags);
+                table_2[p_2].set_flags(flag_union(entry, flags));
                 let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                 let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                table_2[p_2].set_flags(entry | flags);
                 self.add_entry_to_table_1(&mut *page_table_ptr, virt_2, flags, allow_duplicate)
             } else {
                 warningln!("line 274");
@@ -303,7 +340,6 @@ impl BootInfoAllocator {
             match self.allocate_4k_frame() {
                 None => Err(MemoryError(String::from("Could not allocate 4k #2"))),
                 Some(addr) => {
-                    //let addr = phys_frame.start_address();
                     table_2[p_2].set_addr(addr, flags);
                     let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -328,7 +364,7 @@ impl BootInfoAllocator {
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
             if allow_duplicate {
-                table_1[p_1].set_flags(entry | flags);
+                table_1[p_1].set_flags(flag_union(entry, flags));
                 Ok(())
             } else {
                 warningln!("already here, l.301 {:#?}", virt_1);
@@ -521,6 +557,224 @@ impl BootInfoAllocator {
                     Ok(())
                 }
             }
+        }
+    }
+
+    /// # Beware of giving a valid level 4 table
+    /// Adds an entry to the level 4 table with the given flags at the given virtual address
+    pub unsafe fn add_forced_entry_to_table(
+        &mut self,
+        table_4: PhysFrame,
+        frame_4: PhysAddr,
+        virt_4: VirtAddr,
+        flags: PageTableFlags,
+        allow_duplicate: bool,
+    ) -> Result<(), MemoryError> {
+        let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
+        let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+        self.add_forced_entry_to_table_4(
+            &mut *page_table_ptr,
+            frame_4,
+            virt_4,
+            flags,
+            allow_duplicate,
+        )
+    }
+
+    /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
+    /// # Safety
+    /// You should mark it as USER_ACCESSIBLE and PRESENT !
+    pub unsafe fn add_forced_entry_to_table_4(
+        &mut self,
+        table_4: &'static mut PageTable,
+        frame_4: PhysAddr,
+        virt_4: VirtAddr,
+        flags: PageTableFlags,
+        allow_duplicate: bool,
+    ) -> Result<(), MemoryError> {
+        let p_4 = virt_4.p4_index();
+        let entry = table_4[p_4].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_4[p_4].set_flags(entry | flags);
+                //warningln!("already existed for user l.178");
+                let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                self.add_forced_entry_to_table_3(
+                    &mut *page_table_ptr,
+                    frame_4,
+                    virt_4,
+                    flags,
+                    allow_duplicate,
+                )
+            } else {
+                warningln!("already existed for kernel l.183 failure");
+                warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
+                warningln!("{:#?}", entry);
+                Err(MemoryError(String::from(
+                    "Level 4 entry is not USER_ACCESSIBLE",
+                )))
+            }
+        } else {
+            //warningln!("l.187 new page");
+            match self.allocate_4k_frame() {
+                None => Err(MemoryError(String::from("Could not allocate 4k @ level 4"))),
+                Some(addr) => {
+                    //warningln!("l.191 goes in deaper");
+                    //let addr = phys_frame.start_address();
+                    table_4[p_4].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    table_4[p_4].set_flags(entry | flags);
+                    self.add_forced_entry_to_table_3(
+                        &mut *page_table_ptr,
+                        frame_4,
+                        virt_4,
+                        flags,
+                        allow_duplicate,
+                    )
+                }
+            }
+        }
+    }
+
+    /// Inner function of add_entry_to_table
+    unsafe fn add_forced_entry_to_table_3(
+        &mut self,
+        table_3: &'static mut PageTable,
+        frame_3: PhysAddr,
+        virt_3: VirtAddr,
+        flags: PageTableFlags,
+        allow_duplicate: bool,
+    ) -> Result<(), MemoryError> {
+        let p_3 = virt_3.p3_index();
+        let entry = table_3[p_3].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_3[p_3].set_flags(entry | flags);
+                let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                table_3[p_3].set_flags(entry | flags);
+                self.add_forced_entry_to_table_2(
+                    &mut *page_table_ptr,
+                    frame_3,
+                    virt_3,
+                    flags,
+                    allow_duplicate,
+                )
+            } else {
+                warningln!("line 240");
+                Err(MemoryError(String::from(
+                    "Level 3 entry is not USER_ACCESSIBLE",
+                )))
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(MemoryError(String::from(
+                    "Could not allocate 4k frame @ level 3",
+                ))),
+                Some(addr) => {
+                    // let addr = phys_frame.start_address();
+                    table_3[p_3].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    self.add_forced_entry_to_table_2(
+                        &mut *page_table_ptr,
+                        frame_3,
+                        virt_3,
+                        flags,
+                        allow_duplicate,
+                    )
+                }
+            }
+        }
+    }
+
+    /// Inner function of add_entry_to_table
+    unsafe fn add_forced_entry_to_table_2(
+        &mut self,
+        table_2: &'static mut PageTable,
+        frame_2: PhysAddr,
+        virt_2: VirtAddr,
+        flags: PageTableFlags,
+        allow_duplicate: bool,
+    ) -> Result<(), MemoryError> {
+        let p_2 = virt_2.p2_index();
+        let entry = table_2[p_2].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
+                table_2[p_2].set_flags(entry | flags);
+                let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
+                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                table_2[p_2].set_flags(entry | flags);
+                self.add_forced_entry_to_table_1(
+                    &mut *page_table_ptr,
+                    frame_2,
+                    virt_2,
+                    flags,
+                    allow_duplicate,
+                )
+            } else {
+                warningln!("line 274");
+                Err(MemoryError(String::from(
+                    "Level 2 entry is not USER_ACCESSIBLE",
+                )))
+            }
+        } else {
+            match self.allocate_4k_frame() {
+                None => Err(MemoryError(String::from("Could not allocate 4k #2"))),
+                Some(addr) => {
+                    //let addr = phys_frame.start_address();
+                    table_2[p_2].set_addr(addr, flags);
+                    let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
+                    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+                    for i in 0..512 {
+                        (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
+                    }
+                    self.add_forced_entry_to_table_1(
+                        &mut *page_table_ptr,
+                        frame_2,
+                        virt_2,
+                        flags,
+                        allow_duplicate,
+                    )
+                }
+            }
+        }
+    }
+
+    /// Inner function of add_entry_to_table
+    unsafe fn add_forced_entry_to_table_1(
+        &mut self,
+        table_1: &'static mut PageTable,
+        frame_1: PhysAddr,
+        virt_1: VirtAddr,
+        flags: PageTableFlags,
+        allow_duplicate: bool,
+    ) -> Result<(), MemoryError> {
+        let p_1 = virt_1.p1_index();
+        let entry = table_1[p_1].flags();
+        if entry.contains(PageTableFlags::PRESENT) {
+            if allow_duplicate {
+                table_1[p_1].set_flags(entry | flags);
+                Ok(())
+            } else {
+                warningln!("already here, l.301 {:#?}", virt_1);
+                Err(MemoryError(String::from(
+                    "Level 1 entry is already present",
+                )))
+            }
+        } else {
+            // TODO Check the page is available :D
+            self.pages_available[(frame_1.as_u64() / 4096) as usize] = false;
+            table_1[p_1].set_addr(frame_1, flags);
+            Ok(())
         }
     }
 
@@ -900,31 +1154,31 @@ pub unsafe fn write_into_virtual_memory(
     virt_4: VirtAddr,
     data: &[u8],
 ) -> Result<(), MemoryError> {
-    let offset: u64 = virt_4.page_offset().into();
+    let offset: usize = virt_4.page_offset().into();
     let length = data.len();
     let mut virtaddr: VirtAddr = virt_4;
     let mut physaddr: PhysAddr = match translate_addr(table_4, virtaddr) {
         Some(a) => a,
         None => {
             return Err(MemoryError(String::from(
-                "Could not convert process-virtual to physical memory",
+                "Could not convert process-virtual to physical memory #0",
             )))
         }
     };
-    for i in 0..length {
-        let content: *mut u8 = (physaddr.as_u64() + i as u64 + PHYSICAL_OFFSET) as *mut u8;
-        (*content) = data[i];
-        virtaddr += 1_u64;
-        if (i as u64 + offset) % 4096 == 0 {
+    for i in offset..(length + offset) {
+        if virtaddr.as_u64() & 0xfff == 0 {
             physaddr = match translate_addr(table_4, virtaddr) {
                 Some(a) => a,
                 None => {
                     return Err(MemoryError(String::from(
-                        "Could not convert process-virtual to physical memory",
+                        "Could not convert process-virtual to physical memory #1",
                     )))
                 }
             };
         }
+        let content: *mut u8 = (physaddr.as_u64() + (i & 0xfff) as u64 + PHYSICAL_OFFSET) as *mut u8;
+        (*content) = data[i - offset];
+        virtaddr += 1_u64;
     }
     Ok(())
 }
@@ -956,5 +1210,16 @@ unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr>
         };
         virt = PHYSICAL_OFFSET + frame.start_address().as_u64();
     }
-    Some(frame.start_address() + u64::from(addr.page_offset()))
+    Some(frame.start_address())
+}
+
+
+fn flag_union(f1: PageTableFlags, f2: PageTableFlags) -> PageTableFlags {
+    if f1.contains(PageTableFlags::NO_EXECUTE) == f2.contains(PageTableFlags::NO_EXECUTE) {
+        f1 | f2
+    } else {
+        let mut f = f1 | f2;
+        f.remove(PageTableFlags::NO_EXECUTE);
+        f
+    }
 }

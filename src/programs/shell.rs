@@ -85,6 +85,7 @@ lazy_static! {
 /// Entry function of the shell
 ///
 /// TODO : clean it and make it more general
+#[allow(dead_code)]
 pub fn main_shell() {
     println!(":( :( :( :(");
     let _utilisateur = keyboard_interaction::get_input("pseudo : ", false);

@@ -24,15 +24,18 @@ use bootloader::{entry_point, BootInfo};
 extern crate vga as vga_video;
 //use vga as vga_video;
 mod programs;
-use x86_64::addr::VirtAddr; //, VirtAddrNotValid};
-                            //use x86_64::structures::paging::Translate;
+use x86_64::{
+    addr::PhysAddr,
+    addr::VirtAddr,
+    structures::paging::{Page, PhysFrame},
+}; //, VirtAddrNotValid};
+   //use x86_64::structures::paging::Translate;
 /// # The core of the FerrOS operating system.
 /// It's here that we perform the Frankenstein magic of assembling all the parts together.
-use crate::task::{executor::Executor, Task};
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
-    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, task,
-    test_panic, vga, warningln, _TEST_PROGRAM,
+    interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, test_panic,
+    vga, warningln, _TEST_PROGRAM,
 };
 use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
@@ -91,11 +94,26 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     // Memory allocation Initialization
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
-    print!("Physical memory offset : 0x{:x?}", phys_mem_offset);
+    println!("Physical memory offset : 0x{:x?}", phys_mem_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     unsafe {
         memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+            let (level_4_frame, _) = Cr3::read();
+            frame_allocator
+                .deallocate_level_4_page(level_4_frame.start_address(), PageTableFlags::BIT_9)
+                .expect("Didn't manage to clean bootloader data");
+            frame_allocator
+                .add_forced_entry_to_table(
+                    level_4_frame,
+                    PhysAddr::new(0xb8000),
+                    VirtAddr::new(0xb8000),
+                    PageTableFlags::PRESENT
+                        | PageTableFlags::WRITABLE
+                        | PageTableFlags::USER_ACCESSIBLE,
+                    false,
+                )
+                .expect("Could not allocate screen buffer :(");
             allocator::init(&mut mapper, frame_allocator).expect("Heap init failed :((");
         } else {
             panic!("Frame allocator wasn't initialized");
@@ -106,58 +124,39 @@ pub fn init(_boot_info: &'static BootInfo) {
     keyboard::init();
     //vga::init();
 
-    println!(":(");
+    //println!(":(");
 
-    println!("try to change counter");
+    println!("Changing timer frequence");
     unsafe {
         hardware::timer::set_timer(0x0000); // 0 = 0x10000 = frequence min
     }
-    println!("checked");
 
     // Interrupt initialisation put at the end to avoid messing up with I/O
     interrupts::init();
-    println!(":( :(");
+    //println!(":( :(");
 
     long_halt(0);
 
-    println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
+    //println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
-    /* unsafe {
-        asm!(
-            "mov rdi, 42",
-            "mov rax, 9", "int 80h",);
-    }*/
+
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
     scheduler::process::spawn_first_process();
-    //hardware::power::shutdown();
-    //loop {}
-    //errorln!("Ousp");
+    unsafe {
+        filesystem::init_vfs();
+    }
+
     //filesystem::init();
 }
 
-// test taks, to move out of here
-async fn task_1() {
-    loop {
-        ferr_os::print!("X");
-        long_halt(16);
-    }
-}
-
-// test task, to move out of here
-async fn task_2() {
-    loop {
-        print!("0");
-        long_halt(16);
-    }
-}
 
 entry_point!(kernel_main);
 // We use it to check at compile time that we are doing everything correctly with the arguments of `kernel_main`
 
 /// # Entry point
 /// This is the starting function, it's here that the bootloader sends us to when starting the system.
-fn kernel_main(_boot_info: &'static BootInfo) -> ! {
-    init(_boot_info);
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    init(boot_info);
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
@@ -169,26 +168,8 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
     // This enables the tests
     #[cfg(test)]
     test_main();
-    // Yet again, some ugly tests in main
-    println!(":( :( :(");
-    programs::shell::main_shell();
-    println!();
-    for i in 0..5 {
-        println!("{}", i);
-    }
-    for i in 0..5 {
-        println!("{},", i);
-    }
 
-    println!();
-
-    let _x = Box::new([0, 1]);
-    let y = String::from("Loul");
-    println!("{}", y);
-    let mut executor = Executor::new();
-    executor.spawn(Task::new(task_1()));
-    executor.spawn(Task::new(task_2()));
-    executor.run();
+    panic!("should not reach here !");
 }
 
 #[cfg(test)]
