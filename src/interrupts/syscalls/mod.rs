@@ -7,6 +7,7 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::filesystem;
 use crate::hardware;
 use crate::interrupts;
+use crate::memory;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path};
 use crate::{debug, errorln, warningln, println};
@@ -14,8 +15,11 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
 use core::cmp::min;
-use x86_64::registers::control::Cr3;
-use x86_64::VirtAddr;
+use x86_64::{
+    VirtAddr,
+    registers::control::Cr3,
+    structures::paging::{PageTable, PageTableFlags},
+};
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -80,7 +84,11 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     //warningln!("printing");
-    if args.rdi == 1 {
+    let (cr3, _) = Cr3::read();
+    if !memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+        warningln!("no a valid address");
+        args.rax = 0;
+    } else if args.rdi == 1 {
         let address = args.rsi;
         let mut data_addr = VirtAddr::new(address);
         let mut t = Vec::new();

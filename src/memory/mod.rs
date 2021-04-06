@@ -1224,7 +1224,7 @@ fn flag_union(f1: PageTableFlags, f2: PageTableFlags) -> PageTableFlags {
     }
 }
 
-fn check_if_has_flags(level_4: PhysFrame, addr: VirtAddr, flags: PageTableFlags) -> bool {
+pub fn check_if_has_flags(level_4: PhysFrame, addr: VirtAddr, flags: PageTableFlags) -> bool {
     let table_indexes = [
         addr.p4_index(),
         addr.p3_index(),
