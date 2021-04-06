@@ -54,7 +54,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
     
     let elf = ElfFile::new(code).unwrap();
     
-    // We get the main entry point and mmake sure it is
+    // We get the main entry point and make sure it is
     // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
         xmas_elf::header::HeaderPt2::Header64(a) => a.entry_point,
