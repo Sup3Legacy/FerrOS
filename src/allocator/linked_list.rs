@@ -1,6 +1,7 @@
 use super::{align_up, Locked};
 
-use alloc::alloc::{GlobalAlloc, Layout};
+use crate::println;
+use core::alloc::{GlobalAlloc, Layout};
 use core::mem;
 use core::ptr;
 
@@ -15,23 +16,56 @@ use core::ptr;
 #[derive(Debug)]
 struct ListNode {
     size: usize,
-    previous: Option<&'static mut ListNode>,
+    first: bool,
     next: Option<&'static mut ListNode>,
 }
 
 impl ListNode {
-    const fn new(size: usize) -> Self {
+    const fn new(size: usize, first: bool) -> Self {
         ListNode {
             size,
-            previous: None,
+            first,
             next: None,
         }
     }
     fn start_addr(&self) -> usize {
-        self as *const Self as usize
+        if self.first {
+            0
+        } else {
+            self as *const Self as usize
+        }
     }
     fn end_addr(&self) -> usize {
         self.start_addr() + self.size
+    }
+    pub fn merge_partial(&mut self, nb: usize) {
+        if nb <= 0 {
+            return;
+        } else if !self.first {
+            let end_addr = self.end_addr();
+            if let Some(ref mut next_region) = self.next {
+                let next_size = next_region.size;
+                let next_next = next_region.next.take();
+                // If a merge is possible
+                if next_region.start_addr() == end_addr {
+                    //println!("Performing a merge.");
+                    // TODO This might be a bit wrong
+                    self.size += next_size;
+                    self.next = next_next;
+                    self.merge_partial(nb - 1)
+                } else {
+                    next_region.next = next_next;
+                    next_region.merge_partial(nb - 1);
+                }
+            } else {
+                return;
+            }
+        } else {
+            //println!("Ouiiiii!!!");
+            if let Some(ref mut next_region) = self.next {
+                next_region.merge_partial(nb - 1);
+            }
+        }
     }
 }
 
@@ -46,49 +80,56 @@ pub struct LinkedListAllocator {
 impl LinkedListAllocator {
     pub const fn new() -> Self {
         Self {
-            head: ListNode::new(0),
+            head: ListNode::new(0, true),
         }
     }
     /// Adds a free region to the allocator. It works by placing a new `ListNode` at the front of the allocator with the given size.
     /// TODO : add the functionnality of list simplification by merging contiguous free regions.
-    unsafe fn add_free_region(&mut self, addr: usize, size: usize) {
+    unsafe fn add_free_region_old(&mut self, addr: usize, size: usize) {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
-        let mut node = ListNode::new(size);
+        let mut node = ListNode::new(size, false);
         node.next = self.head.next.take();
-
-        // Deuxième tentative
-        /*
-        let mut current = &mut self.head;
-        while current.start_addr() < addr {
-            if let Some(ref mut next_region) = current.next {
-                node.next = Some(next_region);
-                current.next = Some(&mut node);
-                current = next_region;
-            } else {
-
-            }
-        }
-        */
-
-        // Première tentative
-        /*
-        while let Some(ref mut next_region) = current.next {
-            if (current).start_addr() <= addr {
-                //current.next = Some();
-                break;
-            }
-            node.next = next_region.next.take();
-            //node.previous =
-            current = next_region;
-        }
-        */
         let node_ptr = addr as *mut ListNode;
         node_ptr.write(node);
         self.head.next = Some(&mut *node_ptr)
     }
-    /// # Safety
-    /// TODO
+
+    /// This is the 2.0 version of the function. It places new regions where they belong to
+    /// And automatically merges contiguous empty regions
+    unsafe fn add_free_region(&mut self, addr: usize, size: usize) {
+        assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
+        assert!(size >= mem::size_of::<ListNode>());
+        // Build new node
+        let mut node = ListNode::new(size, false);
+        //
+        let node_ptr = addr as *mut ListNode;
+        node_ptr.write(node);
+        // Finds its place
+
+        let mut current = &mut self.head;
+        let mut compte = 0;
+
+        while let Some(ref mut next_region) = current.next {
+            //println!("{}", compte);
+            compte += 1;
+
+            // We insert it here
+            if next_region.start_addr() > addr {
+                (*node_ptr).next = Some(current.next.take().unwrap());
+                current.next = Some(&mut *node_ptr);
+                current.merge_partial(2);
+                //println!("Merge done.");
+                return;
+            } else {
+                current = current.next.as_mut().unwrap();
+            }
+        }
+        // If we arrive here, we simply need to append the new_region
+        //println!("Compteur : {}", compte);
+        (*node_ptr).next = None;
+        current.next = Some(&mut *node_ptr);
+    }
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.add_free_region(heap_start, heap_size)
     }
@@ -143,8 +184,6 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
         let (size, align) = LinkedListAllocator::size_align(layout);
         let mut allocator = self.lock();
 
-        //     println!("{:#?}", allocator.head);
-
         if let Some((region, alloc_start)) = allocator.find_region(size, align) {
             let alloc_end = alloc_start.checked_add(size).expect("overflow");
             let excess_size = region.end_addr() - alloc_end;
@@ -163,4 +202,8 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
 
         self.lock().add_free_region(ptr as usize, size)
     }
+}
+
+impl Locked<LinkedListAllocator> {
+    fn add_page(&self) {}
 }

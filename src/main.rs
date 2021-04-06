@@ -119,6 +119,18 @@ pub fn init(_boot_info: &'static BootInfo) {
             panic!("Frame allocator wasn't initialized");
         }
     };
+    for i in 0..100000 {
+        let mut a = String::new();
+        for j in 0..i {
+            a.push((((i + j) & 0xF) as u8) as char);
+        }
+        for (j, e) in a.bytes().enumerate() {
+            assert_eq!(e, (((i + j) & 0xF) as u8));
+        }
+        if i % 1000 == 0 {
+            println!("{}", i);
+        }
+    }
 
     // I/O Initialization
     keyboard::init();
@@ -139,8 +151,8 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     //println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
-
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
+
     scheduler::process::spawn_first_process();
     unsafe {
         filesystem::init_vfs();
@@ -148,7 +160,6 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     //filesystem::init();
 }
-
 
 entry_point!(kernel_main);
 // We use it to check at compile time that we are doing everything correctly with the arguments of `kernel_main`
