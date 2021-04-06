@@ -18,7 +18,7 @@ use core::cmp::min;
 use x86_64::{
     VirtAddr,
     registers::control::Cr3,
-    structures::paging::{PageTable, PageTableFlags},
+    structures::paging::PageTableFlags,
 };
 
 /// type of the syscall interface inside the kernel
@@ -61,22 +61,35 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    if args.rdi == 0 {
-        args.rax = 0;
-        let mut address = VirtAddr::new(args.rsi) + 1_u64;
-        for _i in 0..min(1023, args.rsi) {
-            if let Ok(k) = crate::keyboard::get_top_key_event() {
-                println!("About to print : {}", k);
-                unsafe {
-                    *(address.as_mut_ptr::<u8>()) = k;
-                }
-                address += 1_u64;
-                args.rax += 1;
-            }
+    let (cr3, _) = Cr3::read();
+    let mut size = min(args.rdx, 1024) - 1;
+    if memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+        if !memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi + size), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+            size = 0xFFF - args.rsi & 0xFFF;
         }
-        
+        if args.rdi == 0 {
+            args.rax = 0;
+            let mut address = VirtAddr::new(args.rsi);
+            for _i in 0..size {
+                if let Ok(k) = crate::keyboard::get_top_key_event() {
+                    println!("About to print : {}", k);
+                    unsafe {
+                        *(address.as_mut_ptr::<u8>()) = k;
+                    }
+                    address += 1_u64;
+                    args.rax += 1;
+                }
+            }
+            unsafe {
+                *(address.as_mut_ptr::<u8>()) = 0;
+            }
+            
+        } else {
+            warningln!("Unkown file descriptor in read");
+            args.rax = 0;
+        }
     } else {
-        warningln!("Unkown file descriptor in read");
+        warningln!("Address not allowed");
         args.rax = 0;
     }
 }
@@ -85,46 +98,44 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     //warningln!("printing");
     let (cr3, _) = Cr3::read();
-    if !memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
-        warningln!("no a valid address");
-        args.rax = 0;
-    } else if args.rdi == 1 {
-        let address = args.rsi;
-        let mut data_addr = VirtAddr::new(address);
-        let mut t = Vec::new();
-        let mut index = 0_u64;
-        if args.rdx > 0 {
-            debug!("Got bytes to write!");
+    let mut size = min(args.rdx, 1024);
+    if memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+        if !memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi + size), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+            size = 0x1000 - args.rsi & 0xFFF;
         }
-        unsafe {
-            while index < args.rdi && index < 1024 && ((*(data_addr.as_ptr::<u8>())) != 0) {
-                t.push(*(data_addr.as_ptr::<u8>()));
-                data_addr += 1_usize;
-                index += 1;
-            }
-            if let Some(vfs) = &mut filesystem::VFS {
-                vfs.write(Path::from("screen/screenfull"), t);
-            } else {
-                errorln!("Could not find VFS");
-            }
-        }
-        args.rax = index;
-    } else if args.rdi == 2 {
         let mut address = args.rsi;
         //let mut data_addr = VirtAddr::new(address);
-        let mut t = String::new();
+        let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx && index < 1024 && *(address as *const u8) != 0 {
-                t.push(*(address as *const u8) as char);
+            while index < size && index < 1024 && *(address as *const u8) != 0 {
+                t.push(*(address as *const u8));
                 address += 1_u64;
                 index += 1;
             }
         }
-        debug!("on shell : {}", t);
-        args.rax = index;
+        if args.rdi == 1 {
+            unsafe {
+                if let Some(vfs) = &mut filesystem::VFS {
+                    vfs.write(Path::from("screen/screenfull"), t);
+                } else {
+                    errorln!("Could not find VFS");
+                }
+            }
+            args.rax = index;
+        } else if args.rdi == 2 {
+            let mut t2 = String::new();
+            for i in t {
+                t2.push(i as char);
+            }
+            debug!("on shell : {}", t2);
+            args.rax = index;
+        } else {
+            warningln!("Unknow file descriptor");
+            args.rax = 0;
+        }
     } else {
-        warningln!("Unknow file descriptor");
+        warningln!("no a valid address");
         args.rax = 0;
     }
 }
