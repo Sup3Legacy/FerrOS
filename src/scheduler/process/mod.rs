@@ -19,10 +19,7 @@ use crate::data_storage::{queue::Queue, random};
 use crate::{errorln, println, warningln, debug};
 use crate::hardware;
 use crate::memory;
-use crate::println;
-use alloc::vec::Vec;
 
-use crate::warningln;
 
 
 pub mod elf;
