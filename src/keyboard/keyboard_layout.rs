@@ -126,7 +126,7 @@ impl KeyBoardStatus {
         if self.id == 0 {
             self.process0_fr1(key)
         } else if self.id == 1 {
-            self.process1_us_int(key)
+            self.process1_en1(key)
         } else {
             panic!("Unallowed KeyboardId");
             //Effect::Nothing
