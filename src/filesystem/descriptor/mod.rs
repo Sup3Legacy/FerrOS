@@ -1,6 +1,6 @@
 
 use crate::data_storage::path::Path;
-use alloc::vec::Vec;
+use crate::scheduler;
 
 use lazy_static::lazy_static;
 
@@ -19,19 +19,47 @@ lazy_static! {
 /// Contains all the open_file_tables
 pub struct GeneralFileTable {
     /// Array containing all the filetables
-    tables: Vec<Option<OpenFileTable>>,
+    /// A filetable maps a local fd index to the true fd (so there is one per process that uses the vfs)
+    tables: [Option<OpenFileTable>; scheduler::PROCESS_MAX_NUMBER as usize],
     /// Index of the first unoccupied space in the table
     index: usize,
 }
 
 impl GeneralFileTable {
     pub fn new() -> Self {
-        let mut tab = Vec::new();
-        for _ in 0..MAX_TOTAL_OPEN_FILES {
-            tab.push(None);
-        }
         Self {
-            tables: tab,
+            tables: [None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None],
             index: 0,
         }
     }
