@@ -200,3 +200,21 @@ pub fn open(filename: String) -> FileDescriptor {
     current_process.open_files = new_pfdt;
     FileDescriptor::new(current_process.open_files.index)
 }
+
+pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
+    let current_proccess = unsafe{process::get_current_as_mut()};
+    // we try to close the file, and if at any point we fail, raise an error
+    match current_proccess.open_files.files[descriptor as usize] {
+        None => return Err(FileDesciptorError()),
+        Some(idx) => {
+            unsafe{
+            match GLOBAL_FILE_TABLE.tables[idx] {
+                None => return Err(FileDesciptorError()),
+                Some(_) => GLOBAL_FILE_TABLE.tables[idx] = None
+            };
+            }
+            current_proccess.open_files.files[descriptor as usize] = None;
+        }
+    }
+    Ok(())
+}

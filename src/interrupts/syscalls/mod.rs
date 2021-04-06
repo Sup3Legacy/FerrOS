@@ -11,7 +11,7 @@ use crate::memory;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, scheduler};
 use crate::{debug, errorln, println, warningln};
-use crate::filesystem::{descriptor,descriptor::OpenFileTable};
+use crate::filesystem::descriptor;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -176,8 +176,13 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
 }
 
 /// close file. arg0 : unsigned int fd
-extern "C" fn syscall_3_close(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("close not implemented")
+extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    let descriptor = args.rdi;
+    let ret_code = descriptor::close(descriptor);
+    match ret_code {
+        Ok(()) => args.rax = 0,
+        Err(_) => args.rax = 1
+    };
 }
 
 extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
