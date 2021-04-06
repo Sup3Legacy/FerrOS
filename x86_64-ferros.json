@@ -8,9 +8,15 @@
     "os": "none",
     "executables": true,
     "linker-flavor": "ld.lld",
+    "pre-link-args": {
+        "ld.lld": [
+        "--script=linker.ld",
+        "--verbose"
+    ]
+    },
     "linker": "rust-lld",
     "panic-strategy": "abort",
     "disable-redzone": true,
-    "features": "-mmx,-sse,+soft-float"
+    "features": ""
   }
   

@@ -1,18 +1,30 @@
 [package]
-name = "os-test"
+name = "ferr_os"
 version = "0.1.0"
-authors = ["Constantin Gierczak--Galle <constantin.gierczak-galle@ens.fr>"]
+authors = [
+    "Constantin GIERCZAK--GALLE <constantin.gierczak-galle@ens.fr>",
+    "Samuel VIVIEN",
+    "Paul FOURNIER <paul.fournier@ens.psl.eu>",
+    "Gabriel DORIATH DÖHLER <gabriel.doriath.dohler@ens.psl.eu>",
+]
 edition = "2018"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bootloader = { version = "0.9.8", features = ["map_physical_memory"]}
+bootloader = { version = "0.9.8", features = ["map_physical_memory", "sse"]}
 spin = "0.5.2"
-x86_64 = "*"
+x86_64 = "0.13.2"
 pic8259_simple = "*"
 pc-keyboard = "*"
 linked_list_allocator = "*"
+uart_16550 = "*"
+vga= "*"
+bitflags = "*"
+bit_field = "*"
+priority-queue = "1.1.1"
+hashbrown = "*"
+xmas-elf="*"
+# ferr_os-librust = { git = "https://github.com/Sup3Legacy/FerrOS-librust" }
 
 [dependencies.lazy_static]
 version = "1.0"
@@ -33,3 +45,29 @@ default-features = false
 version = "*"
 default-features = false
 features = ["alloc"]
+
+
+# Exit QEMU from the guest system.
+[package.metadata.bootimage]
+test-timeout = 60  # Number of seconds before timeout.
+run-args = [
+    "-drive", "format=raw,file=disk.img,index=2",
+    "-boot", "c",
+    "-soundhw", "pcspk",
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
+    "-serial", "stdio",  # Redirect the output of the serial port to stdout.
+    "-cpu", "max,+ssse3,+sse4.1,+sse4.2", #,+avx512f,+avx512vl
+    "-rtc", "base=localtime,clock=host",
+    #"-display", "none"  # Hide the display in test mode.
+]
+test-args = [
+    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
+    "-serial", "stdio",  # Redirect the output of the serial port to stdout.
+    "-display", "none"  # Hide the display in test mode.
+]
+test-success-exit-code = 33
+
+[package.metadata.bootloader]
+kernel-stack-size = 128
+kernel-stack-address =   "0xFFFFFF8000000000"
+physical-memory-offset = "0xFFFFFF0000000000"

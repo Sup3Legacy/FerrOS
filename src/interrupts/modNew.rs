@@ -14,6 +14,7 @@ use pic8259_simple::ChainedPics;
 use spin;
 
 #[macro_export]
+/// Stores all the common purpose registers onto the stack, executes the interruption handling and then pops them back.
 macro_rules! handler {
     ($name: ident) => {{
         #[naked]
@@ -31,9 +32,11 @@ macro_rules! handler {
                     "push r9",
                     "push r10",
                     "push r11",
-                    "sub rsp, 8", // align the stack pointer
+
+               //     "sub rsp, 8", // align the stack pointer
                       "call {0}",
-                    "add rsp, 8",
+                 //   "add rsp, 8",
+                  
                     "pop r11",
                     "pop r10",
                     "pop r9",
@@ -54,6 +57,7 @@ macro_rules! handler {
 }
 
 #[macro_export]
+
 macro_rules! handler_with_error_code {
     ($name: ident) => {{
         #[naked]
@@ -72,9 +76,10 @@ macro_rules! handler_with_error_code {
                     "push r9",
                     "push r10",
                     "push r11",
-                    "sub rsp, 8", // align the stack pointer
+
+               //     "sub rsp, 8", // align the stack pointer
                       "call {0}",
-                    "add rsp, 8",
+                //    "add rsp, 8",
                     "pop r11",
                     "pop r10",
                     "pop r9",

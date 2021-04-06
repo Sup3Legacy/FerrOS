@@ -1,4 +1,6 @@
-# OS-test
+# FerrOS
+
+## Build status : ![Rust](https://github.com/Sup3Legacy/FerrOS/workflows/Rust/badge.svg)
 
 ## Dependencies
 - cargo
@@ -15,5 +17,7 @@ Then run these three commands in the root directory of the project:
 - `rustup component add rust-src`
 
 ## Usage
+- Build and open documentation: `cargo doc --open`
+- Build: `cargo build`
 - Build and run: `cargo run`
 - Clean: `cargo clean`

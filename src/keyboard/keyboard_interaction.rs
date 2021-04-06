@@ -63,14 +63,16 @@ impl DoubleFile {
 }*/
 
 pub fn get_input(debut: &str, cache: bool) -> String {
+    println!(":D");
     let mut stack = String::new();
+    println!(":D :D");
     print!("{}", debut);
     loop {
-        match { crate::keyboard::get_top_value() } {
-            Ok(a) => match a {
+        if let Ok(a) = crate::keyboard::get_top_value() {
+            match a {
                 keyboard_layout::KeyEvent::Character('\n') => {
-                    if stack.len() != 0 {
-                        println!("");
+                    if !stack.is_empty() {
+                        println!();
                         break stack;
                     }
                 }
@@ -96,9 +98,7 @@ pub fn get_input(debut: &str, cache: bool) -> String {
                     }
                 }
                 keyboard_layout::KeyEvent::SpecialKey(_) => (),
-            },
-
-            Err(_) => (),
+            }
         }
     }
 }

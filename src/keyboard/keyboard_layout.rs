@@ -135,7 +135,7 @@ impl KeyBoardStatus {
 
     // French layout.
     pub fn process0_fr1(&mut self, key: u8) -> Effect {
-        if key > (127 as u8) {
+        if key > 127_u8 {
             self.table_status[(key - 128) as usize] = false;
             match convert(key - 128) {
                 Key::ShiftR => self.shift_r_up(),
@@ -169,132 +169,110 @@ impl KeyBoardStatus {
                 Key::Key2 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('2'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('~'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('~'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('é'))
-                        }
+                        Effect::Value(KeyEvent::Character('é'))
                     }
                 }
 
                 Key::Key3 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('3'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('#'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('#'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('"'))
-                        }
+                        Effect::Value(KeyEvent::Character('"'))
                     }
                 }
 
                 Key::Key4 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('4'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('{'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('{'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('\''))
-                        }
+                        Effect::Value(KeyEvent::Character('\''))
                     }
                 }
 
                 Key::Key5 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('5'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('['))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('['))
-                        } else {
-                            Effect::Value(KeyEvent::Character('('))
-                        }
+                        Effect::Value(KeyEvent::Character('('))
                     }
                 }
 
                 Key::Key6 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('6'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('|'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('|'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('-'))
-                        }
+                        Effect::Value(KeyEvent::Character('-'))
                     }
                 }
 
                 Key::Key7 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('7'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('`'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('`'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('è'))
-                        }
+                        Effect::Value(KeyEvent::Character('è'))
                     }
                 }
 
                 Key::Key8 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('8'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('\\'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('\\'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('_'))
-                        }
+                        Effect::Value(KeyEvent::Character('_'))
                     }
                 }
 
                 Key::Key9 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('9'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('^'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('^'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('ç'))
-                        }
+                        Effect::Value(KeyEvent::Character('ç'))
                     }
                 }
 
                 Key::Key0 => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('0'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('@'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('@'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('à'))
-                        }
+                        Effect::Value(KeyEvent::Character('à'))
                     }
                 }
 
                 Key::UpZero => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('°'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character(']'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character(']'))
-                        } else {
-                            Effect::Value(KeyEvent::Character(')'))
-                        }
+                        Effect::Value(KeyEvent::Character(')'))
                     }
                 }
 
                 Key::Min => {
                     if self.num() {
                         Effect::Value(KeyEvent::Character('+'))
+                    } else if self.alt {
+                        Effect::Value(KeyEvent::Character('}'))
                     } else {
-                        if self.alt {
-                            Effect::Value(KeyEvent::Character('}'))
-                        } else {
-                            Effect::Value(KeyEvent::Character('='))
-                        }
+                        Effect::Value(KeyEvent::Character('='))
                     }
                 }
                 Key::Let0_0 => {
@@ -526,8 +504,8 @@ impl KeyBoardStatus {
     }
 
     // US international layout.
-    pub fn process1_us_int(&mut self, key: u8) -> Effect {
-        if key > (127 as u8) {
+    pub fn process1_en1(&mut self, key: u8) -> Effect {
+        if key > 127_u8 {
             self.table_status[(key - 128) as usize] = false;
             match convert(key - 128) {
                 Key::ShiftR => self.shift_r_up(),
