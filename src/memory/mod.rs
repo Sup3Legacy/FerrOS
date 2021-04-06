@@ -1223,3 +1223,24 @@ fn flag_union(f1: PageTableFlags, f2: PageTableFlags) -> PageTableFlags {
         f
     }
 }
+
+pub fn check_if_has_flags(level_4: PhysFrame, addr: VirtAddr, flags: PageTableFlags) -> bool {
+    let table_indexes = [
+        addr.p4_index(),
+        addr.p3_index(),
+        addr.p2_index(),
+        addr.p1_index(),
+    ];
+
+    let mut virt = level_4.start_address().as_u64() + unsafe { PHYSICAL_OFFSET };
+
+    for &index in &table_indexes {
+        let table_ptr: *const PageTable = virt as *const PageTable;
+        let table = unsafe { &*table_ptr };
+        if !table[index].flags().contains(flags) {
+            return false
+        }
+        virt = unsafe { PHYSICAL_OFFSET } + table[index].addr().as_u64();
+    }
+    true
+}
