@@ -8,7 +8,7 @@ use crate::filesystem;
 use crate::hardware;
 use crate::interrupts;
 use crate::scheduler::process;
-use crate::{data_storage::path::Path, scheduler};
+use crate::{data_storage::path::Path};
 use crate::{debug, errorln, warningln, println};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -153,17 +153,12 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
 }
 
 /// arg0 : address of file name
-extern "C" fn syscall_6_exec(args: &mut RegistersMini, isf: &mut InterruptStackFrame) {
+extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("exec");
     let addr: *const String = VirtAddr::new(args.rdi).as_ptr();
     unsafe {
-        let new_rip = process::elf::load_elf_for_exec(&*addr);
-        let mut stack_value = isf.as_mut();
-        stack_value.instruction_pointer = new_rip;
-        stack_value.stack_pointer = VirtAddr::new(process::elf::ADDR_STACK);
-        process::leave_context(VirtAddr::from_ptr(args).as_u64());
+        process::elf::load_elf_for_exec(&*addr);
     }
-    panic!("exec not implemented");
 }
 
 extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

@@ -16,7 +16,7 @@ use xmas_elf::{
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{queue::Queue, random};
-use crate::{errorln, println, warningln, debug};
+use crate::{errorln, println};
 use crate::hardware;
 use crate::memory;
 
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 #[naked]
 /// # Safety
 /// TODO
-pub unsafe extern "C" fn towards_user_give_heap(_heap_addr: u64, _heap_size: u64, _rsp: u64, _rip: u64) {
+pub unsafe extern "C" fn towards_user_give_heap(_heap_addr: u64, _heap_size: u64, _rsp: u64, _rip: u64) -> ! {
     asm!(
         // Ceci n'est pas exécuté
         "mov rax, 0x0", // data segment
@@ -360,7 +360,7 @@ pub unsafe fn disassemble_and_launch(
                 address,
                 size,
             );*/
-            let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE;
+            let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | elf::MODIFY_WITH_EXEC;
             if program.flags().is_write() {
                 flags |= PageTableFlags::WRITABLE;
             }
@@ -415,7 +415,8 @@ pub unsafe fn disassemble_and_launch(
                 PageTableFlags::USER_ACCESSIBLE
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
-                    | PageTableFlags::WRITABLE,
+                    | PageTableFlags::WRITABLE
+                    | elf::STACK,
                 false,
             ) {
                 Ok(()) => (),
@@ -437,7 +438,8 @@ pub unsafe fn disassemble_and_launch(
                 VirtAddr::new(heap_address + i * 0x1000),
                 PageTableFlags::USER_ACCESSIBLE
                     | PageTableFlags::PRESENT
-                    | PageTableFlags::WRITABLE,
+                    | PageTableFlags::WRITABLE
+                    | elf::HEAP,
                 false,
             ) {
                 Ok(()) => (),
@@ -459,15 +461,19 @@ pub unsafe fn disassemble_and_launch(
             };
         }
 
+        ID_TABLE[0].heap_address = heap_address;
+        ID_TABLE[0].heap_size = heap_size;
+
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
         println!("target : {:x}", prog_entry);
 
         towards_user_give_heap(heap_address, heap_size, addr_stack, prog_entry); // good luck user ;)
-        hardware::power::shutdown();
+        //hardware::power::shutdown();
+    } else {
+        panic!("could not launch process")
     }
-    loop {}
 }
 
 /// Main structure of a process.
@@ -497,6 +503,8 @@ pub struct Process {
     pub rsp: u64, // every registers are saved on the stack
     state: State,
     owner: u64,
+    pub heap_address: u64,
+    pub heap_size: u64,
 }
 
 impl Process {
@@ -515,6 +523,8 @@ impl Process {
             rsp: 0,
             state: State::Runnable,
             owner,
+            heap_address: 0,
+            heap_size: 0,
         }
     }
 
@@ -529,6 +539,8 @@ impl Process {
             rsp: 0,
             state: State::SlotAvailable,
             owner: 0,
+            heap_address: 0,
+            heap_size: 0,
         }
     }
 
