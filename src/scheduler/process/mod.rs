@@ -1,28 +1,28 @@
 use super::PROCESS_MAX_NUMBER;
 
 use bit_field::BitField;
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::{
+    cmp::max,
+    sync::atomic::{AtomicU64, Ordering},
+};
 //use lazy_static::lazy_static;
 use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
+use x86_64::structures::paging::PhysFrame;
 use x86_64::{PhysAddr, VirtAddr};
 
-use xmas_elf::{
-    program::SegmentData,
-    program::Type,
-    ElfFile,
-};
+use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
-//use crate::data_storage::{queue::Queue, random};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
+use crate::alloc::vec::Vec;
 use crate::data_storage::{queue::Queue, random};
-use crate::errorln;
 use crate::hardware;
 use crate::memory;
-use crate::println;
-use alloc::vec::Vec;
+use crate::filesystem::descriptor::ProcessDescriptorTable;
+use crate::{errorln, println};
 
-use crate::warningln;
+/// Default allocated heap size (in number of pages)
+const DEFAULT_HEAP_SIZE: u64 = 2;
 
 pub mod elf;
 
@@ -135,7 +135,12 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 #[naked]
 /// # Safety
 /// TODO
-pub unsafe extern "C" fn towards_user_give_heap(_heap_addr: u64, _heap_size: u64, _rsp: u64, _rip: u64) {
+pub unsafe extern "C" fn towards_user_give_heap(
+    _heap_addr: u64,
+    _heap_size: u64,
+    _rsp: u64,
+    _rip: u64,
+) -> ! {
     asm!(
         // Ceci n'est pas exécuté
         "mov rax, 0x0", // data segment
@@ -167,6 +172,42 @@ pub unsafe extern "C" fn towards_user_give_heap(_heap_addr: u64, _heap_size: u64
         "iretq",
         options(noreturn,),
     )
+}
+
+pub unsafe fn allocate_additional_heap_pages(
+    frame_allocator: &mut memory::BootInfoAllocator,
+    start: u64,
+    number: u64,
+    process: &Process,
+) {
+    for i in 0..number {
+        match frame_allocator.add_entry_to_table(
+            PhysFrame::containing_address(process.cr3),
+            VirtAddr::new(start + i * 0x1000),
+            PageTableFlags::USER_ACCESSIBLE
+                | PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | elf::HEAP,
+            false,
+        ) {
+            Ok(()) => (),
+            Err(memory::MemoryError(err)) => {
+                errorln!(
+                    "Could not allocate the {}-th part of the heap. Error : {:?}",
+                    i,
+                    err
+                );
+            }
+        }
+        match memory::write_into_virtual_memory(
+            PhysFrame::containing_address(process.cr3),
+            VirtAddr::new(start + i * 0x1000),
+            &[0_u8; 0x1000],
+        ) {
+            Ok(()) => (),
+            Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+        };
+    }
 }
 
 /// Function to launch the first process !
@@ -306,6 +347,8 @@ pub unsafe fn disassemble_and_launch(
     if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         // TODO Change this
         ID_TABLE[0].state = State::Runnable;
+        // This represents the very end of all loaded segments
+        let mut maximum_address = 0;
         // Loop over each section
         for program in elf.program_iter() {
             // Characteristics of the section
@@ -313,6 +356,7 @@ pub unsafe fn disassemble_and_launch(
             let offset = program.offset();
             let size = program.mem_size();
             let file_size = program.file_size();
+            maximum_address = max(maximum_address, address + size);
             // Section debug
             /*
             println!(
@@ -323,7 +367,6 @@ pub unsafe fn disassemble_and_launch(
                 section.get_type()
             );
             */
-
             match program.get_type() {
                 Ok(Type::Phdr) | Err(_) => continue,
                 Ok(_) => (),
@@ -346,29 +389,15 @@ pub unsafe fn disassemble_and_launch(
                     &zeroed_data[..]
                 }
             };
-            let num_blocks = (size + offset) / 4096 + 1;
-            /*
-            println!(
-                "Total len of 0x{:x?}, {:?} blocks",
-                num_blocks * 512,
-                num_blocks
-            );
-            */
-            /*println!(
-                "Section : type : {:?}, flags : {:?}, address : {}, size : {}",
-                program.get_type(),
-                program.flags(),
-                address,
-                size,
-            );*/
-            let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE;
+            let num_blocks = (size + offset) / 0x1000 + 1;
+            let mut flags =
+                PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | elf::MODIFY_WITH_EXEC;
             if program.flags().is_write() {
                 flags |= PageTableFlags::WRITABLE;
             }
             if !program.flags().is_execute() {
                 flags |= PageTableFlags::NO_EXECUTE;
             }
-            //let _flags = elf::get_table_flags(program.get_type().unwrap()) | elf::MODIFY_WITH_EXEC;
             for i in 0..num_blocks {
                 // Allocate a frame for each page needed.
                 match frame_allocator.add_entry_to_table(
@@ -384,7 +413,6 @@ pub unsafe fn disassemble_and_launch(
                             i,
                             err
                         );
-                        //hardware::power::shutdown();
                     }
                 }
             }
@@ -405,7 +433,12 @@ pub unsafe fn disassemble_and_launch(
                 for _ in 0..(size - file_size) {
                     padding.push(0_u8);
                 }
-                memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + size), &padding[..]).unwrap();
+                memory::write_into_virtual_memory(
+                    level_4_table_addr,
+                    VirtAddr::new(address + size),
+                    &padding[..],
+                )
+                .unwrap();
             }
         }
         // Allocate frames for the stack
@@ -416,7 +449,8 @@ pub unsafe fn disassemble_and_launch(
                 PageTableFlags::USER_ACCESSIBLE
                     | PageTableFlags::PRESENT
                     | PageTableFlags::NO_EXECUTE
-                    | PageTableFlags::WRITABLE,
+                    | PageTableFlags::WRITABLE
+                    | elf::STACK,
                 false,
             ) {
                 Ok(()) => (),
@@ -430,15 +464,19 @@ pub unsafe fn disassemble_and_launch(
                 }
             }
         }
-        let heap_address = 0x8888_0000_u64;
-        let heap_size = 100;
+        // Allocate pages for the heap
+        // We define the heap start address as
+        let heap_address = maximum_address + 0x8000_u64;
+        let heap_address_normalized = heap_address - (heap_address % 0x1000);
+        let heap_size = DEFAULT_HEAP_SIZE;
         for i in 0..heap_size {
             match frame_allocator.add_entry_to_table(
                 level_4_table_addr,
-                VirtAddr::new(heap_address + i * 0x1000),
+                VirtAddr::new(heap_address_normalized + i * 0x1000),
                 PageTableFlags::USER_ACCESSIBLE
                     | PageTableFlags::PRESENT
-                    | PageTableFlags::WRITABLE,
+                    | PageTableFlags::WRITABLE
+                    | elf::HEAP,
                 false,
             ) {
                 Ok(()) => (),
@@ -452,23 +490,26 @@ pub unsafe fn disassemble_and_launch(
             }
             match memory::write_into_virtual_memory(
                 level_4_table_addr,
-                VirtAddr::new(heap_address + i * 0x1000),
-                &[0_u8; 4096],
+                VirtAddr::new(heap_address_normalized + i * 0x1000),
+                &[0_u8; 0x1000],
             ) {
                 Ok(()) => (),
                 Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
             };
         }
 
+        ID_TABLE[0].heap_address = heap_address_normalized;
+        ID_TABLE[0].heap_size = heap_size;
+
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
         println!("target : {:x}", prog_entry);
-
-        towards_user_give_heap(heap_address, heap_size, addr_stack, prog_entry); // good luck user ;)
-        hardware::power::shutdown();
+        towards_user_give_heap(heap_address_normalized, heap_size, addr_stack, prog_entry);
+    // good luck user ;)
+    } else {
+        panic!("could not launch process")
     }
-    loop {}
 }
 
 /// Main structure of a process.
@@ -498,6 +539,9 @@ pub struct Process {
     pub rsp: u64, // every registers are saved on the stack
     state: State,
     owner: u64,
+    pub heap_address: u64,
+    pub heap_size: u64,
+    pub open_files: ProcessDescriptorTable
 }
 
 impl Process {
@@ -516,6 +560,9 @@ impl Process {
             rsp: 0,
             state: State::Runnable,
             owner,
+            heap_address: 0,
+            heap_size: 0,
+            open_files: ProcessDescriptorTable::init(),
         }
     }
 
@@ -530,6 +577,9 @@ impl Process {
             rsp: 0,
             state: State::SlotAvailable,
             owner: 0,
+            heap_address: 0,
+            heap_size: 0,
+            open_files: ProcessDescriptorTable::init(),
         }
     }
 
@@ -582,7 +632,7 @@ pub enum State {
 /// Its uniqueness throughout the system is ensured by the atomic `fetch_add` operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct ID(u64);
+pub struct ID(pub u64);
 
 impl ID {
     /// Returns a fresh ID. It uses an atomic operation to make sure no two processes can have the same id.
@@ -612,7 +662,7 @@ impl Default for ID {
     }
 }
 
-static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
+pub static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
     Process::missing(),
     Process::missing(),
     Process::missing(),
@@ -666,14 +716,9 @@ pub static mut CURRENT_PROCESS: usize = 0;
 /// Beware of not doing anything on this data !
 pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Process) {
     let old_pid = CURRENT_PROCESS;
-    let new_pid = next_pid_to_run();
-    if let Ok(new) = new_pid {
-        CURRENT_PROCESS = new;
-        return (&ID_TABLE[new], &mut ID_TABLE[old_pid]);
-    } else {
-        warningln!("Reran the old process because couldn't find a new one");
-        return (&ID_TABLE[old_pid], &mut ID_TABLE[old_pid]);
-    }
+    let new_pid = next_pid_to_run().0 as usize;
+    CURRENT_PROCESS = new_pid;
+    (&ID_TABLE[new_pid], &mut ID_TABLE[old_pid])
 }
 
 /// Returns the current process data structure as read only
@@ -693,8 +738,7 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
 /// Function to duplicate the current process into two childs
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
-/// ? Shouldn't this return an `ID`, instead of a `u64`?
-pub unsafe fn fork() -> u64 {
+pub unsafe fn fork() -> ID {
     let mut son = Process::create_new(
         ID_TABLE[CURRENT_PROCESS].pid,
         ID_TABLE[CURRENT_PROCESS].priority,
@@ -709,13 +753,13 @@ pub unsafe fn fork() -> u64 {
     } else {
         panic!("un initialized frame allocator");
     }
-    let pid = son.pid.0;
+    let pid = son.pid;
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
-    ID_TABLE[pid as usize] = son;
-    println!("new process of id {}", pid);
+    ID_TABLE[pid.0 as usize] = son;
+    println!("new process of id {:#?}", pid);
     WAITING_QUEUES[son.priority.0]
-        .push(pid as usize)
+        .push(pid)
         .expect("Could not push son process into the queue");
     // TODO
     pid
@@ -727,6 +771,7 @@ pub unsafe fn fork() -> u64 {
 /// the given value. It can be only decreasing
 /// Returns : usize::MAX or the new priority if succeeds
 pub unsafe fn set_priority(prio: usize) -> usize {
+    // TODO : change attribution in WAITING_QUEUES? Or do we wait till the next execution? Is the overhead worth it?
     if prio > MAX_PRIO {
         return usize::MAX;
     }
@@ -740,17 +785,19 @@ pub unsafe fn set_priority(prio: usize) -> usize {
 
 fn next_priority_to_run() -> usize {
     let mut ticket = random::random_u8();
+    // debug!("Ticket = {:#b}", ticket);
     // Look for the most significant non null bit in the ticket
     let mut idx = 7;
     while idx > 0 && ticket != 0 {
         ticket <<= 1;
         idx -= 1;
     }
-    (MAX_PRIO - idx) - 1
+    // debug!("final idx: {}",idx);
+    idx
 }
 
 const MAX_PRIO: usize = 8;
-static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
+static mut WAITING_QUEUES: [Queue<ID>; MAX_PRIO] = [
     Queue::new(),
     Queue::new(),
     Queue::new(),
@@ -761,38 +808,62 @@ static mut WAITING_QUEUES: [Queue<usize>; MAX_PRIO] = [
     Queue::new(),
 ];
 
+static mut IDLE: BTreeSet<ID> = BTreeSet::new();
+
+/// Adds the given pid to the correct priority queue
+/// It tries to push it in the designated priority, but if it is full,
+/// it will promote the process until it finds room
+/// or there is no place left in priority 0, in which case it crashes.
+/// # Safety
+/// Requires WAITING_QUEUES to be sane
+fn enqueue_prio(pid: ID, prio: usize) {
+    unsafe {
+        let mut effective_prio = prio;
+        while WAITING_QUEUES[effective_prio].is_full() && effective_prio > 0 {
+            effective_prio -= 1
+        }
+        if effective_prio == 0 && WAITING_QUEUES[effective_prio].is_full() {
+            panic!("Too many processes want to run at the same priority!")
+        }
+        WAITING_QUEUES[effective_prio]
+            .push(pid)
+            .expect("Scheduler massive fail");
+    }
+}
+
+/// Adds a process that might be runnable later into the IDLE collection.
+/// We guarantee that each element is present at most once.
+fn add_idle(pid: ID) {
+    unsafe {
+        IDLE.insert(pid);
+    }
+}
+
 /// # Safety
 /// Needs sane `WAITING_QUEUES`. Should be safe to use.
-unsafe fn next_pid_to_run() -> Result<usize, ()> {
+unsafe fn next_pid_to_run() -> ID {
     let mut prio = next_priority_to_run();
-    // <debug>
-    // </debug>
     // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
     while WAITING_QUEUES[prio].is_empty() {
-        // If we couldn't find any process to run
-        if prio == 0 {
-            return Err(());
-        }
         prio -= 1; // need to check priority
     }
+    let old_pid = ID(CURRENT_PROCESS as u64);
+    let old_priority = ID_TABLE[old_pid.0 as usize].priority.0;
+    let old_state = ID_TABLE[old_pid.0 as usize].state;
+    // TODO : book-keeping to potentially empty IDLE
 
-    let old_pid = CURRENT_PROCESS;
-    let new_pid = WAITING_QUEUES[prio]
-        .pop()
-        .expect("Scheduler massive fail #0");
-    let mut old_priority = ID_TABLE[old_pid].priority.0;
-    while WAITING_QUEUES[old_pid].is_full() && old_priority > 0 {
-        old_priority -= 1
+    let new_pid = WAITING_QUEUES[prio].pop().expect("Scheduler massive fail");
+    match old_state {
+        State::Runnable => enqueue_prio(old_pid, old_priority),
+        State::SlotAvailable | State::Zombie(_) => (),
+        State::Running => {
+            ID_TABLE[old_pid.0 as usize].state = State::Runnable;
+            enqueue_prio(old_pid, old_priority);
+        }
+        State::SleepInterruptible | State::SleepUninterruptible | State::Stopped => {
+            add_idle(old_pid)
+        }
+        _ => panic!("{:#?} unsupported in scheduler!", old_state),
     }
-    if old_priority == 0 && WAITING_QUEUES[old_priority].is_full() {
-        panic!("Too many processes want to run at the same priority!")
-    }
-    WAITING_QUEUES[old_priority]
-        .push(old_pid)
-        .expect("Scheduler massive fail #1");
-    // <debug>
-    println!("Priority ran: {}", prio);
-    println!("Old PID: {},\tNew PID: {}", old_pid, new_pid);
-    // </debug>
-    Ok(new_pid)
+    new_pid
 }

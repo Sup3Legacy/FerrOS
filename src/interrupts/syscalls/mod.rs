@@ -7,15 +7,15 @@ use crate::data_storage::registers::{Registers, RegistersMini};
 use crate::filesystem;
 use crate::hardware;
 use crate::interrupts;
+use crate::memory;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, scheduler};
-use crate::{debug, errorln, warningln, println};
+use crate::{debug, errorln, println, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
 use core::cmp::min;
-use x86_64::registers::control::Cr3;
-use x86_64::VirtAddr;
+use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAddr};
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -55,24 +55,60 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
     asm!("mov rax, rdi", "ret", options(noreturn));
 }
 
+/// # Safety
+/// The caller must be sure that the pointer corresponds to a valid string, that is, what's more, ended by `\u{0}`.
+unsafe fn read_string_from_pointer(ptr: u64) -> String {
+    let mut buf = Vec::new();
+    let mut addr = ptr;
+    let mut reading = *(addr as *mut u8) as char;
+    while reading != '\u{0}' {
+        buf.push(reading);
+        addr += 1_u64;
+        reading = *(addr as *mut u8) as char
+    }
+    let res = buf.into_iter().collect();
+    debug!("read: {}", res);
+    return res
+}
+
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    if args.rdi == 0 {
-        args.rax = 0;
-        let mut address = VirtAddr::new(args.rsi) + 1_u64;
-        for _i in 0..min(1023, args.rsi) {
-            if let Ok(k) = crate::keyboard::get_top_key_event() {
-                println!("About to print : {}", k);
-                unsafe {
-                    *(address.as_mut_ptr::<u8>()) = k;
-                }
-                address += 1_u64;
-                args.rax += 1;
-            }
+    let (cr3, _) = Cr3::read();
+    let mut size = min(args.rdx, 1024) - 1;
+    if memory::check_if_has_flags(
+        cr3,
+        VirtAddr::new(args.rsi),
+        PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+    ) {
+        if !memory::check_if_has_flags(
+            cr3,
+            VirtAddr::new(args.rsi + size),
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+        ) {
+            size = 0xFFF - args.rsi & 0xFFF;
         }
-        
+        if args.rdi == 0 {
+            args.rax = 0;
+            let mut address = VirtAddr::new(args.rsi);
+            for _i in 0..size {
+                if let Ok(k) = crate::keyboard::get_top_key_event() {
+                    println!("About to print : {}", k);
+                    unsafe {
+                        *(address.as_mut_ptr::<u8>()) = k;
+                    }
+                    address += 1_u64;
+                    args.rax += 1;
+                }
+            }
+            unsafe {
+                *(address.as_mut_ptr::<u8>()) = 0;
+            }
+        } else {
+            warningln!("Unkown file descriptor in read");
+            args.rax = 0;
+        }
     } else {
-        warningln!("Unkown file descriptor in read");
+        warningln!("Address not allowed");
         args.rax = 0;
     }
 }
@@ -80,51 +116,73 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     //warningln!("printing");
-    if args.rdi == 1 {
-        let address = args.rsi;
-        let mut data_addr = VirtAddr::new(address);
-        let mut t = Vec::new();
-        let mut index = 0_u64;
-        if args.rdx > 0 {
-            debug!("Got bytes to write!");
+    let (cr3, _) = Cr3::read();
+    let mut size = min(args.rdx, 1024);
+    if memory::check_if_has_flags(
+        cr3,
+        VirtAddr::new(args.rsi),
+        PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+    ) {
+        if !memory::check_if_has_flags(
+            cr3,
+            VirtAddr::new(args.rsi + size),
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+        ) {
+            size = 0x1000 - args.rsi & 0xFFF;
         }
-        unsafe {
-            while index < args.rdi && index < 1024 && ((*(data_addr.as_ptr::<u8>())) != 0) {
-                t.push(*(data_addr.as_ptr::<u8>()));
-                data_addr += 1_usize;
-                index += 1;
-            }
-            if let Some(vfs) = &mut filesystem::VFS {
-                vfs.write(Path::from("screen/screenfull"), t);
-            } else {
-                errorln!("Could not find VFS");
-            }
-        }
-        args.rax = index;
-    } else if args.rdi == 2 {
         let mut address = args.rsi;
         //let mut data_addr = VirtAddr::new(address);
-        let mut t = String::new();
+        let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
-            while index < args.rdx && index < 1024 && *(address as *const u8) != 0 {
-                t.push(*(address as *const u8) as char);
+            while index < size && index < 1024 && *(address as *const u8) != 0 {
+                t.push(*(address as *const u8));
                 address += 1_u64;
                 index += 1;
             }
         }
-        debug!("on shell : {}", t);
-        args.rax = index;
+        if args.rdi == 1 {
+            unsafe {
+                if let Some(vfs) = &mut filesystem::VFS {
+                    vfs.write(Path::from("screen/screenfull"), t);
+                } else {
+                    errorln!("Could not find VFS");
+                }
+            }
+            args.rax = index;
+        } else if args.rdi == 2 {
+            let mut t2 = String::new();
+            for i in t {
+                t2.push(i as char);
+            }
+            debug!("on shell : {}", t2);
+            args.rax = index;
+        } else {
+            warningln!("Unknow file descriptor");
+            args.rax = 0;
+        }
     } else {
-        warningln!("Unknow file descriptor");
+        warningln!("no a valid address");
         args.rax = 0;
     }
 }
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    args.rax = 1;
-    warningln!("test1");
+//     args.rax = 1;
+//     let mut filename_addr = args.rdi;
+//     debug!("filename_ptr : {:#x}", filename_addr);
+//     let filename = unsafe{*(filename_addr as *const u8) as char};
+//     debug!("filename: {:#?}",filename);
+//     for _i in 0..100 {
+//         let filename = unsafe{*(filename_addr as *const u8) as char};
+//         debug!("{:#?}", filename);
+//         filename_addr += 1_u64;
+//     }
+//     let filename = unsafe{*(filename_addr as *const u8) as char};
+//     debug!("filename: {:#?}",filename);
+//     warningln!("open not implemented");
+    unsafe{read_string_from_pointer(args.rdi);}
 }
 
 /// close file. arg0 : unsigned int fd
@@ -146,24 +204,19 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
         current.cr3 = cr3.start_address();
         current.cr3f = cr3f;
         current.rsp = VirtAddr::from_ptr(args).as_u64();
-        let next: u64 = process::fork();
+        let next: u64 = process::fork().0;
         args.rax = next;
         process::leave_context(current.rsp);
     }
 }
 
 /// arg0 : address of file name
-extern "C" fn syscall_6_exec(args: &mut RegistersMini, isf: &mut InterruptStackFrame) {
+extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("exec");
     let addr: *const String = VirtAddr::new(args.rdi).as_ptr();
     unsafe {
-        let new_rip = process::elf::load_elf_for_exec(&*addr);
-        let mut stack_value = isf.as_mut();
-        stack_value.instruction_pointer = new_rip;
-        stack_value.stack_pointer = VirtAddr::new(process::elf::ADDR_STACK);
-        process::leave_context(VirtAddr::from_ptr(args).as_u64());
+        process::elf::load_elf_for_exec(&*addr);
     }
-    panic!("exec not implemented");
 }
 
 extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
@@ -173,6 +226,7 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
 extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
         interrupts::COUNTER = interrupts::QUANTUM - 1;
+        x86_64::instructions::interrupts::enable_and_hlt();
     }
 }
 
@@ -223,6 +277,35 @@ extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut Interru
 
 extern "C" fn syscall_20_debug(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("rdi : {}, rsi : {}", args.rdi, args.rsi);
+}
+
+/// Syscall for requesting additionnal heap frames
+/// We might want to change the maximum
+extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    // Number of requested frames
+    let additional = core::cmp::max(args.rdi, 256);
+    let current_process = unsafe { scheduler::process::get_current_as_mut() };
+    let current_heap_size = current_process.heap_size;
+    // TODO out this in a cosntant
+    if current_heap_size >= 128 {
+        args.rax = 0;
+        return;
+    }
+    current_process.heap_size += additional;
+    unsafe {
+        if let Some(ref mut frame_allocator) = crate::memory::FRAME_ALLOCATOR {
+            for _ in 0..additional {
+                scheduler::process::allocate_additional_heap_pages(
+                    frame_allocator,
+                    current_process.heap_address + current_heap_size * 0x1000,
+                    additional,
+                    &current_process,
+                );
+            }
+        }
+    }
+    println!("Fullfilled memrequest");
+    args.rax = additional
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
