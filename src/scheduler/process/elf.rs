@@ -1,16 +1,11 @@
-use crate::{debug, errorln, warningln};
 use crate::memory;
 use crate::_TEST_PROGRAM;
+use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::VirtAddr;
-use xmas_elf::{
-    sections::ShType,
-    program::SegmentData,
-    program::Type,
-    ElfFile,
-};
+use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
 
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;
 pub const STACK: PageTableFlags = PageTableFlags::BIT_10;
@@ -51,9 +46,9 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
         None => panic!("the frame allocator wasn't initialized"),
     };
     let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
-    
+
     let elf = ElfFile::new(code).unwrap();
-    
+
     // We get the main entry point and make sure it is
     // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
@@ -116,7 +111,8 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
 
             let num_blocks = (size + offset) / 4096 + 1;
 
-            let mut flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | MODIFY_WITH_EXEC;
+            let mut flags =
+                PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | MODIFY_WITH_EXEC;
             if program.flags().is_write() {
                 flags |= PageTableFlags::WRITABLE;
             }
@@ -155,17 +151,28 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
             if size != file_size {
                 warningln!(
                     "file_size and mem_size differ : file {}, mem {}",
-                    file_size, size
+                    file_size,
+                    size
                 );
                 let mut padding = Vec::new();
                 for _ in 0..(size - file_size) {
                     padding.push(0_u8);
                 }
-                memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address + size), &padding[..]).unwrap();
+                memory::write_into_virtual_memory(
+                    level_4_table_addr,
+                    VirtAddr::new(address + size),
+                    &padding[..],
+                )
+                .unwrap();
             }
         }
         current.heap_size = MINIMAL_HEAP_SIZE;
-        super::towards_user_give_heap(current.heap_address, current.heap_size, ADDR_STACK, prog_entry);
+        super::towards_user_give_heap(
+            current.heap_address,
+            current.heap_size,
+            ADDR_STACK,
+            prog_entry,
+        );
     } else {
         panic!("could not launch process")
     }

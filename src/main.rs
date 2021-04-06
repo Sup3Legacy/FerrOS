@@ -119,19 +119,6 @@ pub fn init(_boot_info: &'static BootInfo) {
             panic!("Frame allocator wasn't initialized");
         }
     };
-    for i in 0..100000 {
-        let mut a = String::new();
-        for j in 0..i {
-            a.push((((i + j) & 0xF) as u8) as char);
-        }
-        for (j, e) in a.bytes().enumerate() {
-            assert_eq!(e, (((i + j) & 0xF) as u8));
-        }
-        if i % 1000 == 0 {
-            println!("{}", i);
-        }
-    }
-
     // I/O Initialization
     keyboard::init();
     //vga::init();
