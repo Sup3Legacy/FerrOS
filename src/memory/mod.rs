@@ -1176,7 +1176,8 @@ pub unsafe fn write_into_virtual_memory(
                 }
             };
         }
-        let content: *mut u8 = (physaddr.as_u64() + (i & 0xfff) as u64 + PHYSICAL_OFFSET) as *mut u8;
+        let content: *mut u8 =
+            (physaddr.as_u64() + (i & 0xfff) as u64 + PHYSICAL_OFFSET) as *mut u8;
         (*content) = data[i - offset];
         virtaddr += 1_u64;
     }
@@ -1213,7 +1214,6 @@ unsafe fn translate_addr(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr>
     Some(frame.start_address())
 }
 
-
 fn flag_union(f1: PageTableFlags, f2: PageTableFlags) -> PageTableFlags {
     if f1.contains(PageTableFlags::NO_EXECUTE) == f2.contains(PageTableFlags::NO_EXECUTE) {
         f1 | f2
@@ -1238,7 +1238,7 @@ pub fn check_if_has_flags(level_4: PhysFrame, addr: VirtAddr, flags: PageTableFl
         let table_ptr: *const PageTable = virt as *const PageTable;
         let table = unsafe { &*table_ptr };
         if !table[index].flags().contains(flags) {
-            return false
+            return false;
         }
         virt = unsafe { PHYSICAL_OFFSET } + table[index].addr().as_u64();
     }

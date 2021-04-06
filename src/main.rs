@@ -119,7 +119,6 @@ pub fn init(_boot_info: &'static BootInfo) {
             panic!("Frame allocator wasn't initialized");
         }
     };
-
     // I/O Initialization
     keyboard::init();
     //vga::init();
@@ -139,8 +138,8 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     //println!("Random : {:?}", RdRand::new().unwrap().get_u64().unwrap());
 
-
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
+
     scheduler::process::spawn_first_process();
     unsafe {
         filesystem::init_vfs();
@@ -148,7 +147,6 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     //filesystem::init();
 }
-
 
 entry_point!(kernel_main);
 // We use it to check at compile time that we are doing everything correctly with the arguments of `kernel_main`

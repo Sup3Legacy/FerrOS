@@ -9,17 +9,13 @@ use crate::hardware;
 use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
-use crate::{data_storage::path::Path};
-use crate::{debug, errorln, warningln, println};
+use crate::{data_storage::path::Path, scheduler};
+use crate::{debug, errorln, println, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
 use core::cmp::min;
-use x86_64::{
-    VirtAddr,
-    registers::control::Cr3,
-    structures::paging::PageTableFlags,
-};
+use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAddr};
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -79,8 +75,16 @@ unsafe fn read_string_from_pointer(ptr: u64) -> String {
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let (cr3, _) = Cr3::read();
     let mut size = min(args.rdx, 1024) - 1;
-    if memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
-        if !memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi + size), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+    if memory::check_if_has_flags(
+        cr3,
+        VirtAddr::new(args.rsi),
+        PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+    ) {
+        if !memory::check_if_has_flags(
+            cr3,
+            VirtAddr::new(args.rsi + size),
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+        ) {
             size = 0xFFF - args.rsi & 0xFFF;
         }
         if args.rdi == 0 {
@@ -99,7 +103,6 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             unsafe {
                 *(address.as_mut_ptr::<u8>()) = 0;
             }
-            
         } else {
             warningln!("Unkown file descriptor in read");
             args.rax = 0;
@@ -115,8 +118,16 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
     //warningln!("printing");
     let (cr3, _) = Cr3::read();
     let mut size = min(args.rdx, 1024);
-    if memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
-        if !memory::check_if_has_flags(cr3, VirtAddr::new(args.rsi + size), PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE) {
+    if memory::check_if_has_flags(
+        cr3,
+        VirtAddr::new(args.rsi),
+        PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+    ) {
+        if !memory::check_if_has_flags(
+            cr3,
+            VirtAddr::new(args.rsi + size),
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+        ) {
             size = 0x1000 - args.rsi & 0xFFF;
         }
         let mut address = args.rsi;
@@ -215,6 +226,7 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
 extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
         interrupts::COUNTER = interrupts::QUANTUM - 1;
+        x86_64::instructions::interrupts::enable_and_hlt();
     }
 }
 
@@ -265,6 +277,35 @@ extern "C" fn syscall_19_set_focus(_args: &mut RegistersMini, _isf: &mut Interru
 
 extern "C" fn syscall_20_debug(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("rdi : {}, rsi : {}", args.rdi, args.rsi);
+}
+
+/// Syscall for requesting additionnal heap frames
+/// We might want to change the maximum
+extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    // Number of requested frames
+    let additional = core::cmp::max(args.rdi, 256);
+    let current_process = unsafe { scheduler::process::get_current_as_mut() };
+    let current_heap_size = current_process.heap_size;
+    // TODO out this in a cosntant
+    if current_heap_size >= 128 {
+        args.rax = 0;
+        return;
+    }
+    current_process.heap_size += additional;
+    unsafe {
+        if let Some(ref mut frame_allocator) = crate::memory::FRAME_ALLOCATOR {
+            for _ in 0..additional {
+                scheduler::process::allocate_additional_heap_pages(
+                    frame_allocator,
+                    current_process.heap_address + current_heap_size * 0x1000,
+                    additional,
+                    &current_process,
+                );
+            }
+        }
+    }
+    println!("Fullfilled memrequest");
+    args.rax = additional
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
