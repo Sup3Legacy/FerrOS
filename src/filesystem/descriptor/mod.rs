@@ -18,9 +18,8 @@ lazy_static! {
 
 /// Contains all the open_file_tables
 pub struct GeneralFileTable {
-    /// Array containing all the filetables
-    /// A filetable maps a local fd index to the true fd (so there is one per process that uses the vfs)
-    tables: [Option<OpenFileTable>; scheduler::PROCESS_MAX_NUMBER as usize],
+    /// Array that maps a fdindex to a OpenFileTable (ie all the relevant metadata on the given file)
+    tables: [Option<OpenFileTable>; MAX_TOTAL_OPEN_FILES as usize],
     /// Index of the first unoccupied space in the table
     index: usize,
 }
@@ -28,38 +27,38 @@ pub struct GeneralFileTable {
 impl GeneralFileTable {
     pub fn new() -> Self {
         Self {
-            tables: [None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None],
+            tables: [None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None],
             index: 0,
         }
     }
@@ -84,7 +83,6 @@ impl GeneralFileTable {
     /// Should close be added ?
     pub fn delete(&mut self, index: usize) {
         self.tables[index] = None;
-        //self.index = min(index, self.index); // not needed anymore, can be bad for performances
     }
 
     /// Returns mutable copy of a given entry
@@ -104,6 +102,11 @@ pub struct OpenFileTable {
     /// path of the file
     path: Path,
 }
+impl OpenFileTable {
+    pub fn new(path: Path) -> Self {
+        Self{path}
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct FileDescriptor(usize);
@@ -118,6 +121,7 @@ impl FileDescriptor {
 }
 
 /// Should be held by the [`crate::scheduler::process::Process`] struct.
+#[derive(Debug,Copy,Clone)]
 pub struct ProcessDescriptorTable {
     /// Associates a file descriptor to the index of the open file table
     /// in the [`GLOBAL_FILE_TABLE`]
@@ -126,6 +130,13 @@ pub struct ProcessDescriptorTable {
 }
 
 impl ProcessDescriptorTable {
+    pub const fn init() -> Self {
+        Self{
+            files: [None; MAX_TOTAL_OPEN_FILES_BY_PROCESS],
+            index: 0,
+        }
+    }
+    
     /// Returns reference to filetable from a filedescriptor.
     pub fn get_file_table(&self, fd: FileDescriptor) -> &'static OpenFileTable {
         GLOBAL_FILE_TABLE.get_file_table_ref(self.files[fd.into_usize()].unwrap())

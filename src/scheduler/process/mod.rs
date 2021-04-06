@@ -19,7 +19,7 @@ use crate::data_storage::{queue::Queue, random};
 use crate::{errorln, println};
 use crate::hardware;
 use crate::memory;
-
+use crate::filesystem::descriptor::ProcessDescriptorTable;
 
 
 pub mod elf;
@@ -505,6 +505,7 @@ pub struct Process {
     owner: u64,
     pub heap_address: u64,
     pub heap_size: u64,
+    pub open_files: ProcessDescriptorTable
 }
 
 impl Process {
@@ -525,6 +526,7 @@ impl Process {
             owner,
             heap_address: 0,
             heap_size: 0,
+            open_files: ProcessDescriptorTable::init(),
         }
     }
 
@@ -541,6 +543,7 @@ impl Process {
             owner: 0,
             heap_address: 0,
             heap_size: 0,
+            open_files: ProcessDescriptorTable::init(),
         }
     }
 
@@ -623,7 +626,7 @@ impl Default for ID {
     }
 }
 
-static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
+pub static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
     Process::missing(),
     Process::missing(),
     Process::missing(),
