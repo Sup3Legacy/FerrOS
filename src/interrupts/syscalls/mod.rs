@@ -11,6 +11,7 @@ use crate::memory;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, scheduler};
 use crate::{debug, errorln, println, warningln};
+use crate::filesystem::{descriptor,descriptor::OpenFileTable};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -68,7 +69,7 @@ unsafe fn read_string_from_pointer(ptr: u64) -> String {
     }
     let res = buf.into_iter().collect();
     debug!("read: {}", res);
-    return res
+    res
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
@@ -169,20 +170,9 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-//     args.rax = 1;
-//     let mut filename_addr = args.rdi;
-//     debug!("filename_ptr : {:#x}", filename_addr);
-//     let filename = unsafe{*(filename_addr as *const u8) as char};
-//     debug!("filename: {:#?}",filename);
-//     for _i in 0..100 {
-//         let filename = unsafe{*(filename_addr as *const u8) as char};
-//         debug!("{:#?}", filename);
-//         filename_addr += 1_u64;
-//     }
-//     let filename = unsafe{*(filename_addr as *const u8) as char};
-//     debug!("filename: {:#?}",filename);
-//     warningln!("open not implemented");
-    unsafe{read_string_from_pointer(args.rdi);}
+    let filename = unsafe{read_string_from_pointer(args.rdi)};    
+    let fd = descriptor::open(filename);  
+    args.rax = fd.into_u64();
 }
 
 /// close file. arg0 : unsigned int fd
