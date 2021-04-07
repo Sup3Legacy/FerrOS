@@ -32,16 +32,16 @@ class Header:
 
     def get_address(self):
         # TODO
-        pass
+        None
     
     def get_data(self):
         # This is gonna be a tough one
-        pass
+        None
 
 
 class UstarFile:
     def __init__(self):
-        pass
+        None
 
 
 class File(UstarFile):
@@ -104,11 +104,13 @@ class Sector:
         self.data = [0 for _ in range(512)]
 
     def fill_data(self, data):
+        assert len(data) <= 512
         if len(data) == 512:
             self.data = data
         else:
             for i in range(len(data)):
                 self.data[i] = data[i]
+            # TODO should maybe make sure the rest is 0
     
     def get_data(self):
         return self.data[:]
@@ -121,9 +123,13 @@ class Lba:
             self.data.append(Sector())
             self.available.append(True)
 
-    def mark_unavailable(self):
-        for i in range(LBA_SIZE):
+    def mark_unavailable(self, sector):
+        self.available[sector] = False
+
+    def get_available(self):
+        for i in range(510):
             if self.available[i]:
+                self.available[i] = False
                 return i
         return -1
 
@@ -181,8 +187,9 @@ class Ustar:
             print("Oops, got a problem while getting a fresh address")
             raise UstarException("Ustar struct could not allocate address.")
         else:
-            self.mark_unavailable(lba)
-            self.data[lba].mark_unavailable(sector)
+            #self.mark_unavailable(lba)
+            # This is useless
+            #self.data[lba].mark_unavailable(sector)
             return Address(lba, sector)
     
     def get_data(self):
@@ -200,7 +207,7 @@ USTAR = Ustar()
 def build_ustar(tree):
     # tree is suposed to be a Dir containing the file hierarchy
     if isinstance(tree, File):
-        length = len(tree)
+        length = len(tree) # number of children
         sector_number = length // 512
         if length % 512 > 0:
             sector_number += 1
@@ -225,8 +232,8 @@ def build_ustar(tree):
         elif mode == 1:
             # Long-mode
             # We first need to allocate additionnal blocks
-            supersector_numer = sector_number // 100
-            if sector_number % 100 > 0:
+            supersector_numer = sector_number // 128
+            if sector_number % 128 > 0:
                 supersector_numer += 1
             # Get all needed addresses
             header_address = USTAR.get_address()
@@ -234,22 +241,45 @@ def build_ustar(tree):
             addresses = [USTAR.get_address() for _ in range(sector_number)]
             # Input all addresses into header
             tree.header.set_block_addresses(supersector_addresses)
+            # Write the header
+            USTAR.set_sector_data(header_address.lba, header_address.index, tree.header.get_data())
+            # Write all superblocks
+            for i in range(supersector_numer):
+                # data to put into the superblock
+                superdata = addresses[i * 128: (i + 1) * 128]
+                partial_len = len(superdata)
+                # TODO remove this
+                for i in range(128-partial_len):
+                    superdata.append(Address(0, 0))
+                assert len(superdata) == 0
 
-            pass
+                super_address = supersector_addresses[i]
+                # Write the superblock
+                USTAR.set_sector_data(super_address.lba, super_address.index,superdata)
+            file_data = tree.get_data()
+            # Write all blocks
+            for i in range(1, sector_number):
+                current_add = addresses[i]
+                USTAR.set_sector_data(current_add.lba, current_add.index, file_data[(i-1)*512:i*512])
+            return header_address
         else:
             raise UstarException("Undefined mode")
     elif isinstance(tree, Dir):
-        length = len(tree) + 512
-        sector_number = length // 512
-        if length % 512 > 0:
+        length = len(tree)
+        sector_number = length // 16 # We can put 16 children per sector
+        if length % 16 > 0:
             sector_number += 1
-        addresses = [USTAR.get_address() for _ in range(sector_number)]
         mode = tree.mode()
         if mode == 0:
-            # short-mode
-            pass
+            header_address = USTAR.get_address()
+            block_addresses = [USTAR.get_address() for _ in range(sector_number)]
+            children = []
+            for e in tree.files:
+                name = e.header.name
+                address = build_ustar(e)
+                children.append((name, address))
         elif mode == 1:
-            pass
+            None
         else:
             raise UstarException("Undefined mode")
     else:

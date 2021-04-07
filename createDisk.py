@@ -5,14 +5,7 @@ import os
 
 # Path to filesystem directory
 directory = "./filesystem/"
-disque = open("disk.img", "w")
-
-n = 4096
-l1 = [0]*512
-l2 = []
-l2 = l2 + [0]*(512-len(l2))
-#print('a'*512*n ,end="", file = disque)
-disque.close()
+disk_img = "./disk.img.test"
 
 def construct_filesystem_tree(path):
     files = []
@@ -31,10 +24,19 @@ def construct_filesystem_tree(path):
             files.append(subtree)
     return Dir(files, name)
 
-
-construct_filesystem_tree(directory)
+# write the list of integers into the file
+def write_ustar(data, disk_img_path):
+    file = open(disk_img_path, "wb")
+    binary_data = bytearray(data)
+    file.write(binary_data)
+    file.close() 
 
 # Main function
-def build_filesystem(path):
-    tree = construct_filesystem_tree(path)
-    pass
+def build_filesystem(fs_path, disk_img_path):
+    tree = construct_filesystem_tree(fs_path)
+    build_ustar(tree)
+    data = USTAR.get_data()
+    write_ustar(data, disk_img_path)
+
+if __name__ == "__main__":
+    build_filesystem(directory, disk_img)
