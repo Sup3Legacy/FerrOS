@@ -17,7 +17,9 @@ Then run these three commands in the root directory of the project:
 - `rustup component add rust-src`
 
 ## Usage
-- Build and open documentation: `make doc`
-- Build: `make build`
+- Build: `make`
 - Build and run: `make run`
+- Build and open documentation: `make doc`
 - Clean: `make clean`
+- Format: `make fmt`
+- Count the number of lines: `make count`

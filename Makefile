@@ -1,28 +1,31 @@
-all:
+all: fmt
 	cargo build --release
 
-run:
+run: fmt
 	cargo run --release
 
-doc:
+fmt:
+	cargo fmt
+
+doc: fmt
 	cargo doc --document-private-items --open
 
-clean:
+clean: fmt
 	cargo clean
 
-sound:
-	cargo run -- -soundhw pcspk -drive format=raw,file=disk.disk,index=2 -boot c
+sound: fmt
+	cargo run -- -soundhw pcspk -drive format=raw,file=disk/disk.disk,index=2 -boot c
 
-count:
+count: fmt
 	wc -l `find src -type f`
 
-memory:
-	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk.img,index=2 -boot c
+memory: fmt
+	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk/disk.img,index=2 -boot c
 
-memory2:
-	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk.disk,index=2 -boot c
+memory2: fmt
+	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk/disk.disk,index=2 -boot c
 
-.PHONY: all run doc clean count memory memory2
+.PHONY: all run fmt doc clean count memory memory2
 
 PANDOC = pandoc
 PANDOC-TEMPLATE = report/template.latex
