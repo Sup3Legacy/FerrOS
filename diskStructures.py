@@ -26,6 +26,10 @@ class Header:
     def get_address(self):
         # TODO
         pass
+    
+    def get_data(self):
+        # This is gonna be a tough one
+        pass
 
 
 class UstarFile:
@@ -179,3 +183,38 @@ class Ustar:
 
 # Glboal ustar object
 USTAR = Ustar()
+
+def build_ustar(tree):
+    # tree is suposed to be a Dir containing the file hierarchy
+    if isinstance(tree, File):
+        length = len(tree) + 512
+        sector_number = length // 512
+        if length % 512 > 0:
+            sector_number += 1
+        addresses = [USTAR.get_address() for _ in range(sector_number)]
+        mode = tree.mode()
+        # Length should be coherent with the mode
+        if mode == 0:
+            # short-mode
+            
+            pass
+        elif mode == 1:
+            pass
+        else:
+            raise UstarException("Undefined mode")
+    elif isinstance(tree, Dir):
+        length = len(tree) + 512
+        sector_number = length // 512
+        if length % 512 > 0:
+            sector_number += 1
+        addresses = [USTAR.get_address() for _ in range(sector_number)]
+        mode = tree.mode()
+        if mode == 0:
+            # short-mode
+            pass
+        elif mode == 1:
+            pass
+        else:
+            raise UstarException("Undefined mode")
+    else:
+        raise UstarException("Unrecognized type in tree")
