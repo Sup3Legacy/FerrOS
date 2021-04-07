@@ -16,9 +16,9 @@ use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{queue::Queue, random};
+use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
-use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::{errorln, println};
 
 /// Default allocated heap size (in number of pages)
@@ -541,7 +541,7 @@ pub struct Process {
     owner: u64,
     pub heap_address: u64,
     pub heap_size: u64,
-    pub open_files: ProcessDescriptorTable
+    pub open_files: ProcessDescriptorTable,
 }
 
 impl Process {
