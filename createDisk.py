@@ -23,6 +23,7 @@ def construct_filesystem_tree(path):
             name = child
             data = open(child_path, "rb")
             files.append(File(data, name))
+            data.close()
         else:
             # if the child is a directory
             subtree = construct_filesystem_tree(child_path)
