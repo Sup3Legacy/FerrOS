@@ -1,4 +1,7 @@
 all:
+	cargo build --release
+
+run:
 	cargo run --release
 
 doc:
@@ -19,7 +22,7 @@ memory:
 memory2:
 	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk.disk,index=2 -boot c
 
-.PHONY: all clean count memory memory2
+.PHONY: all run doc clean count memory memory2
 
 PANDOC = pandoc
 PANDOC-TEMPLATE = report/template.latex
@@ -37,14 +40,16 @@ REFERENCES_BIB = report/references.bib
 PRESENTATION_PDF = presentation.pdf
 ARTIFACTS_DIR = artifacts
 
-all: report presentation
-clean:
+pdf: report presentation
+
+clean_pdf:
 	rm -rf $(ARTIFACTS_DIR)
 
 mk_artifacts_dir:
 	mkdir -p $(ARTIFACTS_DIR)
 
 report: mk_artifacts_dir $(ARTIFACTS_DIR)/$(REPORT_PDF)
+
 presentation: mk_artifacts_dir $(ARTIFACTS_DIR)/$(PRESENTATION_PDF)
 
 $(ARTIFACTS_DIR)/$(REPORT_PDF): $(REPORT_SRC)
@@ -54,3 +59,5 @@ $(ARTIFACTS_DIR)/$(REPORT_PDF): $(REPORT_SRC)
 
 $(ARTIFACTS_DIR)/$(PRESENTATION_PDF): $(PRESENTATION_SRC)
 	$(PANDOC) -t beamer presentation/slides.md $(PANDOC-BEAMER-FLAGS) -o $@
+
+.PHONY: clean_pdf mk_artifacts_dir
