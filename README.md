@@ -17,8 +17,10 @@ Then run these three commands in the root directory of the project:
 - `rustup component add rust-src`
 
 ## Usage
-- Build: `make`
-- Build and run: `make run`
+- Build (release): `make`
+- Build (release) and run: `make run`
+- Build release: `make ferros_release`
+- Build without optimizations: `make ferros`
 - Build and open documentation: `make doc`
 - Clean: `make clean`
 - Format: `make fmt`
