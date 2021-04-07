@@ -1,5 +1,8 @@
 SHORT_MODE_LIMIT = 100
 BLOCK_SIZE = 512 # in bytes
+LBA_SIZE = 510
+
+LBA_NUMBER = 32
 
 class Address:
     def __init__(self, lba=-1, index=-1):
@@ -71,3 +74,41 @@ class Dir(UstarFile):
             return 0
         else:
             return 1
+
+class Sector:
+    def __init__(self):
+        self.data = [0 for _ in range(512)]
+    
+    def fill_data(self, data):
+        if len(data) == 512:
+            self.data = data
+        else:
+            for i in range(len(data)):
+                self.data[i] = data[i]
+class Lba:
+    def __init__(self):
+        self.data = []
+        self.available = []
+        for _ in range(LBA_SIZE):
+            self.data.append(Sector())
+            self.available.append(True)
+    
+    def get_available(self):
+        for i in range(LBA_SIZE):
+            if self.available[i]:
+                return i
+        return -1
+class Ustar:
+    def __init__(self):
+        self.data = []
+        self.available = []
+        for _ in range(LBA_NUMBER):
+            self.data.append(Lba())
+            self.available.append(True)
+    
+    def get_available(self):
+        for i in range(LBA_NUMBER):
+            res = self.data[i].get_available()
+            if res != -1:
+                return (i, res)
+    

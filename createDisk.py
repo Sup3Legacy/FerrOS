@@ -11,7 +11,7 @@ n = 4096
 l1 = [0]*512
 l2 = []
 l2 = l2 + [0]*(512-len(l2))
-print('a'*512*n ,end="", file = disque)
+#print('a'*512*n ,end="", file = disque)
 disque.close()
 
 def construct_filesystem_tree(path):
@@ -33,3 +33,8 @@ def construct_filesystem_tree(path):
 
 
 construct_filesystem_tree(directory)
+
+# Main function
+def build_filesystem(path):
+    tree = construct_filesystem_tree(path)
+    pass
