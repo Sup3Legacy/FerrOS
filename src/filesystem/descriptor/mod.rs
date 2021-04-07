@@ -26,38 +26,27 @@ pub struct GeneralFileTable {
 impl GeneralFileTable {
     pub fn new() -> Self {
         Self {
-            tables: [None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None],
+            tables: [
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None,
+            ],
             index: 0,
         }
     }
@@ -103,7 +92,7 @@ pub struct OpenFileTable {
 }
 impl OpenFileTable {
     pub fn new(path: Path) -> Self {
-        Self{path}
+        Self { path }
     }
 }
 
@@ -120,7 +109,7 @@ impl FileDescriptor {
 }
 
 /// Should be held by the [`crate::scheduler::process::Process`] struct.
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct ProcessDescriptorTable {
     /// Associates a file descriptor to the index of the open file table
     /// in the [`GLOBAL_FILE_TABLE`]
@@ -130,12 +119,12 @@ pub struct ProcessDescriptorTable {
 
 impl ProcessDescriptorTable {
     pub const fn init() -> Self {
-        Self{
+        Self {
             files: [None; MAX_TOTAL_OPEN_FILES_BY_PROCESS],
             index: 0,
         }
     }
-    
+
     /// Returns reference to filetable from a filedescriptor.
     pub fn get_file_table(&self, fd: FileDescriptor) -> &'static OpenFileTable {
         GLOBAL_FILE_TABLE.get_file_table_ref(self.files[fd.into_usize()].unwrap())
