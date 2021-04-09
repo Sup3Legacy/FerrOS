@@ -20,7 +20,7 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
-use crate::{print, println, warningln};
+use crate::{bsod, print, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -375,9 +375,9 @@ extern "x86-interrupt" fn page_fault_handler(
         
         hardware::power::shutdown();
     } else {
-        println!("PAGE FAULT! {:#?}", stack_frame);
-        println!("TRIED TO READ : {:#?}", Cr2::read());
-        println!("ERROR : {:#?}", error_code);
+        bsod!("PAGE FAULT! {:#?}", stack_frame);
+        bsod!("TRIED TO READ : {:#?}", Cr2::read());
+        bsod!("ERROR : {:#?}", error_code);
     }
     crate::halt_loop();
 }

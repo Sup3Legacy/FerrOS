@@ -9,8 +9,8 @@ use crate::hardware;
 use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
+use crate::{bsod, debug, errorln, println, warningln};
 use crate::{data_storage::path::Path, scheduler};
-use crate::{debug, errorln, println, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -21,7 +21,7 @@ use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAd
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 21;
+const SYSCALL_NUMBER: u64 = 22;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -47,6 +47,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_18_set_layer,
     syscall_19_set_focus,
     syscall_20_debug,
+    syscall_21_memrequest,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -289,24 +290,23 @@ extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut Interru
     let current_process = unsafe { scheduler::process::get_current_as_mut() };
     let current_heap_size = current_process.heap_size;
     // TODO out this in a cosntant
-    if current_heap_size >= 128 {
+    if current_heap_size >= 1024 {
+        warningln!("Process got max allocatable heap.");
         args.rax = 0;
         return;
     }
-    current_process.heap_size += additional;
     unsafe {
         if let Some(ref mut frame_allocator) = crate::memory::FRAME_ALLOCATOR {
-            for _ in 0..additional {
-                scheduler::process::allocate_additional_heap_pages(
-                    frame_allocator,
-                    current_process.heap_address + current_heap_size * 0x1000,
-                    additional,
-                    &current_process,
-                );
-            }
+            scheduler::process::allocate_additional_heap_pages(
+                frame_allocator,
+                current_process.heap_address + current_heap_size * 0x1000,
+                additional,
+                &current_process,
+            );
         }
     }
-    println!("Fullfilled memrequest");
+    debug!("Fullfilled memrequest");
+    current_process.heap_size = current_process.heap_size + additional;
     args.rax = additional
 }
 

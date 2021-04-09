@@ -193,7 +193,7 @@ pub unsafe fn allocate_additional_heap_pages(
             Ok(()) => (),
             Err(memory::MemoryError(err)) => {
                 errorln!(
-                    "Could not allocate the {}-th part of the heap. Error : {:?}",
+                    "Could not allocate the {}-th additional part of the heap. Error : {:?}",
                     i,
                     err
                 );
@@ -205,7 +205,7 @@ pub unsafe fn allocate_additional_heap_pages(
             &[0_u8; 0x1000],
         ) {
             Ok(()) => (),
-            Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+            Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
         };
     }
 }
@@ -498,8 +498,8 @@ pub unsafe fn disassemble_and_launch(
             };
         }
 
-        ID_TABLE[0].heap_address = heap_address_normalized;
-        ID_TABLE[0].heap_size = heap_size;
+        get_current_as_mut().heap_address = heap_address_normalized;
+        get_current_as_mut().heap_size = heap_size;
 
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
