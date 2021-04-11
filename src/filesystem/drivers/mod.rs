@@ -1,3 +1,4 @@
+pub mod clock_driver;
 pub mod disk_operations;
 pub mod hardware;
 pub mod nopart;

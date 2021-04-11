@@ -3,7 +3,10 @@
 //! Part of the OS responsible for handling syscalls
 
 use super::idt::InterruptStackFrame;
-use crate::data_storage::registers::{Registers, RegistersMini};
+use crate::data_storage::{
+    path,
+    registers::{Registers, RegistersMini},
+};
 use crate::filesystem;
 use crate::hardware;
 use crate::interrupts;
@@ -183,9 +186,12 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
     //     let filename = unsafe{*(filename_addr as *const u8) as char};
     //     debug!("filename: {:#?}",filename);
     //     warningln!("open not implemented");
-    unsafe {
-        read_string_from_pointer(args.rdi);
-    }
+    let path = unsafe { read_string_from_pointer(args.rdi) };
+    let current_process = unsafe { process::get_current_as_mut() };
+
+    current_process
+        .open_files
+        .create_file_table(path::Path::from(&path), 0_u64);
 }
 
 /// close file. arg0 : unsigned int fd
@@ -239,7 +245,7 @@ extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut InterruptS
 }
 
 extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("puid not implemented");
+    _args.rax = unsafe { process::CURRENT_PROCESS } as u64
 }
 
 extern "C" fn syscall_11_get_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
