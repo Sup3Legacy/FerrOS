@@ -178,6 +178,49 @@ pub unsafe extern "C" fn towards_user_give_heap(
     )
 }
 
+#[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn towards_user_give_heap_args(
+    _heap_addr: u64,
+    _heap_size: u64,
+    _args: u64,
+    _rsp: u64,
+    _rip: u64,
+) -> ! {
+    asm!(
+        // Ceci n'est pas exécuté
+        "mov rax, 0x0", // data segment
+        "mov ds, eax",
+        "mov es, eax",
+        "mov fs, eax",
+        "mov gs, eax",
+        "mov rsp, rcx",
+        "add rsp, 8",
+        "push 0x42",
+        "push rax",  // stack segment
+        "push rcx",  // stack pointer
+        "push 518",  // cpu flags
+        "push 0x08", // code segment
+        "push r8",   // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        //"mov rdx, 0", In this register we pass the pointer to the arguments
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
 pub unsafe fn allocate_additional_heap_pages(
     frame_allocator: &mut memory::BootInfoAllocator,
     start: u64,
@@ -558,7 +601,13 @@ pub unsafe fn disassemble_and_launch(
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
         println!("target : {:x}", prog_entry);
-        towards_user_give_heap(heap_address_normalized, heap_size, addr_stack, prog_entry);
+        towards_user_give_heap_args(
+            heap_address_normalized,
+            heap_size,
+            args_address,
+            addr_stack,
+            prog_entry,
+        );
     // good luck user ;)
     } else {
         panic!("could not launch process")
