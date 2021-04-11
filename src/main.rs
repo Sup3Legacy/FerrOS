@@ -89,6 +89,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     initdebugln!();
     println!("Ceci est simplement un debug :)");
     warningln!("Ceci est un warning :|");
+    println!("{:?}", x86_64::registers::control::Cr4::read());
     errorln!("Ceci est une erreur :(");
     gdt::init();
 
@@ -158,7 +159,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2);
+            scheduler::process::disassemble_and_launch(
+                _TEST_PROGRAM,
+                frame_allocator,
+                1,
+                2,
+                Vec::new(),
+            );
         }
     }
 

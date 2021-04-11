@@ -1,6 +1,6 @@
 use super::{align_up, Locked};
 
-use crate::println;
+use crate::{errorln, println};
 use core::alloc::{GlobalAlloc, Layout};
 use core::mem;
 use core::ptr;
@@ -192,6 +192,7 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
             }
             alloc_start as *mut u8
         } else {
+            errorln!("Could not find memory region");
             ptr::null_mut()
         }
     }

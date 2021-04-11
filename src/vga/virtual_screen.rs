@@ -105,7 +105,7 @@ impl VirtualScreen {
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
     fn new_line(&mut self) {
-        self.row_pos += 1 + (self.col_pos / self.width);
+        self.row_pos += 1; // + (self.col_pos / self.width)
         self.col_pos = 0;
         while self.row_pos >= self.height {
             self.scroll_up();

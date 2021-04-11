@@ -4,6 +4,7 @@ use crate::data_storage::path::Path;
 
 use alloc::boxed::Box;
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use core::todo;
 
@@ -32,6 +33,9 @@ pub unsafe fn init_vfs() {
         let s1 = screen_partition::ScreenPartition::new(0, 0, 20, 80, 0);
         vfs.add_file(Path::from("screen/screenfull"), Box::new(s1))
             .expect("could not create screen");
+        let s2 = drivers::clock_driver::ClockDriver::new();
+        vfs.add_file(Path::from("hardware/clock"), Box::new(s2))
+            .expect("could not create clock driver.");
     } else {
         panic!("should not happen")
     }
@@ -58,8 +62,18 @@ pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
     todo!();
 }
 
-pub fn write_file(_path: Path, _data: &'static [u8]) {
+pub fn write(_path: Path, _data: &[u8]) {
     todo!();
+}
+
+pub fn read_file(_path: Path, offset: usize, length: usize) -> Vec<u8> {
+    unsafe {
+        if let Some(ref mut vfs) = VFS {
+            return vfs.read(_path, offset, length);
+        } else {
+            panic!("VFS not initialized in read_file.");
+        }
+    }
 }
 
 pub fn get_data(_path: Path) -> &'static [u8] {

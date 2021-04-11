@@ -6,9 +6,12 @@ use core::{
     sync::atomic::{AtomicU64, Ordering},
 };
 //use lazy_static::lazy_static;
-use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::structures::paging::PhysFrame;
+use x86_64::{
+    registers::control::{Cr3, Cr3Flags},
+    structures::paging::{frame, FrameAllocator},
+};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
@@ -20,6 +23,7 @@ use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
 use crate::{errorln, println};
+use alloc::string::String;
 
 /// Default allocated heap size (in number of pages)
 const DEFAULT_HEAP_SIZE: u64 = 2;
@@ -174,6 +178,49 @@ pub unsafe extern "C" fn towards_user_give_heap(
     )
 }
 
+#[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn towards_user_give_heap_args(
+    _heap_addr: u64,
+    _heap_size: u64,
+    _args: u64,
+    _rsp: u64,
+    _rip: u64,
+) -> ! {
+    asm!(
+        // Ceci n'est pas exécuté
+        "mov rax, 0x0", // data segment
+        "mov ds, eax",
+        "mov es, eax",
+        "mov fs, eax",
+        "mov gs, eax",
+        "mov rsp, rcx",
+        "add rsp, 8",
+        "push 0x42",
+        "push rax",  // stack segment
+        "push rcx",  // stack pointer
+        "push 518",  // cpu flags
+        "push 0x08", // code segment
+        "push r8",   // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        //"mov rdx, 0", In this register we pass the pointer to the arguments
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
 pub unsafe fn allocate_additional_heap_pages(
     frame_allocator: &mut memory::BootInfoAllocator,
     start: u64,
@@ -193,7 +240,7 @@ pub unsafe fn allocate_additional_heap_pages(
             Ok(()) => (),
             Err(memory::MemoryError(err)) => {
                 errorln!(
-                    "Could not allocate the {}-th part of the heap. Error : {:?}",
+                    "Could not allocate the {}-th additional part of the heap. Error : {:?}",
                     i,
                     err
                 );
@@ -205,7 +252,7 @@ pub unsafe fn allocate_additional_heap_pages(
             &[0_u8; 0x1000],
         ) {
             Ok(()) => (),
-            Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+            Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
         };
     }
 }
@@ -317,6 +364,28 @@ pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
     res
 }
 
+/// Flattens arguments into a pages. Strings are NULL-ended
+pub fn flatten_arguments(args: Vec<String>) -> [u8; 0x1000] {
+    let mut res = [0_u8; 0x1000];
+    let mut index = 0;
+    for arg in args {
+        let bytes = arg.as_bytes();
+        let length = bytes.len();
+        for i in 0..length {
+            if i + index >= 0x1000 {
+                // If the length of the arguments is too large
+                // To make sure that, at least, the last argument is correctly terminated
+                res[i + index - 1] = 0;
+                break;
+            }
+            res[i + index] = bytes[i];
+        }
+        res[length + index] = 0;
+        index += length + 1;
+    }
+    res
+}
+
 /// Takes in a slice containing an ELF file,
 /// disassembles it and executes the program.
 ///
@@ -332,6 +401,7 @@ pub unsafe fn disassemble_and_launch(
     frame_allocator: &mut memory::BootInfoAllocator,
     _number_of_block: u64,
     stack_size: u64,
+    args: Vec<String>,
 ) -> ! {
     // TODO maybe consider changing this
     let addr_stack: u64 = 0x1ffff8;
@@ -498,14 +568,46 @@ pub unsafe fn disassemble_and_launch(
             };
         }
 
-        ID_TABLE[0].heap_address = heap_address_normalized;
-        ID_TABLE[0].heap_size = heap_size;
+        // Allocate a page for the process's arguments.
+        let args_address = 0x1000;
+        match frame_allocator.add_entry_to_table(
+            level_4_table_addr,
+            VirtAddr::new(args_address),
+            PageTableFlags::USER_ACCESSIBLE
+                | PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | elf::HEAP,
+            false,
+        ) {
+            Ok(()) => (),
+            Err(memory::MemoryError(err)) => {
+                errorln!("Could not allocate the args page. Error : {:?}", err);
+            }
+        };
+        // Write the arguments onto the process's memory
+        match memory::write_into_virtual_memory(
+            level_4_table_addr,
+            VirtAddr::new(args_address),
+            &flatten_arguments(args),
+        ) {
+            Ok(()) => (),
+            Err(a) => errorln!("Error when writing arguments : {:?}", a),
+        };
+
+        get_current_as_mut().heap_address = heap_address_normalized;
+        get_current_as_mut().heap_size = heap_size;
 
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
         println!("good luck user ;) {} {}", addr_stack, prog_entry);
         println!("target : {:x}", prog_entry);
-        towards_user_give_heap(heap_address_normalized, heap_size, addr_stack, prog_entry);
+        towards_user_give_heap_args(
+            heap_address_normalized,
+            heap_size,
+            args_address,
+            addr_stack,
+            prog_entry,
+        );
     // good luck user ;)
     } else {
         panic!("could not launch process")
