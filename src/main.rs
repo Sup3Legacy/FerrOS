@@ -158,7 +158,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2);
+            scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2, Vec::new());
         }
     }
 

@@ -6,9 +6,12 @@ use core::{
     sync::atomic::{AtomicU64, Ordering},
 };
 //use lazy_static::lazy_static;
-use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::structures::paging::PhysFrame;
+use x86_64::{
+    registers::control::{Cr3, Cr3Flags},
+    structures::paging::{frame, FrameAllocator},
+};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
@@ -20,6 +23,7 @@ use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
 use crate::{errorln, println};
+use alloc::string::String;
 
 /// Default allocated heap size (in number of pages)
 const DEFAULT_HEAP_SIZE: u64 = 2;
@@ -332,6 +336,7 @@ pub unsafe fn disassemble_and_launch(
     frame_allocator: &mut memory::BootInfoAllocator,
     _number_of_block: u64,
     stack_size: u64,
+    args: Vec<String>,
 ) -> ! {
     // TODO maybe consider changing this
     let addr_stack: u64 = 0x1ffff8;
@@ -497,6 +502,24 @@ pub unsafe fn disassemble_and_launch(
                 Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
             };
         }
+
+        // Allocate a page for the process's arguments.
+        let args_address = 0x1000;
+        match frame_allocator.add_entry_to_table(
+            level_4_table_addr,
+            VirtAddr::new(args_address),
+            PageTableFlags::USER_ACCESSIBLE
+                | PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | elf::HEAP,
+            false,
+        ) {
+            Ok(()) => (),
+            Err(memory::MemoryError(err)) => {
+                errorln!("Could not allocate the args page. Error : {:?}", err);
+            }
+        };
+        // TODO write the arguments on this page
 
         get_current_as_mut().heap_address = heap_address_normalized;
         get_current_as_mut().heap_size = heap_size;
