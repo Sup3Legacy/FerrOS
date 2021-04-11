@@ -89,6 +89,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     initdebugln!();
     println!("Ceci est simplement un debug :)");
     warningln!("Ceci est un warning :|");
+    println!("{:?}", x86_64::registers::control::Cr4::read());
     errorln!("Ceci est une erreur :(");
     gdt::init();
 

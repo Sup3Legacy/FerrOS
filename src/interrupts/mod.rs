@@ -3,7 +3,9 @@
 
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
-use x86_64::instructions::port::Port;
+use core::convert::TryInto;
+
+use x86_64::{instructions::port::Port, structures::paging::PageTableIndex};
 
 use x86_64::registers::control::{Cr2, Cr3};
 //use x86_64::structures::paging::PhysFrame;
@@ -45,6 +47,10 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
+}
+
+pub fn is_kernel_space(address: VirtAddr) -> bool {
+    address.p4_index() >= PageTableIndex::new(256)
 }
 
 #[macro_export]
@@ -374,12 +380,14 @@ extern "x86-interrupt" fn page_fault_handler(
         */
         
         hardware::power::shutdown();
-    } else {
+    } else if is_kernel_space(stack_frame.as_real().instruction_pointer) {
         bsod!("PAGE FAULT! {:#?}", stack_frame);
         bsod!("TRIED TO READ : {:#?}", Cr2::read());
         bsod!("ERROR : {:#?}", error_code);
+    } else {
+        // TODO maybe write something into the process' stdout
+        warningln!("Process just pagefault.");
     }
-    crate::halt_loop();
 }
 
 /// Keyboard interrupt handler
