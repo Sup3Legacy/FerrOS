@@ -38,6 +38,7 @@ static mut COUNTER: u64 = 0;
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard,
+    Mouse = 12 + PIC_1_OFFSET,
 }
 
 impl InterruptIndex {
@@ -162,6 +163,8 @@ lazy_static! {
         idt.timer.set_handler_fn(saveRegisters!(timer_interrupt_handler))
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt[InterruptIndex::Mouse.as_usize()].set_handler_fn(mouse_interrupt_handler)
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt.syscall.set_handler_fn(saveRegisters!(syscall_dispatch))
                     .set_privilege_level(PrivilegeLevel::Ring3);
@@ -319,6 +322,7 @@ unsafe extern "C" fn timer_interrupt_handler(
     registers: &mut Registers,
 ) {
     print!(".");
+    return;
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
@@ -400,6 +404,14 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
+extern "x86-interrupt" fn mouse_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("{:?}", hardware::mouse::read_simple_packet());
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Mouse.as_u8());
     }
 }
 
