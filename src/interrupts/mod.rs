@@ -22,7 +22,7 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
-use crate::{bsod, print, println, warningln};
+use crate::{bsod, debug, print, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -38,6 +38,7 @@ static mut COUNTER: u64 = 0;
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard,
+    Mouse = 12 + PIC_1_OFFSET,
 }
 
 impl InterruptIndex {
@@ -162,6 +163,8 @@ lazy_static! {
         idt.timer.set_handler_fn(saveRegisters!(timer_interrupt_handler))
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt[InterruptIndex::Mouse.as_usize()].set_handler_fn(mouse_interrupt_handler)
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt.syscall.set_handler_fn(saveRegisters!(syscall_dispatch))
                     .set_privilege_level(PrivilegeLevel::Ring3);
@@ -400,6 +403,14 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
+extern "x86-interrupt" fn mouse_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    //debug!("{:?}", hardware::mouse::read_simple_packet());
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Mouse.as_u8());
     }
 }
 
