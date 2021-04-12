@@ -6,7 +6,7 @@ use x86_64::instructions::port::Port;
 use crate::println;
 
 /// Queue of mouse packets
-static MOUSE_QUEUE: OnceCell<ArrayQueue<MouseInfo>> = OnceCell::uninit();
+static MOUSE_QUEUE: OnceCell<ArrayQueue<MousePacket>> = OnceCell::uninit();
 
 /// Max size of the queue of mouse packets
 const MOUSE_QUEUE_CAP: usize = 256;
@@ -41,7 +41,7 @@ pub enum MouseError {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct MouseInfo {
+pub struct MousePacket {
     y_overflow: bool,
     x_overflow: bool,
     y_sign: bool,
@@ -54,7 +54,7 @@ pub struct MouseInfo {
     y_movement: u8,
 }
 
-impl MouseInfo {
+impl MousePacket {
     pub fn new(
         y_overflow: bool,
         x_overflow: bool,
@@ -79,6 +79,18 @@ impl MouseInfo {
             x_movement,
             y_movement,
         }
+    }
+    pub fn to_bytes(&self) -> (u8, u8, u8) {
+        let mut first = 0_u8;
+        first.set_bit(0, self.left_button);
+        first.set_bit(1, self.middle_button);
+        first.set_bit(2, self.right_button);
+        first.set_bit(3, self.always_on);
+        first.set_bit(4, self.x_sign);
+        first.set_bit(5, self.y_sign);
+        first.set_bit(6, self.x_overflow);
+        first.set_bit(7, self.y_overflow);
+        (first, self.x_movement, self.y_movement)
     }
 }
 
@@ -122,7 +134,7 @@ pub fn read_simple_packet() {
     let misc = read_mouse_byte();
     let x = read_mouse_byte();
     let y = read_mouse_byte();
-    let packet = MouseInfo::new(
+    let packet = MousePacket::new(
         misc.get_bit(7),
         misc.get_bit(6),
         misc.get_bit(5),
@@ -166,7 +178,7 @@ pub fn init() -> Result<(), MouseError> {
     enable_irq()
 }
 
-fn enqueue_packet(packet: MouseInfo) -> Result<(), MouseError> {
+fn enqueue_packet(packet: MousePacket) -> Result<(), MouseError> {
     if let Ok(queue) = MOUSE_QUEUE.try_get() {
         if queue.len() >= MOUSE_QUEUE_CAP {
             return Err(MouseError::QueueFull);
@@ -177,5 +189,16 @@ fn enqueue_packet(packet: MouseInfo) -> Result<(), MouseError> {
         }
     } else {
         Err(MouseError::QueueNotPresent)
+    }
+}
+
+pub fn get_packet() -> Option<MousePacket> {
+    if let Ok(queue) = MOUSE_QUEUE.try_get() {
+        match queue.pop() {
+            Ok(a) => Some(a),
+            Err(_) => None,
+        }
+    } else {
+        None
     }
 }

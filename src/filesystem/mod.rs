@@ -36,6 +36,9 @@ pub unsafe fn init_vfs() {
         let s2 = drivers::clock_driver::ClockDriver::new();
         vfs.add_file(Path::from("hardware/clock"), Box::new(s2))
             .expect("could not create clock driver.");
+        let s3 = drivers::mouse_driver::MouseDriver::new();
+        vfs.add_file(Path::from("hardware/mouse"), Box::new(s3))
+            .expect("could not create mouse driver.");
     } else {
         panic!("should not happen")
     }
