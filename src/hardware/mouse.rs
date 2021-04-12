@@ -1,7 +1,15 @@
 use bit_field::BitField;
+use conquer_once::spin::OnceCell;
+use crossbeam_queue::{ArrayQueue, PopError, PushError};
 use x86_64::instructions::port::Port;
 
 use crate::println;
+
+/// Queue of mouse packets
+static MOUSE_QUEUE: OnceCell<ArrayQueue<MouseInfo>> = OnceCell::uninit();
+
+/// Max size of the queue of mouse packets
+const MOUSE_QUEUE_CAP: usize = 256;
 
 enum MouseBytes {
     CommandByte = 0xD4,
@@ -28,6 +36,8 @@ pub enum MouseError {
     MouseNotPresent,
     UnknownError,
     FailedIRQInit,
+    QueueNotPresent,
+    QueueFull,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -108,11 +118,11 @@ fn read_controller() -> u8 {
     unsafe { controller_port.read() }
 }
 
-pub fn read_simple_packet() -> MouseInfo {
+pub fn read_simple_packet() {
     let misc = read_mouse_byte();
     let x = read_mouse_byte();
     let y = read_mouse_byte();
-    MouseInfo::new(
+    let packet = MouseInfo::new(
         misc.get_bit(7),
         misc.get_bit(6),
         misc.get_bit(5),
@@ -123,7 +133,8 @@ pub fn read_simple_packet() -> MouseInfo {
         misc.get_bit(0),
         x,
         y,
-    )
+    );
+    enqueue_packet(packet);
 }
 
 fn enable_irq() -> Result<(), MouseError> {
@@ -153,4 +164,18 @@ fn enable_irq() -> Result<(), MouseError> {
 
 pub fn init() -> Result<(), MouseError> {
     enable_irq()
+}
+
+fn enqueue_packet(packet: MouseInfo) -> Result<(), MouseError> {
+    if let Ok(queue) = MOUSE_QUEUE.try_get() {
+        if queue.len() >= MOUSE_QUEUE_CAP {
+            return Err(MouseError::QueueFull);
+        }
+        match queue.push(packet) {
+            Ok(()) => Ok(()),
+            _ => Err(MouseError::UnknownError),
+        }
+    } else {
+        Err(MouseError::QueueNotPresent)
+    }
 }
