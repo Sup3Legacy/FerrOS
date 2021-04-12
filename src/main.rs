@@ -121,6 +121,7 @@ pub fn init(_boot_info: &'static BootInfo) {
         }
     };
     // I/O Initialization
+    hardware::mouse::init().unwrap();
     keyboard::init();
     //vga::init();
 

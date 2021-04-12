@@ -22,7 +22,7 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
-use crate::{bsod, print, println, warningln};
+use crate::{bsod, debug, print, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -322,7 +322,6 @@ unsafe extern "C" fn timer_interrupt_handler(
     registers: &mut Registers,
 ) {
     print!(".");
-    return;
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
@@ -408,7 +407,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
 }
 
 extern "x86-interrupt" fn mouse_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("{:?}", hardware::mouse::read_simple_packet());
+    //debug!("{:?}", hardware::mouse::read_simple_packet());
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Mouse.as_u8());

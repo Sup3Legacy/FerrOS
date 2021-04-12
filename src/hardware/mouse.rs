@@ -1,6 +1,8 @@
 use bit_field::BitField;
 use x86_64::instructions::port::Port;
 
+use crate::println;
+
 enum MouseBytes {
     CommandByte = 0xD4,
     ACK = 0xFA,
@@ -103,7 +105,6 @@ fn read_mouse_byte() -> u8 {
 
 fn read_controller() -> u8 {
     let mut controller_port: Port<u8> = Port::new(0x64);
-    poll_controller_read();
     unsafe { controller_port.read() }
 }
 
@@ -128,17 +129,26 @@ pub fn read_simple_packet() -> MouseInfo {
 fn enable_irq() -> Result<(), MouseError> {
     let mut keyboard_port: Port<u8> = Port::new(0x60);
     let mut controller_port: Port<u8> = Port::new(0x64);
+    //mouse_wait(1);
+    //outportb(0x64, 0xA8);
+    send_to_controller(0xA8);
     send_to_controller(0x20);
-    let mut status_byte = read_controller();
-    status_byte |= 2;
+
+    poll_controller_read();
+    let mut status_byte = (unsafe { keyboard_port.read() } | 2);
     status_byte &= !0x20;
-    send_to_controller(0x60);
-    send_to_controller(status_byte);
-    if read_mouse_byte() == MouseBytes::ACK.to_byte() {
-        Ok(())
-    } else {
-        Err(MouseError::FailedIRQInit)
-    }
+
+    poll_controller_write();
+
+    unsafe { controller_port.write(0x60) };
+    poll_controller_write();
+    unsafe { keyboard_port.write(status_byte) };
+
+    send_to_mouse(0xF6);
+    read_mouse_byte();
+    send_to_mouse(MouseBytes::EnablePacketStreaming.to_byte());
+    read_mouse_byte();
+    Ok(())
 }
 
 pub fn init() -> Result<(), MouseError> {
