@@ -835,6 +835,11 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
 }
 
+/// TODO safeguard the index
+pub unsafe fn get_process(pid: usize) -> &'static Process {
+    &ID_TABLE[pid]
+}
+
 /// # Safety
 /// Depending on the current process situation. Use knowingly
 /// Function to duplicate the current process into two childs

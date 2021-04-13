@@ -11,6 +11,9 @@ impl Path {
     pub fn from(s: &str) -> Self {
         Self(s.into())
     }
+    pub fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
     // We might wanna to avoid cloning string everywhere...
     pub fn to(&self) -> String {
         self.0.clone()

@@ -8,6 +8,7 @@ use crate::data_storage::{
     registers::{Registers, RegistersMini},
 };
 use crate::filesystem;
+use crate::filesystem::descriptor;
 use crate::hardware;
 use crate::interrupts;
 use crate::memory;
@@ -108,8 +109,25 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
                 *(address.as_mut_ptr::<u8>()) = 0;
             }
         } else {
-            warningln!("Unkown file descriptor in read");
+            let fd = args.rdi;
             args.rax = 0;
+            let process = process::get_current();
+            let oft_res = process
+                .open_files
+                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+            if let Ok(oft) = oft_res {
+                let res = filesystem::read_file(oft, size as usize);
+                let mut address = VirtAddr::new(args.rsi);
+                for _i in 0..min(size as usize, res.len()) {
+                    unsafe {
+                        *(address.as_mut_ptr::<u8>()) = res[_i];
+                    }
+                    address += 1_u64;
+                    args.rax += 1;
+                }
+            } else {
+                warningln!("Could not get OpenFileTable");
+            }
         }
     } else {
         warningln!("Address not allowed");
@@ -189,9 +207,12 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };
 
-    current_process
+    let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path), 0_u64);
+        .create_file_table(path::Path::from(&path), 0_u64)
+        .into_u64();
+    // Puts the fd into rax
+    args.rax = fd;
 }
 
 /// close file. arg0 : unsigned int fd

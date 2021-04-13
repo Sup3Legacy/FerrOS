@@ -22,6 +22,7 @@ pub use drivers::{disk_operations, ustar};
 pub use vfs::VFS;
 
 use crate::println;
+use descriptor::OpenFileTable;
 
 pub static mut VFS: Option<VFS> = None;
 
@@ -69,8 +70,10 @@ pub fn write(_path: Path, _data: &[u8]) {
     todo!();
 }
 
-pub fn read_file(_path: Path, offset: usize, length: usize) -> Vec<u8> {
+pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
     unsafe {
+        let _path = oft.get_path();
+        let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
             return vfs.read(_path, offset, length);
         } else {
