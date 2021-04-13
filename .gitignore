@@ -15,3 +15,4 @@ Cargo.lock
 /target
 
 /__pycache__
+docs/artifacts/
