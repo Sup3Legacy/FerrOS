@@ -22,6 +22,7 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
+use crate::sound;
 use crate::{bsod, debug, print, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
@@ -321,6 +322,7 @@ unsafe extern "C" fn timer_interrupt_handler(
     stack_frame: &mut InterruptStackFrame,
     registers: &mut Registers,
 ) {
+    sound::handle();
     print!(".");
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);

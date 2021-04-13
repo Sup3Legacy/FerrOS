@@ -2,7 +2,7 @@
 
 //! Part of the OS responsible for handling syscalls
 
-use super::idt::InterruptStackFrame;
+use super::{debug_handler, idt::InterruptStackFrame};
 use crate::data_storage::{
     path,
     registers::{Registers, RegistersMini},
@@ -157,7 +157,8 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
-            while index < size && index < 1024 && *(address as *const u8) != 0 {
+            while index < size && index < 1024 {
+                // ! && *(address as *const u8) != 0
                 t.push(*(address as *const u8));
                 address += 1_u64;
                 index += 1;
@@ -180,8 +181,18 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             debug!("on shell : {}", t2);
             args.rax = index;
         } else {
-            warningln!("Unknow file descriptor");
+            let fd = args.rdi;
             args.rax = 0;
+            let process = process::get_current();
+            let oft_res = process
+                .open_files
+                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+            if let Ok(oft) = oft_res {
+                let res = filesystem::write_file(oft, t);
+                args.rax = res as u64;
+            } else {
+                warningln!("Could not get OpenFileTable");
+            }
         }
     } else {
         warningln!("no a valid address");

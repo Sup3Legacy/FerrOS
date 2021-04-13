@@ -6,4 +6,5 @@ pub mod nopart;
 pub mod proc;
 pub mod ramdisk;
 pub mod software;
+pub mod sound;
 pub mod ustar;

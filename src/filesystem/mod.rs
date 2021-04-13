@@ -40,6 +40,9 @@ pub unsafe fn init_vfs() {
         let s3 = drivers::mouse_driver::MouseDriver::new();
         vfs.add_file(Path::from("hardware/mouse"), Box::new(s3))
             .expect("could not create mouse driver.");
+        let s4 = drivers::sound::SoundDriver::new();
+        vfs.add_file(Path::from("hardware/sound"), Box::new(s4))
+            .expect("could not create sound driver.");
     } else {
         panic!("should not happen")
     }
@@ -66,8 +69,15 @@ pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
     todo!();
 }
 
-pub fn write(_path: Path, _data: &[u8]) {
-    todo!();
+pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
+    unsafe {
+        let _path = oft.get_path();
+        if let Some(ref mut vfs) = VFS {
+            return vfs.write(_path, data);
+        } else {
+            panic!("VFS not initialized in read_file.");
+        }
+    }
 }
 
 pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
