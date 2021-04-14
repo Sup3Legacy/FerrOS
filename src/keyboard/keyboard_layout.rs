@@ -15,22 +15,30 @@ pub struct KeyBoardStatus {
     alt_gr: bool,
     fn_key: bool,
     table_status: [bool; 128],
-    id: u8,
+    layout: Layout,
 }
 
-pub enum Effect {
-    Nothing,
-    Value(KeyEvent),
-}
-
+#[derive(Copy, Clone)]
 pub enum KeyEvent {
     Character(char),
     SpecialKey(u8),
 }
 
+#[derive(Copy, Clone)]
+pub enum Effect {
+    Nothing,
+    Value(KeyEvent),
+}
+
+#[derive(Copy, Clone)]
+pub enum Layout {
+    Fr = 0,
+    Us = 1,
+}
+
 #[allow(dead_code)]
 impl KeyBoardStatus {
-    pub fn new(id: u8) -> Self {
+    pub fn new() -> Self {
         KeyBoardStatus {
             maj: false,
             shift_l: false,
@@ -41,49 +49,57 @@ impl KeyBoardStatus {
             alt_gr: false,
             fn_key: false,
             table_status: [false; 128],
-            id,
+            layout: Layout::Fr,
         }
     }
 
     pub fn shift_l_down(&mut self) {
-        self.shift_l = true
+        self.shift_l = true;
     }
     pub fn shift_l_up(&mut self) {
-        self.shift_l = false
+        self.shift_l = false;
     }
     pub fn shift_r_down(&mut self) {
-        self.shift_r = true
+        self.shift_r = true;
     }
     pub fn shift_r_up(&mut self) {
-        self.shift_r = false
+        self.shift_r = false;
     }
     pub fn alt_down(&mut self) {
-        self.alt = true
+        self.alt = true;
     }
     pub fn alt_up(&mut self) {
-        self.alt = false
+        self.alt = false;
     }
     pub fn maj_s(&mut self) {
-        self.maj = !self.maj
+        self.maj = !self.maj;
     }
     pub fn num_lock(&mut self) {
-        self.num_lock = !self.num_lock
+        self.num_lock = !self.num_lock;
     }
     pub fn fn_up(&mut self) {
-        self.fn_key = false
+        self.fn_key = false;
     }
     pub fn fn_down(&mut self) {
-        self.fn_key = true
+        self.fn_key = true;
     }
     pub fn control_s(&mut self) {
-        self.control = !self.control
+        self.control = !self.control;
     }
 
-    pub fn set(&mut self, c: u8) {
-        self.id = c
+    pub fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
     }
-    pub fn get_id(&self) -> u8 {
-        self.id
+    pub fn get_layout(&self) -> Layout {
+        self.layout
+    }
+    pub fn change_layout(&mut self) {
+        let current_layout = self.get_layout();
+        let new_layout = match current_layout {
+            Layout::Fr => Layout::Us,
+            Layout::Us => Layout::Fr,
+        };
+        self.set_layout(new_layout);
     }
 
     pub fn maj(&self) -> bool {
@@ -103,812 +119,154 @@ impl KeyBoardStatus {
     }
 
     pub fn process(&mut self, key: u8) -> Effect {
-        if self.id == 0 {
-            self.process0_fr1(key)
-        } else if self.id == 1 {
-            self.process1_en1(key)
-        } else {
-            panic!("Unallowed KeyboardId");
-            //Effect::Nothing
-        }
-    }
-
-    pub fn process0_fr1(&mut self, key: u8) -> Effect {
         if key > 127_u8 {
             self.table_status[(key - 128) as usize] = false;
-            match convert(key - 128) {
-                Key::ShiftR => self.shift_r_up(),
-                Key::ShiftL => self.shift_l_up(),
-                Key::Alt => self.alt_up(),
+            match key - 128 {
+                54 => self.shift_r_up(),
+                42 => self.shift_l_up(),
+                56 => self.alt_up(),
                 _ => (),
             };
             Effect::Nothing
         } else {
             self.table_status[key as usize] = true;
-            match convert(key) {
-                Key::Key1 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('1'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('&'))
-                    }
-                }
 
-                Key::Key2 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('2'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('~'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('é'))
-                    }
-                }
-
-                Key::Key3 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('3'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('#'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('"'))
-                    }
-                }
-
-                Key::Key4 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('4'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('{'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('\''))
-                    }
-                }
-
-                Key::Key5 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('5'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('['))
-                    } else {
-                        Effect::Value(KeyEvent::Character('('))
-                    }
-                }
-
-                Key::Key6 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('6'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('|'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('-'))
-                    }
-                }
-
-                Key::Key7 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('7'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('`'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('è'))
-                    }
-                }
-
-                Key::Key8 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('8'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('\\'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('_'))
-                    }
-                }
-
-                Key::Key9 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('9'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('^'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('ç'))
-                    }
-                }
-
-                Key::Key0 => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('0'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('@'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('à'))
-                    }
-                }
-
-                Key::UpZero => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('°'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character(']'))
-                    } else {
-                        Effect::Value(KeyEvent::Character(')'))
-                    }
-                }
-
-                Key::Min => {
-                    if self.num() {
-                        Effect::Value(KeyEvent::Character('+'))
-                    } else if self.alt {
-                        Effect::Value(KeyEvent::Character('}'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('='))
-                    }
-                }
-                Key::Let0_0 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('A'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('a'))
-                    }
-                }
-                Key::Let2_4 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('B'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('b'))
-                    }
-                }
-                Key::Let2_2 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('C'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('c'))
-                    }
-                }
-                Key::Let1_2 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('D'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('d'))
-                    }
-                }
-                Key::Let0_2 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('E'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('e'))
-                    }
-                }
-                Key::Let1_3 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('F'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('f'))
-                    }
-                }
-                Key::Let1_4 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('G'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('g'))
-                    }
-                }
-                Key::Let1_5 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('H'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('h'))
-                    }
-                }
-                Key::Let0_7 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('I'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('i'))
-                    }
-                }
-                Key::Let1_6 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('J'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('j'))
-                    }
-                }
-                Key::Let1_7 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('K'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('k'))
-                    }
-                }
-                Key::Let1_8 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('L'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('l'))
-                    }
-                }
-                Key::Let1_9 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('M'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('m'))
-                    }
-                }
-                Key::Let2_5 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('N'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('n'))
-                    }
-                }
-                Key::Let0_8 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('O'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('o'))
-                    }
-                }
-                Key::Let0_9 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('P'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('p'))
-                    }
-                }
-                Key::Let1_0 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('Q'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('q'))
-                    }
-                }
-                Key::Let0_3 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('R'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('r'))
-                    }
-                }
-                Key::Let1_1 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('S'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('s'))
-                    }
-                }
-                Key::Let0_4 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('T'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('t'))
-                    }
-                }
-                Key::Let0_6 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('U'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('u'))
-                    }
-                }
-                Key::Let2_3 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('V'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('v'))
-                    }
-                }
-                Key::Let2_0 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('W'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('w'))
-                    }
-                }
-                Key::Let2_1 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('X'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('x'))
-                    }
-                }
-                Key::Let0_5 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('Y'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('y'))
-                    }
-                }
-                Key::Let0_1 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('Z'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('z'))
-                    }
-                }
-
-                Key::Space => Effect::Value(KeyEvent::Character(' ')),
-
-                Key::ShiftR => {
-                    self.shift_r_down();
-                    Effect::Nothing
-                }
-
-                Key::ShiftL => {
-                    self.shift_l_down();
-                    Effect::Nothing
-                }
-
-                Key::Maj => {
-                    self.maj_s();
-                    Effect::Nothing
-                }
-
-                Key::Enter => Effect::Value(KeyEvent::Character('\n')),
-
-                Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
-
-                Key::Alt => {
-                    self.alt_down();
-                    Effect::Nothing
-                }
-                _ => {
-                    //println!("{:?}", key);
-                    //println!("{:?}", convert(key));
-                    Effect::Nothing
-                }
-            }
-        }
-    }
-
-    pub fn process1_en1(&mut self, key: u8) -> Effect {
-        if key > 127_u8 {
-            self.table_status[(key - 128) as usize] = false;
-            match convert(key - 128) {
-                Key::ShiftR => self.shift_r_up(),
-                Key::ShiftL => self.shift_l_up(),
-                _ => (),
+            let lower_case_layout = match self.layout {
+                Layout::Fr => LOWER_CASE_FR_LAYOUT,
+                Layout::Us => LOWER_CASE_US_LAYOUT,
             };
-            Effect::Nothing
-        } else {
-            self.table_status[key as usize] = true;
-            match convert(key) {
-                Key::Key1 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('1'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('!'))
-                    }
-                }
+            let upper_case_layout = match self.layout {
+                Layout::Fr => UPPER_CASE_FR_LAYOUT,
+                Layout::Us => UPPER_CASE_US_LAYOUT,
+            };
+            let num_layout = match self.layout {
+                Layout::Fr => NUM_FR_LAYOUT,
+                Layout::Us => NUM_US_LAYOUT,
+            };
+            let alt_layout = match self.layout {
+                Layout::Fr => ALT_FR_LAYOUT,
+                Layout::Us => ALT_US_LAYOUT,
+            };
 
-                Key::Key2 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('2'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('@'))
-                    }
-                }
-
-                Key::Key3 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('3'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('#'))
-                    }
-                }
-
-                Key::Key4 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('4'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('$'))
-                    }
-                }
-
-                Key::Key5 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('5'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('%'))
-                    }
-                }
-
-                Key::Key6 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('6'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('^'))
-                    }
-                }
-
-                Key::Key7 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('7'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('&'))
-                    }
-                }
-
-                Key::Key8 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('8'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('*'))
-                    }
-                }
-
-                Key::Key9 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('9'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('('))
-                    }
-                }
-
-                Key::Key0 => {
-                    if !self.num() {
-                        Effect::Value(KeyEvent::Character('0'))
-                    } else {
-                        Effect::Value(KeyEvent::Character(')'))
-                    }
-                }
-
-                Key::Let0_0 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('Q'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('q'))
-                    }
-                }
-                Key::Let2_4 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('B'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('b'))
-                    }
-                }
-                Key::Let2_2 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('C'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('c'))
-                    }
-                }
-                Key::Let1_2 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('D'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('d'))
-                    }
-                }
-                Key::Let0_2 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('E'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('e'))
-                    }
-                }
-                Key::Let1_3 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('F'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('f'))
-                    }
-                }
-                Key::Let1_4 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('G'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('g'))
-                    }
-                }
-                Key::Let1_5 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('H'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('h'))
-                    }
-                }
-                Key::Let0_7 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('I'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('i'))
-                    }
-                }
-                Key::Let1_6 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('J'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('j'))
-                    }
-                }
-                Key::Let1_7 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('K'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('k'))
-                    }
-                }
-                Key::Let1_8 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('L'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('l'))
-                    }
-                }
-                Key::Let1_9 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character(':'))
-                    } else {
-                        Effect::Value(KeyEvent::Character(';'))
-                    }
-                }
-                Key::Let2_5 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('N'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('n'))
-                    }
-                }
-                Key::Let0_8 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('O'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('o'))
-                    }
-                }
-                Key::Let0_9 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('P'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('p'))
-                    }
-                }
-                Key::Let1_0 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('A'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('a'))
-                    }
-                }
-                Key::Let0_3 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('R'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('r'))
-                    }
-                }
-                Key::Let1_1 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('S'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('s'))
-                    }
-                }
-                Key::Let0_4 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('T'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('t'))
-                    }
-                }
-                Key::Let0_6 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('U'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('u'))
-                    }
-                }
-                Key::Let2_3 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('V'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('v'))
-                    }
-                }
-                Key::Let2_0 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('Z'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('z'))
-                    }
-                }
-                Key::Let2_1 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('X'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('x'))
-                    }
-                }
-                Key::Let0_5 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('Y'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('y'))
-                    }
-                }
-                Key::Let0_1 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('W'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('w'))
-                    }
-                }
-
-                Key::Let2_6 => {
-                    if self.maj() {
-                        Effect::Value(KeyEvent::Character('M'))
-                    } else {
-                        Effect::Value(KeyEvent::Character('m'))
-                    }
-                }
-
-                Key::Space => Effect::Value(KeyEvent::Character(' ')),
-
-                Key::ShiftR => {
-                    self.shift_r_down();
-                    Effect::Nothing
-                }
-
-                Key::ShiftL => {
-                    self.shift_l_down();
-                    Effect::Nothing
-                }
-
-                Key::Maj => {
-                    self.maj_s();
-                    Effect::Nothing
-                }
-
-                Key::Enter => Effect::Value(KeyEvent::Character('\n')),
-
-                Key::BackSpace => Effect::Value(KeyEvent::SpecialKey(0)),
-
-                _ => Effect::Nothing,
+            if self.num() {
+                num_layout[key as usize]
+            } else if self.alt {
+                alt_layout[key as usize]
+            } else if self.maj() {
+                upper_case_layout[key as usize]
+            } else {
+                lower_case_layout[key as usize]
             }
         }
     }
 }
 
-fn convert(key: u8) -> Key {
-    if key < 128 {
-        TABLE_CODE[key as usize]
-    } else {
-        panic!("Should not occur Keyboard_Layout")
-    }
+macro_rules! layout {
+    ( ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+        {
+            let mut l: [Effect; 128] = [Effect::Nothing; 128];
+            layout!(l ; $( $k $c ),* ; $( $special )*)
+        }
+    };
+    ( $l:expr ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+        {
+            $(
+                #[allow(unused_assigments)]
+                {
+                    $l[$k] = Effect::Value(KeyEvent::Character($c));
+                }
+            )*
+            layout!($l ; $( $special )*)
+        }
+    };
+    ( $l:expr ; $( $k:literal $sk:literal ),* ) => {
+        {
+            $(
+                #[allow(unused_assigments)]
+                {
+                    $l[$k] = Effect::Value(KeyEvent::SpecialKey($sk));
+                }
+            )*
+            $l
+        }
+    };
 }
 
-static TABLE_CODE: [Key; 128] = [
-    Key::Unknown,
-    Key::Unknown,
-    Key::Key1,
-    Key::Key2,
-    Key::Key3,
-    Key::Key4,
-    Key::Key5,
-    Key::Key6,
-    Key::Key7,
-    Key::Key8,
-    Key::Key9,
-    Key::Key0,
-    Key::UpZero,
-    Key::Min,
-    Key::BackSpace,
-    Key::Tab,
-    Key::Let0_0,
-    Key::Let0_1,
-    Key::Let0_2,
-    Key::Let0_3,
-    Key::Let0_4,
-    Key::Let0_5,
-    Key::Let0_6,
-    Key::Let0_7,
-    Key::Let0_8,
-    Key::Let0_9,
-    Key::Accent,
-    Key::Dolar,
-    Key::Enter,
-    Key::Unknown,
-    Key::Let1_0,
-    Key::Let1_1,
-    Key::Let1_2,
-    Key::Let1_3,
-    Key::Let1_4,
-    Key::Let1_5,
-    Key::Let1_6,
-    Key::Let1_7,
-    Key::Let1_8,
-    Key::Let1_9,
-    Key::Pourcent,
-    Key::Ineg,
-    Key::ShiftL,
-    Key::Tild,
-    Key::Let2_0,
-    Key::Let2_1,
-    Key::Let2_2,
-    Key::Let2_3,
-    Key::Let2_4,
-    Key::Let2_5,
-    Key::Let2_6,
-    Key::Dot,
-    Key::Slash,
-    Key::Equal,
-    Key::ShiftR,
-    Key::Unknown,
-    Key::Alt,
-    Key::Space,
-    Key::Maj,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::ArrowL,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::ArrowU,
-    Key::Unknown,
-    Key::ArrowD,
-    Key::Unknown,
-    Key::Unknown,
-    Key::ArrowR,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-    Key::Unknown,
-];
+// FR Layout
 
+const LOWER_CASE_FR_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 ',', 51 ';', 52 '/', 53 '!',
+      57 ' '
+    ; 14 0, 15 1);
+
+const UPPER_CASE_FR_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '1', 3 '2', 4 '3', 5 '4', 6 '5', 7 '6', 8 '7', 9 '8', 10 '9', 11 '0', 12 '°', 13 '+',
+      16 'A', 17 'Z', 18 'E', 19 'R', 20 'T', 21 'Y', 22 'U', 23 'I', 24 'O', 25 'P', 26 '¨', 27 '£', 28 '\n',
+      30 'Q', 31 'S', 32 'D', 33 'F', 34 'G', 35 'H', 36 'J', 37 'K', 38 'L', 39 'M', 40 '%',
+      44 'W', 45 'X', 46 'C', 47 'V', 48 'B', 49 'N', 50 '?', 51 '.', 52 ':', 53 '§',
+      57 ' '
+    ; 14 0, 15 1);
+
+// TODO
+const ALT_FR_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 '?', 51 '.', 52 '/', 53 '=',
+      57 ' '
+    ; 14 0, 15 1);
+
+// TODO
+const NUM_FR_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 '?', 51 '.', 52 '/', 53 '=',
+      57 ' '
+    ; 14 0, 15 1);
+
+// US Layout
+
+// TODO
+const LOWER_CASE_US_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 '?', 51 '.', 52 '/', 53 '=',
+      57 ' '
+    ; 14 0, 15 1);
+
+// TODO
+const UPPER_CASE_US_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 '?', 51 '.', 52 '/', 53 '=',
+      57 ' '
+    ; 14 0, 15 1);
+
+// TODO
+const ALT_US_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 '?', 51 '.', 52 '/', 53 '=',
+      57 ' '
+    ; 14 0, 15 1);
+
+// TODO
+const NUM_US_LAYOUT: [Effect; 128] = layout!(
+    ; 2 '&', 3 'é', 4 '"', 5 '\'', 6 '(', 7 '-', 8 'è', 9 '_', 10 'ç', 11 'à', 12 ')', 13 '=',
+      16 'a', 17 'z', 18 'e', 19 'r', 20 't', 21 'y', 22 'u', 23 'i', 24 'o', 25 'p', 26 '^', 27 '$', 28 '\n',
+      30 'q', 31 's', 32 'd', 33 'f', 34 'g', 35 'h', 36 'j', 37 'k', 38 'l', 39 'm', 40 '%',
+      44 'w', 45 'x', 46 'c', 47 'v', 48 'b', 49 'n', 50 '?', 51 '.', 52 '/', 53 '=',
+      57 ' '
+    ; 14 0, 15 1);
+
+/*
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
@@ -980,7 +338,6 @@ pub enum Key {
     Unknown = 0,
 }
 
-/*
 impl KeyboardLayout for Fr104Key {
     pub fn map_keycode(keycode: KeyCode, modifiers: &Modifiers) -> DecodedKey {
         match keycode {

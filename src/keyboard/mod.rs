@@ -12,11 +12,9 @@ pub mod keyboard_interaction;
 static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static KEY_QUEUE: OnceCell<ArrayQueue<keyboard_layout::KeyEvent>> = OnceCell::uninit();
 
-const MAX_LAYOUT: u8 = 2;
-
 lazy_static! {
     pub static ref KEYBOARD_STATUS: Mutex<keyboard_layout::KeyBoardStatus> =
-        Mutex::new(keyboard_layout::KeyBoardStatus::new(0));
+        Mutex::new(keyboard_layout::KeyBoardStatus::new());
 }
 
 static SCANCODE_QUEUE_CAP: usize = 10;
@@ -44,8 +42,7 @@ pub fn process() {
                 Err(_) => (),
                 Ok(key) => {
                     if key == 15 {
-                        let i = KEYBOARD_STATUS.lock().get_id();
-                        set_layout((i + 1) % MAX_LAYOUT);
+                        KEYBOARD_STATUS.lock().change_layout();
                     } else {
                         match KEYBOARD_STATUS.lock().process(key) {
                             keyboard_layout::Effect::Nothing => (),
@@ -134,11 +131,9 @@ pub fn set_keyboard_responce(freq: u8, _tim: u8) {
     loop {}
 }
 
-pub fn set_layout(code: u8) {
-    if code < MAX_LAYOUT {
-        let mut k = KEYBOARD_STATUS.lock();
-        k.set(code);
-    }
+pub fn set_layout(layout: keyboard_layout::Layout) {
+    let mut k = KEYBOARD_STATUS.lock();
+    k.set_layout(layout);
 }
 
 pub fn disable_keyboard() {
