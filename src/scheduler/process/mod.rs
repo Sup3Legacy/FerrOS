@@ -16,15 +16,15 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
-use crate::alloc::vec::Vec;
 use crate::data_storage::{queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
 use crate::{
     alloc::collections::{BTreeMap, BTreeSet},
-    vga::{mainscreen::VirtualScreenID, virtual_screen::VirtualScreen},
+    vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
 };
+use crate::{alloc::vec::Vec, programs::ascii_fluid::main};
 use crate::{errorln, println};
 use alloc::string::String;
 
@@ -524,7 +524,7 @@ pub unsafe fn disassemble_and_launch(
                     | PageTableFlags::NO_EXECUTE
                     | PageTableFlags::WRITABLE
                     | elf::STACK,
-                false,
+                true,
             ) {
                 Ok(()) => (),
                 Err(memory::MemoryError(err)) => {
@@ -810,6 +810,9 @@ pub fn spawn_first_process() {
     let cr3 = x86_64::registers::control::Cr3::read();
     proc.cr3 = cr3.0.start_address();
     proc.cr3f = cr3.1;
+    if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
+        proc.screen = mainscreen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+    }
     unsafe {
         ID_TABLE[0] = proc;
     }
@@ -869,6 +872,10 @@ pub unsafe fn fork() -> ID {
     let pid = son.pid;
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
+    if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+        // Child process is spaned with a null-screen.
+        son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+    }
     ID_TABLE[pid.0 as usize] = son;
     println!("new process of id {:#?}", pid);
     WAITING_QUEUES[son.priority.0]

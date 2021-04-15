@@ -268,7 +268,7 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
 
 extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
-        interrupts::COUNTER = interrupts::QUANTUM - 1;
+        interrupts::COUNTER = interrupts::QUANTUM;
         x86_64::instructions::interrupts::enable_and_hlt();
     }
 }

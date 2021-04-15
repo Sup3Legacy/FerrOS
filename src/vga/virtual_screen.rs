@@ -39,6 +39,12 @@ impl CHAR {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VirtualScreenLayer(pub usize);
 
+impl VirtualScreenLayer {
+    pub fn new(layer: usize) -> Self {
+        Self(layer)
+    }
+}
+
 /// This is the virtual screen assigned to a process
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub struct VirtualScreen {

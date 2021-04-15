@@ -323,7 +323,7 @@ unsafe extern "C" fn timer_interrupt_handler(
     registers: &mut Registers,
 ) {
     sound::handle();
-    print!(".");
+    print!(".{}/{}", COUNTER, QUANTUM);
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
