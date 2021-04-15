@@ -100,6 +100,12 @@ impl OpenFileTable {
             offset: 0,
         }
     }
+    pub fn get_path(&self) -> Path {
+        self.path.clone()
+    }
+    pub fn get_offset(&self) -> usize {
+        self.offset
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -111,6 +117,9 @@ impl FileDescriptor {
     }
     pub fn into_usize(self) -> usize {
         self.0
+    }
+    pub fn into_u64(self) -> u64 {
+        self.0 as u64
     }
 }
 
@@ -130,12 +139,17 @@ impl ProcessDescriptorTable {
     }
 
     /// Returns reference to filetable from a filedescriptor.
-    pub fn get_file_table(&self, fd: FileDescriptor) -> &'static OpenFileTable {
-        unsafe { GLOBAL_FILE_TABLE.get_file_table_ref(self.files[fd.into_usize()].unwrap()) }
+    pub fn get_file_table(&self, fd: FileDescriptor) -> Result<&'static OpenFileTable, ()> {
+        if let Some(id) = self.files[fd.into_usize()] {
+            Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref(id) })
+        } else {
+            Err(())
+        }
     }
 
     pub fn add_file_table(&mut self, open_file_table: OpenFileTable) -> FileDescriptor {
-        let mut i = 0;
+        // ! This `3` if temporary, only for test purposes
+        let mut i = 3;
         while i < MAX_TOTAL_OPEN_FILES_BY_PROCESS {
             if let None = self.files[i] {
                 // File descriptor to be returned

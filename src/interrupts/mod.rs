@@ -22,6 +22,7 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
+use crate::sound;
 use crate::{bsod, debug, print, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
@@ -321,7 +322,8 @@ unsafe extern "C" fn timer_interrupt_handler(
     stack_frame: &mut InterruptStackFrame,
     registers: &mut Registers,
 ) {
-    print!(".");
+    sound::handle();
+    println!(".{}/{}", COUNTER, QUANTUM);
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
@@ -334,7 +336,6 @@ unsafe extern "C" fn timer_interrupt_handler(
         //println!("entered");
         let (next, mut old) = process::gives_switch(COUNTER);
 
-        println!("???");
         //println!("here");
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
@@ -342,14 +343,15 @@ unsafe extern "C" fn timer_interrupt_handler(
 
         old.rsp = VirtAddr::from_ptr(registers).as_u64();
 
-        println!("Tick");
+        //println!("Tick");
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
         //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-        println!("target {:x}", process::leave_context_cr3 as usize);
-        println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
+        //println!("target {:x}", process::leave_context_cr3 as usize);
+        //println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
+        //print!("Switch process");
         process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
         // return; -> unreachable
@@ -387,9 +389,13 @@ extern "x86-interrupt" fn page_fault_handler(
         bsod!("PAGE FAULT! {:#?}", stack_frame);
         bsod!("TRIED TO READ : {:#?}", Cr2::read());
         bsod!("ERROR : {:#?}", error_code);
+        panic!();
     } else {
         // TODO maybe write something into the process' stdout
         warningln!("Process just pagefault.");
+        bsod!("TRIED TO READ : {:#?}", Cr2::read());
+        bsod!("ERROR : {:#?}", error_code);
+        panic!("killed")
     }
 }
 

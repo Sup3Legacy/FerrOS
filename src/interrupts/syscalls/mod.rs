@@ -2,16 +2,19 @@
 
 //! Part of the OS responsible for handling syscalls
 
-use super::idt::InterruptStackFrame;
+use super::{debug_handler, idt::InterruptStackFrame};
 use crate::data_storage::{
     path,
     registers::{Registers, RegistersMini},
+    screen::Coord,
 };
 use crate::filesystem;
+use crate::filesystem::descriptor;
 use crate::hardware;
 use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
+use crate::vga;
 use crate::{bsod, debug, errorln, println, warningln};
 use crate::{data_storage::path::Path, scheduler};
 use alloc::string::String;
@@ -40,8 +43,8 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_8_wait,
     syscall_9_shutdown,
     syscall_10_get_puid,
-    syscall_11_get_screen,
-    syscall_12_set_screen,
+    syscall_11_set_screen_size,
+    syscall_12_set_screen_position,
     syscall_13_getcwd,
     syscall_14_chdir,
     syscall_15_mkdir,
@@ -96,7 +99,6 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             let mut address = VirtAddr::new(args.rsi);
             for _i in 0..size {
                 if let Ok(k) = crate::keyboard::get_top_key_event() {
-                    println!("About to print : {}", k);
                     unsafe {
                         *(address.as_mut_ptr::<u8>()) = k;
                     }
@@ -108,8 +110,25 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
                 *(address.as_mut_ptr::<u8>()) = 0;
             }
         } else {
-            warningln!("Unkown file descriptor in read");
+            let fd = args.rdi;
             args.rax = 0;
+            let process = process::get_current();
+            let oft_res = process
+                .open_files
+                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+            if let Ok(oft) = oft_res {
+                let res = filesystem::read_file(oft, size as usize);
+                let mut address = VirtAddr::new(args.rsi);
+                for _i in 0..min(size as usize, res.len()) {
+                    unsafe {
+                        *(address.as_mut_ptr::<u8>()) = res[_i];
+                    }
+                    address += 1_u64;
+                    args.rax += 1;
+                }
+            } else {
+                warningln!("Could not get OpenFileTable");
+            }
         }
     } else {
         warningln!("Address not allowed");
@@ -139,7 +158,8 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
-            while index < size && index < 1024 && *(address as *const u8) != 0 {
+            while index < size && index < 1024 {
+                // ! && *(address as *const u8) != 0
                 t.push(*(address as *const u8));
                 address += 1_u64;
                 index += 1;
@@ -162,8 +182,18 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             debug!("on shell : {}", t2);
             args.rax = index;
         } else {
-            warningln!("Unknow file descriptor");
+            let fd = args.rdi;
             args.rax = 0;
+            let process = process::get_current();
+            let oft_res = process
+                .open_files
+                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+            if let Ok(oft) = oft_res {
+                let res = filesystem::write_file(oft, t);
+                args.rax = res as u64;
+            } else {
+                warningln!("Could not get OpenFileTable");
+            }
         }
     } else {
         warningln!("no a valid address");
@@ -189,9 +219,12 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };
 
-    current_process
+    let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path), 0_u64);
+        .create_file_table(path::Path::from(&path), 0_u64)
+        .into_u64();
+    // Puts the fd into rax
+    args.rax = fd;
 }
 
 /// close file. arg0 : unsigned int fd
@@ -234,7 +267,7 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
 
 extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
-        interrupts::COUNTER = interrupts::QUANTUM - 1;
+        interrupts::COUNTER = interrupts::QUANTUM;
         x86_64::instructions::interrupts::enable_and_hlt();
     }
 }
@@ -248,12 +281,28 @@ extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut Interrup
     _args.rax = unsafe { process::CURRENT_PROCESS } as u64
 }
 
-extern "C" fn syscall_11_get_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("Get screen not implemented");
+extern "C" fn syscall_11_set_screen_size(
+    _args: &mut RegistersMini,
+    _isf: &mut InterruptStackFrame,
+) {
+    let height = _args.rdi;
+    let width = _args.rsi;
+    if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
+        let process = process::get_current();
+        mainscreen.resize_vscreen(&process.screen, Coord::new(width as usize, height as usize));
+    }
 }
 
-extern "C" fn syscall_12_set_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("Set screen not implemented");
+extern "C" fn syscall_12_set_screen_position(
+    _args: &mut RegistersMini,
+    _isf: &mut InterruptStackFrame,
+) {
+    let height = _args.rdi;
+    let width = _args.rsi;
+    if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
+        let process = process::get_current();
+        mainscreen.replace_vscreen(&process.screen, Coord::new(width as usize, height as usize));
+    }
 }
 
 extern "C" fn syscall_13_getcwd(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

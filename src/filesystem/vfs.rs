@@ -130,12 +130,12 @@ impl VFS {
         partition.read(path, offset, length)
     }
 
-    pub fn write(&'static mut self, path: Path, data: Vec<u8>) {
+    pub fn write(&'static mut self, path: Path, data: Vec<u8>) -> usize {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
         let (partition, remaining_path) = res_partition.unwrap();
-        partition.write(remaining_path, data);
+        partition.write(remaining_path, data)
     }
 
     pub fn lseek(&self) {

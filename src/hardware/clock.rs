@@ -64,7 +64,6 @@ impl Time {
     /// # Safety
     /// TODO
     pub unsafe fn get() -> Self {
-        asm!("cli");
         let mut second;
         let mut minute;
         let mut hour;
@@ -95,8 +94,6 @@ impl Time {
         if register_b & 2 != 2 || hour & 0x80 == 0x80 {
             hour = ((hour & 0x7F) + 12) % 24;
         }
-
-        asm!("sti");
         Self {
             century,
             second,

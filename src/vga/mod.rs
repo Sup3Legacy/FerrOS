@@ -19,3 +19,7 @@ lazy_static! {
 pub fn draw_screen() {
     SCREEN.lock().draw()
 }
+
+pub fn init() {
+    unsafe { mainscreen::MAIN_SCREEN = Some(mainscreen::MainScreen::new()) };
+}

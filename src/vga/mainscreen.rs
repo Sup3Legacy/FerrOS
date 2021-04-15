@@ -18,14 +18,17 @@ const BUFFER_HEIGHT: usize = 25;
 /// Width of the screen
 const BUFFER_WIDTH: usize = 80;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct VirtualScreenID(u64);
 
 impl VirtualScreenID {
-    fn new() -> Self {
+    pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         let new = NEXT_ID.fetch_add(1, Ordering::Relaxed); // Maybe better to reallow previous numbers
         Self(new)
+    }
+    pub const fn null() -> Self {
+        Self(0)
     }
 }
 
@@ -53,6 +56,27 @@ impl MainScreen {
             roll_queue: PriorityQueue::with_default_hasher(),
             buffer: unsafe { &mut *(0xb8000 as *mut [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT]) },
             alpha: [[false; BUFFER_WIDTH]; BUFFER_HEIGHT],
+        }
+    }
+    pub fn get_vscreen_mut(&mut self, id: &VirtualScreenID) -> Option<&mut VirtualScreen> {
+        if let Some((res0, _res1)) = self.queue.get(id) {
+            self.map.get_mut(&res0)
+        } else {
+            None
+        }
+    }
+    pub fn resize_vscreen(&mut self, id: &VirtualScreenID, size: Coord) {
+        if let Some((res0, _res1)) = self.queue.get(id) {
+            if let Some(vscreen) = self.map.get_mut(&res0) {
+                vscreen.resize(size);
+            }
+        }
+    }
+    pub fn replace_vscreen(&mut self, id: &VirtualScreenID, place: Coord) {
+        if let Some((res0, _res1)) = self.queue.get(id) {
+            if let Some(vscreen) = self.map.get_mut(&res0) {
+                vscreen.replace(place);
+            }
         }
     }
     /// Draws the whole screen by displaying each v_screen ordered by layer
