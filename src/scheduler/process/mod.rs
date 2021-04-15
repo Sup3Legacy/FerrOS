@@ -16,7 +16,6 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
-use crate::data_storage::{queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
@@ -25,6 +24,10 @@ use crate::{
     vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
 };
 use crate::{alloc::vec::Vec, programs::ascii_fluid::main};
+use crate::{
+    data_storage::{queue::Queue, random},
+    warningln,
+};
 use crate::{errorln, println};
 use alloc::string::String;
 
@@ -812,6 +815,8 @@ pub fn spawn_first_process() {
     proc.cr3f = cr3.1;
     if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
         proc.screen = mainscreen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+    } else {
+        errorln!("could not find mainscreen in first process");
     }
     unsafe {
         ID_TABLE[0] = proc;

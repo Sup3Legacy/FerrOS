@@ -142,6 +142,9 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
 
+    // Needs to be before `spawn_first_process`
+    vga::init();
+
     scheduler::process::spawn_first_process();
     unsafe {
         filesystem::init_vfs();

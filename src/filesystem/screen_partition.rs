@@ -7,26 +7,16 @@ use alloc::vec::Vec;
 
 /// Used to define an empty partition
 #[derive(Debug)]
-pub struct ScreenPartition {
-    pub screen_id: mainscreen::VirtualScreenID,
-}
+pub struct ScreenPartition {}
 
 impl ScreenPartition {
-    pub fn new(row_top: usize, col_left: usize, height: usize, width: usize, layer: usize) -> Self {
+    pub fn new() -> Self {
         unsafe {
-            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                Self {
-                    screen_id: main_screen.new_screen(
-                        row_top,
-                        col_left,
-                        height,
-                        width,
-                        VirtualScreenLayer(layer),
-                    ),
-                }
+            if let Some(_main_screen) = &mut mainscreen::MAIN_SCREEN {
+                Self {}
             } else {
                 mainscreen::MAIN_SCREEN = Some(mainscreen::MainScreen::new());
-                ScreenPartition::new(row_top, col_left, height, width, layer)
+                ScreenPartition::new()
             }
         }
     }
