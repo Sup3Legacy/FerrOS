@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use alloc::vec::Vec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use hashbrown::hash_map::DefaultHashBuilder;
 use priority_queue::PriorityQueue;

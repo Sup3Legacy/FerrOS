@@ -1,5 +1,3 @@
-use core::convert::TryInto;
-
 use super::super::partition::Partition;
 use crate::sound;
 use crate::{data_storage::path::Path, print, warningln};
@@ -11,6 +9,11 @@ pub struct SoundDriver;
 impl SoundDriver {
     pub fn new() -> Self {
         Self
+    }
+}
+impl Default for SoundDriver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

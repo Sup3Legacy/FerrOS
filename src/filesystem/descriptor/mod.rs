@@ -1,8 +1,4 @@
 use crate::data_storage::path::Path;
-use crate::scheduler;
-use spin::Mutex;
-
-use lazy_static::lazy_static;
 
 pub struct FileDesciptorError();
 
@@ -139,11 +135,11 @@ impl ProcessDescriptorTable {
     }
 
     /// Returns reference to filetable from a filedescriptor.
-    pub fn get_file_table(&self, fd: FileDescriptor) -> Result<&'static OpenFileTable, ()> {
+    pub fn get_file_table(&self, fd: FileDescriptor) -> Result<&'static OpenFileTable, FileDesciptorError> {
         if let Some(id) = self.files[fd.into_usize()] {
             Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref(id) })
         } else {
-            Err(())
+            Err(FileDesciptorError())
         }
     }
 
@@ -151,7 +147,7 @@ impl ProcessDescriptorTable {
         // ! This `3` if temporary, only for test purposes
         let mut i = 3;
         while i < MAX_TOTAL_OPEN_FILES_BY_PROCESS {
-            if let None = self.files[i] {
+            if self.files[i].is_none() {
                 // File descriptor to be returned
                 break;
             }
@@ -163,7 +159,7 @@ impl ProcessDescriptorTable {
             let fd = i;
             let index = unsafe { GLOBAL_FILE_TABLE.insert(open_file_table) };
             self.files[i] = Some(index);
-            return FileDescriptor::new(fd);
+            FileDescriptor::new(fd)
         }
     }
 

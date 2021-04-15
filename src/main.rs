@@ -65,6 +65,8 @@ fn panic(_info: &PanicInfo) -> ! {
 /// - the father loops
 /// - the son shuts down the computer
 /// Result : SUCCESS :D
+/// # Safety
+/// TODO
 pub unsafe extern "C" fn test_syscall() {
     asm!(
         "mov rax, 42",

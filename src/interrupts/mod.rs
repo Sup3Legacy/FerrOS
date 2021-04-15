@@ -3,8 +3,6 @@
 
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
-use core::convert::TryInto;
-
 use x86_64::{instructions::port::Port, structures::paging::PageTableIndex};
 
 use x86_64::registers::control::{Cr2, Cr3};
@@ -23,7 +21,7 @@ use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
 use crate::sound;
-use crate::{bsod, debug, print, println, warningln};
+use crate::{bsod, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 

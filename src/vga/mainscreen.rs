@@ -31,6 +31,11 @@ impl VirtualScreenID {
         Self(0)
     }
 }
+impl Default for VirtualScreenID {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug)]
 pub struct MainScreen {

@@ -28,6 +28,8 @@ pub static mut VFS: Option<VFS> = None;
 
 /// Initializes the VFS with the basic filetree and partitions.
 /// TODO
+/// # Safety
+/// TODO
 pub unsafe fn init_vfs() {
     VFS = Some(VFS::new());
     if let Some(vfs) = &mut VFS {
@@ -73,7 +75,7 @@ pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
         let _path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
-            return vfs.write(_path, data);
+            vfs.write(_path, data)
         } else {
             panic!("VFS not initialized in read_file.");
         }
@@ -85,7 +87,7 @@ pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
         let _path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            return vfs.read(_path, offset, length);
+            vfs.read(_path, offset, length)
         } else {
             panic!("VFS not initialized in read_file.");
         }

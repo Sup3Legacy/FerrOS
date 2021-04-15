@@ -66,18 +66,18 @@ impl VirtualScreen {
             color: self.color,
         };
         let mut new_buffer = Vec::new();
-        let old_height = self.height;
-        let old_width = self.width;
+        let _old_height = self.height;
+        let _old_width = self.width;
         self.height = size.get_row();
         self.width = size.get_col();
-        for i in 0..self.height {
+        for _ in 0..self.height {
             let mut line = Vec::new();
-            for j in 0..self.width {
+            for _ in 0..self.width {
                 line.push(blank);
             }
             new_buffer.push(line);
         }
-        let old = self.buffer.clone();
+        let _old = self.buffer.clone();
         self.buffer = new_buffer;
         self.row_pos = 0;
         self.col_pos = 0;
@@ -180,7 +180,7 @@ impl VirtualScreen {
         }
     }
 
-    pub fn write_byte_vec(&mut self, s: &Vec<u8>) -> usize {
+    pub fn write_byte_vec(&mut self, s: &[u8]) -> usize {
         let l = s.len();
         for byte in s {
             match byte {
