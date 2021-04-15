@@ -6,6 +6,7 @@ use super::{debug_handler, idt::InterruptStackFrame};
 use crate::data_storage::{
     path,
     registers::{Registers, RegistersMini},
+    screen::Coord,
 };
 use crate::filesystem;
 use crate::filesystem::descriptor;
@@ -13,6 +14,7 @@ use crate::hardware;
 use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
+use crate::vga;
 use crate::{bsod, debug, errorln, println, warningln};
 use crate::{data_storage::path::Path, scheduler};
 use alloc::string::String;
@@ -41,8 +43,8 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_8_wait,
     syscall_9_shutdown,
     syscall_10_get_puid,
-    syscall_11_get_screen,
-    syscall_12_set_screen,
+    syscall_11_set_screen_size,
+    syscall_12_set_screen_position,
     syscall_13_getcwd,
     syscall_14_chdir,
     syscall_15_mkdir,
@@ -280,12 +282,28 @@ extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut Interrup
     _args.rax = unsafe { process::CURRENT_PROCESS } as u64
 }
 
-extern "C" fn syscall_11_get_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("Get screen not implemented");
+extern "C" fn syscall_11_set_screen_size(
+    _args: &mut RegistersMini,
+    _isf: &mut InterruptStackFrame,
+) {
+    let height = _args.rdi;
+    let width = _args.rsi;
+    if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
+        let process = process::get_current();
+        mainscreen.resize_vscreen(&process.screen, Coord::new(width as usize, height as usize));
+    }
 }
 
-extern "C" fn syscall_12_set_screen(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("Set screen not implemented");
+extern "C" fn syscall_12_set_screen_position(
+    _args: &mut RegistersMini,
+    _isf: &mut InterruptStackFrame,
+) {
+    let height = _args.rdi;
+    let width = _args.rsi;
+    if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
+        let process = process::get_current();
+        mainscreen.replace_vscreen(&process.screen, Coord::new(width as usize, height as usize));
+    }
 }
 
 extern "C" fn syscall_13_getcwd(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

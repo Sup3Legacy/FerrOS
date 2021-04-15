@@ -16,12 +16,15 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
-use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
+use crate::{
+    alloc::collections::{BTreeMap, BTreeSet},
+    vga::{mainscreen::VirtualScreenID, virtual_screen::VirtualScreen},
+};
 use crate::{errorln, println};
 use alloc::string::String;
 
@@ -644,6 +647,7 @@ pub struct Process {
     pub heap_address: u64,
     pub heap_size: u64,
     pub open_files: ProcessDescriptorTable,
+    pub screen: VirtualScreenID,
 }
 
 impl Process {
@@ -665,6 +669,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            screen: VirtualScreenID::new(),
         }
     }
 
@@ -682,6 +687,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            screen: VirtualScreenID::null(),
         }
     }
 
