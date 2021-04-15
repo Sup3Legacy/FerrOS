@@ -39,7 +39,7 @@ impl ListNode {
         self.start_addr() + self.size
     }
     pub fn merge_partial(&mut self, nb: usize) {
-        if nb!= 0 && !self.first {
+        if nb != 0 && !self.first {
             let end_addr = self.end_addr();
             if let Some(ref mut next_region) = self.next {
                 let next_size = next_region.size;

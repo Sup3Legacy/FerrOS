@@ -3,14 +3,13 @@ use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
 use x86_64::instructions::port::Port;
 
-
 /// Queue of mouse packets
 static MOUSE_QUEUE: OnceCell<ArrayQueue<MousePacket>> = OnceCell::uninit();
 
 /// Max size of the queue of mouse packets
 const MOUSE_QUEUE_CAP: usize = 256;
 
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug, Copy, Clone)]
 #[allow(dead_code, clippy::upper_case_acronyms)]
 enum MouseBytes {
     CommandByte = 0xD4,

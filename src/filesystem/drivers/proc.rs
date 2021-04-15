@@ -35,8 +35,8 @@ impl Default for ProcDriver {
 }
 
 impl Partition for ProcDriver {
-#[allow(clippy::if_same_then_else)]
-#[allow(clippy::len_zero)]
+    #[allow(clippy::if_same_then_else)]
+    #[allow(clippy::len_zero)]
     fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
         let sliced = _path.slice();
         if sliced.len() == 2 {

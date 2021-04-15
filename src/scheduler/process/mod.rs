@@ -6,13 +6,15 @@ use core::{
     sync::atomic::{AtomicU64, Ordering},
 };
 //use lazy_static::lazy_static;
+use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::structures::paging::PhysFrame;
-use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
+use crate::alloc::vec::Vec;
+use crate::data_storage::{queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
@@ -20,8 +22,6 @@ use crate::{
     alloc::collections::{BTreeMap, BTreeSet},
     vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
 };
-use crate::alloc::vec::Vec;
-use crate::data_storage::{queue::Queue, random};
 use crate::{errorln, println};
 use alloc::string::String;
 

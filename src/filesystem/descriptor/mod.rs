@@ -135,7 +135,10 @@ impl ProcessDescriptorTable {
     }
 
     /// Returns reference to filetable from a filedescriptor.
-    pub fn get_file_table(&self, fd: FileDescriptor) -> Result<&'static OpenFileTable, FileDesciptorError> {
+    pub fn get_file_table(
+        &self,
+        fd: FileDescriptor,
+    ) -> Result<&'static OpenFileTable, FileDesciptorError> {
         if let Some(id) = self.files[fd.into_usize()] {
             Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref(id) })
         } else {

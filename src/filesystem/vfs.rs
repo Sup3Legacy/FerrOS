@@ -157,7 +157,7 @@ impl VFS {
         Self { partitions: parts }
     }
 }
-impl Default for VFS{
+impl Default for VFS {
     fn default() -> Self {
         Self::new()
     }

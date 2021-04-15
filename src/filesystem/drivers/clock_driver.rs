@@ -137,7 +137,7 @@ impl ClockDriver {
         Self
     }
 }
-    
+
 impl Default for ClockDriver {
     fn default() -> Self {
         Self::new()

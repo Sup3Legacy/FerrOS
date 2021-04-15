@@ -15,8 +15,8 @@ use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
 use crate::vga;
-use crate::{debug, errorln, warningln};
 use crate::{data_storage::path::Path, scheduler};
+use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -119,7 +119,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             if let Ok(oft) = oft_res {
                 let res = filesystem::read_file(oft, size as usize);
                 let mut address = VirtAddr::new(args.rsi);
-                for item in res.iter().take(min(size as usize, res.len())){
+                for item in res.iter().take(min(size as usize, res.len())) {
                     unsafe {
                         *(address.as_mut_ptr::<u8>()) = *item;
                     }
