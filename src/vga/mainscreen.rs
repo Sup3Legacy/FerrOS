@@ -18,7 +18,7 @@ const BUFFER_HEIGHT: usize = 25;
 /// Width of the screen
 const BUFFER_WIDTH: usize = 80;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct VirtualScreenID(u64);
 
 impl VirtualScreenID {
@@ -92,6 +92,7 @@ impl MainScreen {
                 let col_origin = position.get_col();
                 let row_size = size.get_row();
                 let col_size = size.get_col();
+                println!("Drawing : {:?}, {}, {}", v_screen_id, row_size, col_size);
                 for i in 0..row_size {
                     for j in 0..col_size {
                         // The alpha layer helps ensuring we do not write to a previously

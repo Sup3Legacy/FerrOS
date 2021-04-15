@@ -3,10 +3,10 @@ use crate::_TEST_PROGRAM;
 use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::cmp::max;
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::VirtAddr;
 use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
-use core::cmp::max;
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;
 pub const STACK: PageTableFlags = PageTableFlags::BIT_10;
 pub const HEAP: PageTableFlags = PageTableFlags::BIT_11;
@@ -76,7 +76,6 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
     } else {
         panic!("should never happen")
     }
-
 }
 
 /// # Safety
@@ -216,7 +215,12 @@ pub unsafe fn _load_elf_for_exec(_file_name: &String) -> ! {
         }
         current.heap_size = MINIMAL_HEAP_SIZE;
         debug!("Going towards user");
-        debug!("{:x} {:x} {:x}", current.stack_base, prog_entry, super::towards_user_give_heap as u64);
+        debug!(
+            "{:x} {:x} {:x}",
+            current.stack_base,
+            prog_entry,
+            super::towards_user_give_heap as u64
+        );
         super::towards_user_give_heap(
             current.heap_address,
             current.heap_size,

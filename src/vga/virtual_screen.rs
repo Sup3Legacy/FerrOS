@@ -69,7 +69,7 @@ impl VirtualScreen {
         let old_height = self.height;
         let old_width = self.width;
         self.height = size.get_row();
-        self.width = size.get_row();
+        self.width = size.get_col();
         for i in 0..self.height {
             let mut line = Vec::new();
             for j in 0..self.width {
@@ -79,6 +79,8 @@ impl VirtualScreen {
         }
         let old = self.buffer.clone();
         self.buffer = new_buffer;
+        self.row_pos = 0;
+        self.col_pos = 0;
         // TODO write back the old buffer into the new one
         /*
         for i in 0..old_height {
@@ -89,8 +91,7 @@ impl VirtualScreen {
         */
     }
     pub fn replace(&mut self, location: Coord) {
-        self.height = location.get_row();
-        self.width = location.get_col();
+        self.position = location;
     }
     pub fn get_char(&self, row: usize, col: usize) -> CHAR {
         self.buffer[row][col]
@@ -107,13 +108,6 @@ impl VirtualScreen {
             b'\n' => self.new_line(),
             b'\r' => self.row_pos = 0,
             _ => {
-                if self.col_pos + self.col_pos * self.width == self.width * self.height - 1 {
-                    if self.col_pos == 0 {
-                        self.new_line();
-                        panic!("too many words");
-                    }
-                    self.scroll_up();
-                }
                 if self.col_pos == self.width {
                     self.new_line()
                 }

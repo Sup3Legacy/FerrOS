@@ -426,14 +426,14 @@ pub unsafe fn disassemble_and_launch(
     };
     // This allocates a new level-4 table
     let level_4_table_addr = if new_process {
-            match frame_allocator.allocate_level_4_frame() {
-                Ok(l4) => l4,
-                Err(_) => panic!("no more memory available"),
-            }
-        } else {
-            let (cr3, _) = Cr3::read();
-            cr3
-        };
+        match frame_allocator.allocate_level_4_frame() {
+            Ok(l4) => l4,
+            Err(_) => panic!("no more memory available"),
+        }
+    } else {
+        let (cr3, _) = Cr3::read();
+        cr3
+    };
 
     // TODO Change this
     ID_TABLE[0].state = State::Runnable;
@@ -506,11 +506,7 @@ pub unsafe fn disassemble_and_launch(
                 }
             }
         }
-        match memory::write_into_virtual_memory(
-            level_4_table_addr,
-            VirtAddr::new(address),
-            _data,
-        ) {
+        match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address), _data) {
             Ok(()) => (),
             Err(a) => errorln!("{:?} at section : {:?}", a, 0),
         };
