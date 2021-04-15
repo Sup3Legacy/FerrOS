@@ -45,6 +45,7 @@ impl Partition for ScreenPartition {
                 let v_screen = main_screen.get_vscreen_mut(&v_screen_id);
                 if let Some(screen) = v_screen {
                     screen.write_byte_vec(&_buffer);
+                    mainscreen.draw();
                     _buffer.len()
                 } else {
                     warningln!("Attempted to write in non-existing virtualscreen.");
