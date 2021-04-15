@@ -392,6 +392,7 @@ extern "x86-interrupt" fn page_fault_handler(
     } else {
         // TODO maybe write something into the process' stdout
         warningln!("Process just pagefault.");
+        panic!("killed")
     }
 }
 

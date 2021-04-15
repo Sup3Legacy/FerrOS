@@ -602,6 +602,7 @@ pub unsafe fn disassemble_and_launch(
 
         get_current_as_mut().heap_address = heap_address_normalized;
         get_current_as_mut().heap_size = heap_size;
+        get_current_as_mut().stack_base = addr_stack;
 
         let (_cr3, cr3f) = Cr3::read();
         Cr3::write(level_4_table_addr, cr3f);
@@ -645,6 +646,7 @@ pub struct Process {
     pub cr3: PhysAddr,
     pub cr3f: Cr3Flags,
     pub rsp: u64, // every registers are saved on the stack
+    pub stack_base: u64,
     state: State,
     owner: u64,
     pub heap_address: u64,
@@ -667,6 +669,7 @@ impl Process {
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
             rsp: 0,
+            stack_base: 0,
             state: State::Runnable,
             owner,
             heap_address: 0,
@@ -685,6 +688,7 @@ impl Process {
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
             rsp: 0,
+            stack_base: 0,
             state: State::SlotAvailable,
             owner: 0,
             heap_address: 0,
@@ -877,6 +881,7 @@ pub unsafe fn fork() -> ID {
     let pid = son.pid;
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
+    son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
     if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
         // Child process is spaned with a null-screen.
         son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));

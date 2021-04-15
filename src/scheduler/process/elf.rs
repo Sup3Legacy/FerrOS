@@ -63,7 +63,9 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
         match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
             Ok(b) => {
                 if !b {
-                    debug!("page table is now empty")
+                    debug!("page table is not empty")
+                } else {
+                    debug!("page table is empty")
                 }
             }
             Err(_) => panic!("failed at deallocation"),
@@ -73,7 +75,9 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
         match frame_allocator.deallocate_level_4_page(current.cr3, HEAP_ADDED) {
             Ok(b) => {
                 if !b {
-                    debug!("page table is now empty")
+                    debug!("page table is not empty")
+                } else {
+                    debug!("page table is empty")
                 }
             }
             Err(_) => panic!("failed at deallocation"),
@@ -168,10 +172,11 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
         }
         current.heap_size = MINIMAL_HEAP_SIZE;
         debug!("Going towards user");
+        debug!("{:x} {:x} {:x}", ADDR_STACK, prog_entry, super::towards_user_give_heap as u64);
         super::towards_user_give_heap(
             current.heap_address,
             current.heap_size,
-            ADDR_STACK,
+            current.stack_base,
             prog_entry,
         );
     } else {

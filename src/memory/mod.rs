@@ -967,8 +967,8 @@ impl BootInfoAllocator {
         let table_4 = &mut *page_table_ptr;
         let mut is_empty = true;
         for i in 0..512 {
-            if !table_4[i].is_unused() {
-                let flags = table_4[i].flags();
+            let flags = table_4[i].flags();
+            if flags.contains(PageTableFlags::PRESENT) {
                 if flags.contains(remove_flags) {
                     debug!(
                         "0x{:x?}, {:x?}, {}",
@@ -999,7 +999,6 @@ impl BootInfoAllocator {
                 }
             }
         }
-
         if failed {
             Err(MemoryError(String::from(
                 "Could not deallocate level 4 page",
