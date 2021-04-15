@@ -169,6 +169,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                 1,
                 2,
                 Vec::new(),
+                true,
             );
         }
     }

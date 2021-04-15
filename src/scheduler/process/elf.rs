@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::VirtAddr;
 use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
-
+use core::cmp::max;
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;
 pub const STACK: PageTableFlags = PageTableFlags::BIT_10;
 pub const HEAP: PageTableFlags = PageTableFlags::BIT_11;
@@ -34,13 +34,54 @@ pub fn get_table_flags(section: ShType) -> PageTableFlags {
 
 const PROG_OFFSET: u64 = 0x8048000000;
 
-pub const ADDR_STACK: u64 = 0x63fffffffff8;
+pub const ADDR_STACK: u64 = 0x1ffff8;
 
 pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
+pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
+    let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
+        Some(fa) => fa,
+        None => panic!("the frame allocator wasn't initialized"),
+    };
+    let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
+
+    if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
+        let mut current = super::get_current_as_mut();
+
+        // deallocate precedent file
+        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
+            Ok(b) => {
+                if !b {
+                    debug!("page table is not empty")
+                } else {
+                    debug!("page table is empty")
+                }
+            }
+            Err(_) => panic!("failed at deallocation"),
+        };
+
+        // deallocate precedent heap
+        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP) {
+            Ok(b) => {
+                if !b {
+                    debug!("page table is not empty")
+                } else {
+                    debug!("page table is empty")
+                }
+            }
+            Err(_) => panic!("failed at deallocation"),
+        };
+
+        super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false);
+    } else {
+        panic!("should never happen")
+    }
+
+}
+
 /// # Safety
 /// Never safe ! You just need to know what you are doing before calling it
-pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
+pub unsafe fn _load_elf_for_exec(_file_name: &String) -> ! {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
@@ -83,12 +124,15 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
             Err(_) => panic!("failed at deallocation"),
         };
 
+        let mut maximum_address = 0;
+
         for program in elf.program_iter() {
             // Characteristics of the section
             let address = program.virtual_addr();
             let offset = program.offset();
             let size = program.mem_size();
             let file_size = program.file_size();
+            maximum_address = max(maximum_address, address + size);
 
             match program.get_type() {
                 Ok(Type::Phdr) | Err(_) => continue,
@@ -172,7 +216,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
         }
         current.heap_size = MINIMAL_HEAP_SIZE;
         debug!("Going towards user");
-        debug!("0x{:x} 0x{:x} 0x{:x}", ADDR_STACK, prog_entry, super::towards_user_give_heap as u64);
+        debug!("{:x} {:x} {:x}", current.stack_base, prog_entry, super::towards_user_give_heap as u64);
         super::towards_user_give_heap(
             current.heap_address,
             current.heap_size,
