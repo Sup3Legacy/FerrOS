@@ -92,7 +92,6 @@ impl MainScreen {
                 let col_origin = position.get_col();
                 let row_size = size.get_row();
                 let col_size = size.get_col();
-                println!("Drawing : {:?}, {}, {}", v_screen_id, row_size, col_size);
                 for i in 0..row_size {
                     for j in 0..col_size {
                         // The alpha layer helps ensuring we do not write to a previously

@@ -99,7 +99,6 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             let mut address = VirtAddr::new(args.rsi);
             for _i in 0..size {
                 if let Ok(k) = crate::keyboard::get_top_key_event() {
-                    println!("About to print : {}", k);
                     unsafe {
                         *(address.as_mut_ptr::<u8>()) = k;
                     }
