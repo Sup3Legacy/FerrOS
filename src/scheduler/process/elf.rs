@@ -167,6 +167,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
             }
         }
         current.heap_size = MINIMAL_HEAP_SIZE;
+        debug!("Going towards user");
         super::towards_user_give_heap(
             current.heap_address,
             current.heap_size,
