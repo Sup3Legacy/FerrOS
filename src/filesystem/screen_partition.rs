@@ -1,6 +1,5 @@
 use super::partition::Partition;
 use crate::scheduler::process;
-use crate::vga::virtual_screen::VirtualScreenLayer;
 use crate::{data_storage::path::Path, errorln};
 use crate::{vga::mainscreen, warningln};
 use alloc::vec::Vec;
@@ -61,5 +60,10 @@ impl Partition for ScreenPartition {
 
     fn read_raw(&self) {
         panic!("not allowed");
+    }
+}
+impl Default for ScreenPartition {
+    fn default() -> Self {
+        Self::new()
     }
 }

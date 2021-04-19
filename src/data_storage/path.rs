@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Path(String);
 
 impl Path {
@@ -10,9 +10,6 @@ impl Path {
     }
     pub fn from(s: &str) -> Self {
         Self(s.into())
-    }
-    pub fn clone(&self) -> Self {
-        Self(self.0.clone())
     }
     // We might wanna to avoid cloning string everywhere...
     pub fn to(&self) -> String {
@@ -60,5 +57,10 @@ impl Path {
 impl Default for Path {
     fn default() -> Self {
         Self::new()
+    }
+}
+impl Clone for Path {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }

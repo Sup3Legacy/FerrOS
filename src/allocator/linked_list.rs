@@ -1,6 +1,6 @@
 use super::{align_up, Locked};
 
-use crate::{errorln, println};
+use crate::errorln;
 use core::alloc::{GlobalAlloc, Layout};
 use core::mem;
 use core::ptr;
@@ -39,9 +39,7 @@ impl ListNode {
         self.start_addr() + self.size
     }
     pub fn merge_partial(&mut self, nb: usize) {
-        if nb <= 0 {
-            return;
-        } else if !self.first {
+        if nb != 0 && !self.first {
             let end_addr = self.end_addr();
             if let Some(ref mut next_region) = self.next {
                 let next_size = next_region.size;
@@ -57,8 +55,6 @@ impl ListNode {
                     next_region.next = next_next;
                     next_region.merge_partial(nb - 1);
                 }
-            } else {
-                return;
             }
         } else {
             //println!("Ouiiiii!!!");
@@ -85,6 +81,7 @@ impl LinkedListAllocator {
     }
     /// Adds a free region to the allocator. It works by placing a new `ListNode` at the front of the allocator with the given size.
     /// TODO : add the functionnality of list simplification by merging contiguous free regions.
+    #[allow(dead_code)]
     unsafe fn add_free_region_old(&mut self, addr: usize, size: usize) {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
@@ -101,18 +98,18 @@ impl LinkedListAllocator {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
         // Build new node
-        let mut node = ListNode::new(size, false);
+        let node = ListNode::new(size, false);
         //
         let node_ptr = addr as *mut ListNode;
         node_ptr.write(node);
         // Finds its place
 
         let mut current = &mut self.head;
-        let mut compte = 0;
+        let mut _compte = 0;
 
         while let Some(ref mut next_region) = current.next {
             //println!("{}", compte);
-            compte += 1;
+            _compte += 1;
 
             // We insert it here
             if next_region.start_addr() > addr {
@@ -130,6 +127,8 @@ impl LinkedListAllocator {
         (*node_ptr).next = None;
         current.next = Some(&mut *node_ptr);
     }
+    /// # Safety
+    /// TODO
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.add_free_region(heap_start, heap_size)
     }
@@ -206,5 +205,6 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
 }
 
 impl Locked<LinkedListAllocator> {
+    #[allow(dead_code)]
     fn add_page(&self) {}
 }

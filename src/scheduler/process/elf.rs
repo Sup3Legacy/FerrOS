@@ -32,21 +32,24 @@ pub fn get_table_flags(section: ShType) -> PageTableFlags {
     }
 }
 
+#[allow(dead_code)]
 const PROG_OFFSET: u64 = 0x8048000000;
 
 pub const ADDR_STACK: u64 = 0x1ffff8;
 
 pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
-pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
+/// # Safety
+/// TODO
+pub unsafe fn load_elf_for_exec(_file_name: &str) -> ! {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
     };
     let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
 
-    if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
-        let mut current = super::get_current_as_mut();
+    if let Ok(_level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
+        let current = super::get_current();
 
         // deallocate precedent file
         match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
@@ -80,7 +83,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &String) -> ! {
 
 /// # Safety
 /// Never safe ! You just need to know what you are doing before calling it
-pub unsafe fn _load_elf_for_exec(_file_name: &String) -> ! {
+pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
@@ -202,9 +205,7 @@ pub unsafe fn _load_elf_for_exec(_file_name: &String) -> ! {
                     size
                 );
                 let mut padding = Vec::new();
-                for _ in 0..(size - file_size) {
-                    padding.push(0_u8);
-                }
+                padding.resize(file_size as usize, 0_u8);
                 memory::write_into_virtual_memory(
                     level_4_table_addr,
                     VirtAddr::new(address + size),
@@ -219,7 +220,7 @@ pub unsafe fn _load_elf_for_exec(_file_name: &String) -> ! {
             "{:x} {:x} {:x}",
             current.stack_base,
             prog_entry,
-            super::towards_user_give_heap as u64
+            super::towards_user_give_heap as usize
         );
         super::towards_user_give_heap(
             current.heap_address,

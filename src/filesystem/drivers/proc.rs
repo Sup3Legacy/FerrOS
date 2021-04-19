@@ -1,5 +1,3 @@
-use core::convert::TryInto;
-
 use super::super::partition::Partition;
 
 use crate::scheduler;
@@ -15,21 +13,30 @@ pub struct ProcDriver {
     infos: Vec<ProcInfoDriver>,
 }
 
+pub struct ErrProc();
+
 impl ProcDriver {
     pub fn new() -> Self {
         Self { infos: Vec::new() }
     }
-    pub fn get_info(&self, id: &String) -> Result<&ProcInfoDriver, ()> {
+    pub fn get_info(&self, id: &str) -> Result<&ProcInfoDriver, ErrProc> {
         for pi in self.infos.iter() {
             if pi.keyword == *id {
                 return Ok(pi);
             }
         }
-        return Err(());
+        Err(ErrProc())
+    }
+}
+impl Default for ProcDriver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl Partition for ProcDriver {
+    #[allow(clippy::if_same_then_else)]
+    #[allow(clippy::len_zero)]
     fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
         let sliced = _path.slice();
         if sliced.len() == 2 {
@@ -86,6 +93,6 @@ fn heap(proc: usize) -> Vec<u8> {
     str.as_bytes().to_vec()
 }
 
-fn screen(proc: usize) -> Vec<u8> {
+fn screen(_proc: usize) -> Vec<u8> {
     todo!()
 }

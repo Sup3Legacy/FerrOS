@@ -11,6 +11,9 @@ use super::drivers::nopart::NoPart;
 
 use crate::data_storage::path::Path;
 
+#[derive(Debug)]
+pub struct ErrVFS();
+
 /// Root of the partition-tree
 struct PartitionTree {
     root: PartitionNode,
@@ -67,13 +70,13 @@ impl PartitionNode {
         sliced_path: Vec<String>,
         index: usize,
         data: Box<dyn Partition>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), ErrVFS> {
         match self {
             PartitionNode::Node(next) => {
                 if index == sliced_path.len() {
-                    return Err(());
+                    return Err(ErrVFS());
                 }
-                if let Some(_) = next.get(&sliced_path[index]) {
+                if next.get(&sliced_path[index]).is_some() {
                     if let Some(next_part) = next.get_mut(&sliced_path[index]) {
                         next_part.add_entry(sliced_path, index + 1, data)
                     } else {
@@ -92,7 +95,7 @@ impl PartitionNode {
                     Ok(())
                 }
             }
-            PartitionNode::Leaf(_) => Err(()),
+            PartitionNode::Leaf(_) => Err(ErrVFS()),
         }
     }
 }
@@ -102,18 +105,18 @@ impl PartitionNode {
 /// as we need to implement all structures of file descriptors, etc.
 impl VFS {
     /// Returns the index of file descriptor. -1 if error
-    pub fn open(&'static mut self, path: Path) -> Result<(), ()> {
+    pub fn open(&'static mut self, path: Path) -> Result<(), ErrVFS> {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // If the VFS couldn't find the corresponding partition, return -1
         if res_partition.is_err() {
-            return Err(());
+            return Err(ErrVFS());
         }
         let _partition = res_partition.unwrap();
         todo!()
     }
 
-    pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ()> {
+    pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
         let sliced = path.slice();
         self.partitions.root.add_entry(sliced, 0, data)
     }
@@ -126,7 +129,7 @@ impl VFS {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
-        let (partition, remaining_path) = res_partition.unwrap();
+        let (partition, _remaining_path) = res_partition.unwrap();
         partition.read(path, offset, length)
     }
 
@@ -152,5 +155,10 @@ impl VFS {
             root: PartitionNode::Node(map),
         };
         Self { partitions: parts }
+    }
+}
+impl Default for VFS {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -6,27 +6,21 @@ use core::{
     sync::atomic::{AtomicU64, Ordering},
 };
 //use lazy_static::lazy_static;
+use x86_64::registers::control::{Cr3, Cr3Flags};
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::structures::paging::PhysFrame;
-use x86_64::{
-    registers::control::{Cr3, Cr3Flags},
-    structures::paging::{frame, FrameAllocator},
-};
 use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
+use crate::alloc::vec::Vec;
+use crate::data_storage::{queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
 use crate::{
     alloc::collections::{BTreeMap, BTreeSet},
     vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
-};
-use crate::{alloc::vec::Vec, programs::ascii_fluid::main};
-use crate::{
-    data_storage::{queue::Queue, random},
-    warningln,
 };
 use crate::{errorln, println};
 use alloc::string::String;
@@ -227,6 +221,8 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
     )
 }
 
+/// # Safety
+/// TODO
 pub unsafe fn allocate_additional_heap_pages(
     frame_allocator: &mut memory::BootInfoAllocator,
     start: u64,
@@ -516,9 +512,7 @@ pub unsafe fn disassemble_and_launch(
                 file_size, size
             );
             let mut padding = Vec::new();
-            for _ in 0..(size - file_size) {
-                padding.push(0_u8);
-            }
+            padding.resize(file_size as usize, 0_u8);
             memory::write_into_virtual_memory(
                 level_4_table_addr,
                 VirtAddr::new(address + size),
@@ -850,6 +844,8 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 }
 
 /// Returns the current process data structure as read only
+/// # Safety
+/// TODO
 pub fn get_current() -> &'static Process {
     unsafe { &ID_TABLE[CURRENT_PROCESS] }
 }
@@ -862,6 +858,8 @@ pub unsafe fn get_current_as_mut() -> &'static mut Process {
 }
 
 /// TODO safeguard the index
+/// # Safety
+/// TODO
 pub unsafe fn get_process(pid: usize) -> &'static Process {
     &ID_TABLE[pid]
 }

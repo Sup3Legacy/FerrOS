@@ -1,9 +1,7 @@
 use bit_field::BitField;
 use conquer_once::spin::OnceCell;
-use crossbeam_queue::{ArrayQueue, PopError, PushError};
+use crossbeam_queue::ArrayQueue;
 use x86_64::instructions::port::Port;
-
-use crate::println;
 
 /// Queue of mouse packets
 static MOUSE_QUEUE: OnceCell<ArrayQueue<MousePacket>> = OnceCell::uninit();
@@ -11,6 +9,8 @@ static MOUSE_QUEUE: OnceCell<ArrayQueue<MousePacket>> = OnceCell::uninit();
 /// Max size of the queue of mouse packets
 const MOUSE_QUEUE_CAP: usize = 256;
 
+#[derive(Debug, Copy, Clone)]
+#[allow(dead_code, clippy::upper_case_acronyms)]
 enum MouseBytes {
     CommandByte = 0xD4,
     ACK = 0xFA,
@@ -26,8 +26,8 @@ enum MouseBytes {
 }
 
 impl MouseBytes {
-    pub fn to_byte(self) -> u8 {
-        self as u8
+    pub fn to_byte(&self) -> u8 {
+        *self as u8
     }
 }
 
@@ -55,6 +55,7 @@ pub struct MousePacket {
 }
 
 impl MousePacket {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         y_overflow: bool,
         x_overflow: bool,
@@ -125,6 +126,7 @@ fn read_mouse_byte() -> u8 {
     unsafe { keyboard_port.read() }
 }
 
+#[allow(dead_code)]
 fn read_controller() -> u8 {
     let mut controller_port: Port<u8> = Port::new(0x64);
     unsafe { controller_port.read() }
@@ -146,7 +148,7 @@ pub fn read_simple_packet() {
         x,
         y,
     );
-    enqueue_packet(packet);
+    enqueue_packet(packet).unwrap();
 }
 
 fn enable_irq() -> Result<(), MouseError> {

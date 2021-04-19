@@ -1,10 +1,7 @@
-use core::convert::TryInto;
-
 use super::super::partition::Partition;
 use crate::{data_storage::path::Path, warningln};
 
 use alloc::format;
-use alloc::string::String;
 use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
@@ -58,7 +55,7 @@ impl WeekDay {
         }
     }
 
-    pub fn to_string(self) -> &'static str {
+    pub fn to_string(&self) -> &'static str {
         match self {
             Self::Monday => "Monday",
             Self::Tuesday => "Tuesday",
@@ -91,7 +88,7 @@ impl Time {
         let mut second;
         let mut minute;
         let mut hour;
-        let mut workday;
+        let workday;
         let mut day;
         let mut month;
         let mut year;
@@ -138,6 +135,12 @@ impl Time {
 impl ClockDriver {
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl Default for ClockDriver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
