@@ -405,12 +405,12 @@ impl UsTar {
     /// Returns a vector of fresh addresses. /!\ once they are returned, they are also marked as reserved by the filesystem!
     /// So one must avoid getting more addresses than needed (this could allocate all the disk with blank unused data).
     unsafe fn get_addresses(&mut self, n: u32) -> Vec<Address> {
-        let mut indice = 0;
+        let mut index = 0;
         let mut res = Vec::new();
         let mut current_lba = self.lba_table_global.get_index() as usize;
         let mut current_block = self.lba_table_global.get_lba_index(current_lba as u32) as usize;
         // /!\ Could loop forever if drive full
-        while indice < n {
+        while index < n {
             if self.lba_table_global.is_lba_available(current_lba as u32) {
                 if self
                     .lba_table_global
@@ -423,7 +423,7 @@ impl UsTar {
                     // Write back allocation informations
                     self.lba_table_global
                         .mark_unavailable(current_lba as u32, (current_block) as u32);
-                    indice += 1;
+                    index += 1;
                     self.lba_table_global.data[current_lba as usize].index =
                         if self.lba_table_global.data[current_lba as usize].index < 510 {
                             self.lba_table_global.data[current_lba as usize].index + 1
@@ -549,7 +549,7 @@ impl UsTar {
         }
     }
 
-    pub fn read_memfile_from_disk(&mut self, address: Address) -> MemFile {
+    pub fn read_memfile_from_disk(&self, address: Address) -> MemFile {
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = header.length;
         //println!("{:?}", header);
@@ -560,18 +560,18 @@ impl UsTar {
         println!("{:?}, {}", header.name, header.length);
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
-            let mut compteur = 0;
+            let mut counter = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
-                    if compteur >= length {
+                    if counter >= length {
                         break;
                     }
                     file.data.push((sector.data[j] >> 8) as u8);
                     file.data.push((sector.data[j] & 0xff) as u8);
-                    compteur += 1;
+                    counter += 1;
                 }
             }
         } else if header.mode == FileMode::Long {
@@ -620,7 +620,7 @@ impl UsTar {
         file
     }
 
-    fn memdir_from_address(&mut self, address: Address) -> MemDir {
+    fn memdir_from_address(&self, address: Address) -> MemDir {
         let file = self.read_memfile_from_disk(address);
         let data = file.data;
         let len = (file.header.length << 1) as usize; // x2 because header.length is in u16... Might change that
@@ -664,7 +664,7 @@ impl UsTar {
     /// future searches even more.
     /// # Safety
     /// TODO
-    pub unsafe fn fetch_data(&mut self, path: Path) -> MemFile {
+    pub unsafe fn fetch_data(&self, path: Path) -> MemFile {
         if let Some(add) = FILE_ADRESS_CACHE.0.get(&path) {
             self.read_memfile_from_disk(*add)
         } else {
@@ -704,8 +704,9 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
-        todo!()
+    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
+        let file = unsafe{self.fetch_data(path)};
+        file.data[offset..offset+size].to_vec()
     }
 
     fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
