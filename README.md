@@ -17,7 +17,11 @@ Then run these three commands in the root directory of the project:
 - `rustup component add rust-src`
 
 ## Usage
-- Build and open documentation: `cargo doc --open`
-- Build: `cargo build`
-- Build and run: `cargo run`
-- Clean: `cargo clean`
+- Build (release): `make`
+- Build (release) and run: `make run`
+- Build release: `make ferros_release`
+- Build without optimizations: `make ferros`
+- Build and open documentation: `make doc`
+- Clean: `make clean`
+- Format: `make fmt`
+- Count the number of lines: `make count`

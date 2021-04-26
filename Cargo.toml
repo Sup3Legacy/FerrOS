@@ -51,7 +51,7 @@ features = ["alloc"]
 [package.metadata.bootimage]
 test-timeout = 60  # Number of seconds before timeout.
 run-args = [
-    "-drive", "format=raw,file=disk.img,index=2",
+    "-drive", "format=raw,file=disk/disk.img,index=2",
     "-boot", "c",
     "-soundhw", "pcspk",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.

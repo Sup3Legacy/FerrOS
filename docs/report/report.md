@@ -1,6 +1,6 @@
 ---
 title: FerrOS
-author: Gabriel \textsc{Doriath-Döhler}, Paul \textsc{Fournier}, Constantin \textsc{Gierczak-Galle}, Samuel \textsc{Vivien}
+author: Gabriel \textsc{Doriath Döhler}, Paul \textsc{Fournier}, Constantin \textsc{Gierczak-Galle}, Samuel \textsc{Vivien}
 abstract: FerrOS is a UNIX-like OS based on a minimalist hybrid-approach-kernel. Its main particularity is the language it is written it. FerrOS is written in pure Rust.
 toc: true
 numbersections: true
@@ -23,7 +23,7 @@ We still managed to find enough documentation regarding the language-specific se
 Before talking about how our kernel works, let's first explain how we designed it.
 ## General idea
 
-To give a rough idea, our goal during this project was to write a sort of UNIX-like kernel (though we never designed our kernel as being really compatible with any *NIX OS). So the base idea isn't original at all. However, the choice of the language, as we thought, would make this project interesting, as OS written in Rust still are not common. One example would be Redox (TODO insert link), the best known and probably most advanced operating system written in Rust. 
+To give a rough idea, our goal during this project was to write a sort of UNIX-like kernel (though we never designed our kernel as being really compatible with any *NIX OS). So the base idea isn't original at all. However, the choice of the language, as we thought, would make this project interesting, as OS written in Rust still are not common. One example would be Redox (TODO insert link), the best known and probably most advanced operating system written in Rust.
 
 
 # Programming
@@ -37,7 +37,7 @@ During this project, we used some crates instead of writing the code ourselves i
 
 In practical, the main crates we used were :
 
-* `x86-64` : a very useful crates with a lot of structures used in x86-64-system-programming. It provides safe wrapper to read and write from/to ports, manage IDT, GDT, paging tables, etc.
+* `x86-64` : a very useful crates with a lot of structures used in x86-64-system-programming. It provides safe wrapper to read and write from/to ports, manage GDT, paging tables, etc.
 * `Bootloader` : a bootloader is something we didn't want to write at the beginning of the project. TODO on en fait un maintenant?
 * `xmas-elf` : an ELF parsing utility. This is something we could have written ourselves but it involves a lot of boilerplate code that would take a long time to write.
 
@@ -51,7 +51,7 @@ Some other crates brought us some convenient structures and macros but can be co
 
 ## Scheduler
 
-Here, we discuss the implementation we opted for our scheduler. As of now, it is a simple preemptive, lottery-based, single-core scheduler, though the concept could be adapted to the context of multi-core CPUs. 
+Here, we discuss the implementation we opted for our scheduler. As of now, it is a simple preemptive, lottery-based, single-core scheduler, though the concept could be adapted to the context of multi-core CPUs.
 
 ### When is the scheduler used?
 
@@ -76,3 +76,37 @@ Like in a real UNIX-like kernel, every device, be it hardware or software, can b
 A program cannot by itself interact with the user or with the underlying hardware, as all software and hardware ressources are managed by the kernel (our drivers are all part of the kernel space for simplicity sakes). Every interaction between a program and the kernel is done via either a forced context switch or a software interrupt, implementing a syscall.
 
 When a program requires a ressource from the kernel, it generates a syscall, whose number corresponds to a pre-defined list of possible syscalls
+
+## User-space
+
+### Librust
+
+#### General philosophy
+
+The user-space is a very important part of any OS and it comes through a flexible enough OS-specific library (often called `libc`). As we wished ourselves a pure-Rust OS (+- some ASM of course), we simply could not make (or copy from a *Nix OS) a `libc`. It has been replaced by a `librust`.
+
+Our initial plan was to properly cross-compile the Rust compiler by adding a custom target (that is the FerrOS target), as well as all low-level bindings. Usually, the Rust std-lib is meant to get bound to the OS' `libc`. In our case, we would have directly build the low-level library inside the std-lib.
+
+However, this plan turned out to be quite a lot more work (be it purely implementation of the library or simply research in order to first understand what's going on in the gigantic mess that is the Rust std-lib) than we could do in just a few months (we also had to build an entire kernel besides that!), so we made a compromise : we built a `librust` that is a standalone `no-std` crate containing all low-level bindings to the OS (syscalls, etc.) as well as some abstraction layers on top of that. This crate can be imported when building a user-program for our OS.
+
+#### Main modules
+
+The `librust` contains a few main modules that helps us build software for our target with minimal effort and maximal possibilities
+
+##### Kernel low-level interaction
+
+One of the most important module is the one containing all the very-low-level code responsible for all interactions with the kernel, through the syscalls. It only contains a few lines of inline-ASM and has been tested to ensure there as little risk of register/memory corruption.
+
+On top of this code are build a few abstraction layers for easy handling of files, I/O data, etc. We decided to not go as overkill as the std-lib regarding this abstraction, as we did not have a lot of time, and because ouf interactions are a lot simpler than most *Nix systems, so there is no need for such very-high-level abstraction.
+
+##### Memory allocator
+
+A very useful primitive traditionaly offered by a system's `libc` is, of course, `malloc`. We have our own heap allocator (it is based on Phil Opp.'s designe, that we improved a lot TODO expliquer où).
+
+When a program first executes, it is given as arguments the start address and the size of the heap is has been allocated by the kernel. The allocator is then initialized with these values.
+
+This allocator is just a simple linked_list allocator. We improved it quite a lot by :
+
+- adding the automatic merging of contigous regions. Without it, a program could "run out" of heap space simply besauce of repeated allocations that fragmented the heap.
+- adding the automatic request of page allcoation. In case the allocator could not allocate a heap region because no big enough region was left, it would request, through a syscall, the kernel some additional pages that it would (depending of if the kernel responded positively or not) itnegrate into the heap.
+

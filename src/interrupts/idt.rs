@@ -243,7 +243,8 @@ impl EntryOptions {
         self
     }
 
-    /// # The safety depends on the validity of the stack in the TSS
+    /// # Safety
+    /// The safety depends on the validity of the stack in the TSS
     /// Select which stack to use in the TSS for this stack
     /// By default won't switch stack at interrupt entry
     pub unsafe fn set_stack_index(&mut self, index: u16) -> &mut Self {
@@ -408,7 +409,8 @@ pub struct InterruptStackFrame {
 }
 
 impl InterruptStackFrame {
-    /// # Should be only called once to prevent aliasing.
+    /// # Safety
+    /// Should be only called once to prevent aliasing.
     /// Get a mutable reference of the Interrupt Stack Frame's Value
     pub unsafe fn as_mut(&mut self) -> &mut InterruptStackFrameValue {
         &mut self.value

@@ -128,7 +128,8 @@ pub struct BootInfoAllocator {
 }
 
 impl BootInfoAllocator {
-    /// # Safety depends on the validity of the inputs
+    /// # Safety
+    /// Depends on the validity of the inputs
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
     pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
@@ -193,6 +194,8 @@ impl BootInfoAllocator {
 
     /// # No garbage collector you should think above deallocating !
     /// Creates a new level_4 table and taking into account the kernel adresses.
+    /// # Safety
+    /// TODO
     pub unsafe fn allocate_level_4_frame(&mut self) -> Result<PhysFrame, MemoryError> {
         if let Some(phys) = self.allocate_4k_frame() {
             //warningln!("l.138 success");
@@ -214,6 +217,8 @@ impl BootInfoAllocator {
 
     /// # Beware of giving a valid level 4 table
     /// Adds an entry to the level 4 table with the given flags at the given virtual address
+    /// # Safety
+    /// TODO
     pub unsafe fn add_entry_to_table(
         &mut self,
         table_4: PhysFrame,
@@ -562,6 +567,8 @@ impl BootInfoAllocator {
 
     /// # Beware of giving a valid level 4 table
     /// Adds an entry to the level 4 table with the given flags at the given virtual address
+    /// # Safety
+    /// TODO
     pub unsafe fn add_forced_entry_to_table(
         &mut self,
         table_4: PhysFrame,
@@ -951,7 +958,8 @@ impl BootInfoAllocator {
     }
 
     /// Deallocator, from a given level 4 table, deallocates every thing containing the given flags.
-    /// # Safety : Always put PageTableFlags::PRESENT in the given flags !
+    /// # Safety
+    /// Always put PageTableFlags::PRESENT in the given flags !
     /// You must give a level 4 table and the flags for which you want to remove the entries.
     /// For exemple you can use PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE as default
     /// Returns a boolean wethere the table is empty or not
@@ -967,8 +975,8 @@ impl BootInfoAllocator {
         let table_4 = &mut *page_table_ptr;
         let mut is_empty = true;
         for i in 0..512 {
-            if !table_4[i].is_unused() {
-                let flags = table_4[i].flags();
+            let flags = table_4[i].flags();
+            if flags.contains(PageTableFlags::PRESENT) {
                 if flags.contains(remove_flags) {
                     debug!(
                         "0x{:x?}, {:x?}, {}",
@@ -999,7 +1007,6 @@ impl BootInfoAllocator {
                 }
             }
         }
-
         if failed {
             Err(MemoryError(String::from(
                 "Could not deallocate level 4 page",
@@ -1032,14 +1039,14 @@ impl BootInfoAllocator {
                                 }
                             } else {
                                 table_3[i].set_flags(flags & flags_level_2);
-                                flags_left = flags_left | (flags & flags_level_2);
+                                flags_left |= flags & flags_level_2;
                             }
                         }
 
                         Err(MemoryError(_)) => failed = true,
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
-                    flags_left = flags_left | flags;
+                    flags_left |= flags;
                 }
             }
         }
@@ -1075,14 +1082,14 @@ impl BootInfoAllocator {
                                 }
                             } else {
                                 table_2[i].set_flags(flags & flags_level_1);
-                                flags_left = flags_left | (flags & flags_level_1);
+                                flags_left |= flags & flags_level_1;
                             }
                         }
 
                         Err(MemoryError(_)) => failed = true,
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
-                    flags_left = flags_left | flags;
+                    flags_left |= flags;
                 }
             }
         }
@@ -1112,7 +1119,7 @@ impl BootInfoAllocator {
                         failed = true;
                     }
                 } else {
-                    flags_left = flags_left | flags
+                    flags_left |= flags
                 }
             }
         }
@@ -1149,6 +1156,8 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoAllocator {
 }
 
 /// This may be totally wrong
+/// # Safety
+/// TODO
 pub unsafe fn write_into_virtual_memory(
     table_4: PhysFrame,
     virt_4: VirtAddr,
@@ -1184,6 +1193,8 @@ pub unsafe fn write_into_virtual_memory(
     Ok(())
 }
 
+/// # Safety
+/// TODO
 pub unsafe fn translate_addr_inner(table_4: PhysFrame, addr: VirtAddr) -> Option<PhysAddr> {
     translate_addr(table_4, addr)
 }

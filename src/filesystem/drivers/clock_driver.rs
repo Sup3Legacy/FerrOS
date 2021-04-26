@@ -1,4 +1,11 @@
+use super::super::partition::Partition;
+use crate::{data_storage::path::Path, warningln};
+
+use alloc::format;
+use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
+
+pub struct ClockDriver;
 
 const CMOS_ADDRESS: u16 = 0x70;
 static mut CMOS_ADDRESS_PORT: Port<u8> = Port::new(CMOS_ADDRESS);
@@ -47,6 +54,18 @@ impl WeekDay {
             _ => Self::Monday, // TO DO : ERROR
         }
     }
+
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Self::Monday => "Monday",
+            Self::Tuesday => "Tuesday",
+            Self::Wednesday => "Wednesday",
+            Self::Thursday => "Thursday",
+            Self::Friday => "Friday",
+            Self::Saturday => "Saturday",
+            Self::Sunday => "Sunday",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -54,6 +73,7 @@ pub struct Time {
     second: usize,
     minute: usize,
     hour: usize,
+    workday: usize,
     day: usize,
     month: usize,
     year: usize,
@@ -64,9 +84,11 @@ impl Time {
     /// # Safety
     /// TODO
     pub unsafe fn get() -> Self {
+        asm!("cli");
         let mut second;
         let mut minute;
         let mut hour;
+        let workday;
         let mut day;
         let mut month;
         let mut year;
@@ -76,6 +98,7 @@ impl Time {
         second = get_rtc(0x00) as usize;
         minute = get_rtc(0x02) as usize;
         hour = get_rtc(0x04) as usize;
+        workday = get_rtc(0x06) as usize;
         day = get_rtc(0x07) as usize;
         month = get_rtc(0x08) as usize;
         year = get_rtc(0x09) as usize;
@@ -94,14 +117,65 @@ impl Time {
         if register_b & 2 != 2 || hour & 0x80 == 0x80 {
             hour = ((hour & 0x7F) + 12) % 24;
         }
+
+        asm!("sti");
         Self {
             century,
             second,
             minute,
             hour,
+            workday,
             day,
             month,
             year: year + 100 * (century - 1),
         }
+    }
+}
+
+impl ClockDriver {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for ClockDriver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Partition for ClockDriver {
+    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
+        let time = unsafe { Time::get() };
+        let string = format!(
+            "{} {} {} {} {} {} {} {}",
+            time.century,
+            time.year,
+            time.month,
+            time.day,
+            WeekDay::from_int(time.workday as u8).to_string(),
+            time.hour,
+            time.minute,
+            time.second,
+        );
+        let vec = Vec::from(string.as_bytes());
+        vec
+    }
+
+    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
+        warningln!("User-program attempted to write in clock.");
+        0
+    }
+
+    fn lseek(&self) {
+        todo!()
+    }
+
+    fn flush(&self) {
+        todo!()
+    }
+
+    fn read_raw(&self) {
+        todo!()
     }
 }

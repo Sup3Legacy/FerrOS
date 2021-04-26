@@ -61,6 +61,14 @@ macro_rules! debug {
 }
 
 #[macro_export]
+macro_rules! bsod {
+    () => ($crate::print!("\x1B[97;44m    BLUE SCREEN OF DEATH \x1B[0m\n"));
+    ($fmt:expr) => ($crate::print!(concat!("\x1B[97;44m    BLUE SCREEN OF DEATH \n", $fmt, "\x1B[0m\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(
+        concat!("\x1B[97;44m    BLUE SCREEN OF DEATH \n", $fmt, "\x1B[0m\n"), $($arg)*));
+}
+
+#[macro_export]
 macro_rules! initdebugln {
     () => {
         $crate::print!("\n ===== FerrOS debug interface =====\n")

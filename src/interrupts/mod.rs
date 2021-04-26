@@ -3,7 +3,7 @@
 
 //! Crate initialising every interrupts and putting it in the Interruption Descriptor Table
 
-use x86_64::instructions::port::Port;
+use x86_64::{instructions::port::Port, structures::paging::PageTableIndex};
 
 use x86_64::registers::control::{Cr2, Cr3};
 //use x86_64::structures::paging::PhysFrame;
@@ -20,7 +20,8 @@ use idt::{InterruptStackFrame, PageFaultErrorCode};
 use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
-use crate::{print, println, warningln};
+use crate::sound;
+use crate::{bsod, println, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -36,6 +37,7 @@ static mut COUNTER: u64 = 0;
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard,
+    Mouse = 12 + PIC_1_OFFSET,
 }
 
 impl InterruptIndex {
@@ -45,6 +47,10 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
+}
+
+pub fn is_kernel_space(address: VirtAddr) -> bool {
+    address.p4_index() >= PageTableIndex::new(256)
 }
 
 #[macro_export]
@@ -156,6 +162,8 @@ lazy_static! {
         idt.timer.set_handler_fn(saveRegisters!(timer_interrupt_handler))
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler)
+            .set_privilege_level(PrivilegeLevel::Ring3);
+        idt[InterruptIndex::Mouse.as_usize()].set_handler_fn(mouse_interrupt_handler)
             .set_privilege_level(PrivilegeLevel::Ring3);
         idt.syscall.set_handler_fn(saveRegisters!(syscall_dispatch))
                     .set_privilege_level(PrivilegeLevel::Ring3);
@@ -312,7 +320,8 @@ unsafe extern "C" fn timer_interrupt_handler(
     stack_frame: &mut InterruptStackFrame,
     registers: &mut Registers,
 ) {
-    print!(".");
+    sound::handle();
+    println!(".{}/{}", COUNTER, QUANTUM);
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
@@ -325,7 +334,6 @@ unsafe extern "C" fn timer_interrupt_handler(
         //println!("entered");
         let (next, mut old) = process::gives_switch(COUNTER);
 
-        println!("???");
         //println!("here");
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
@@ -333,14 +341,15 @@ unsafe extern "C" fn timer_interrupt_handler(
 
         old.rsp = VirtAddr::from_ptr(registers).as_u64();
 
-        println!("Tick");
+        //println!("Tick");
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
         //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
         //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
         //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-        println!("target {:x}", process::leave_context_cr3 as usize);
-        println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
+        //println!("target {:x}", process::leave_context_cr3 as usize);
+        //println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
+        //print!("Switch process");
         process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
         // return; -> unreachable
@@ -374,12 +383,18 @@ extern "x86-interrupt" fn page_fault_handler(
         */
         
         hardware::power::shutdown();
+    } else if is_kernel_space(stack_frame.as_real().instruction_pointer) {
+        bsod!("PAGE FAULT! {:#?}", stack_frame);
+        bsod!("TRIED TO READ : {:#?}", Cr2::read());
+        bsod!("ERROR : {:#?}", error_code);
+        panic!();
     } else {
-        println!("PAGE FAULT! {:#?}", stack_frame);
-        println!("TRIED TO READ : {:#?}", Cr2::read());
-        println!("ERROR : {:#?}", error_code);
+        // TODO maybe write something into the process' stdout
+        warningln!("Process just pagefault.");
+        bsod!("TRIED TO READ : {:#?}", Cr2::read());
+        bsod!("ERROR : {:#?}", error_code);
+        panic!("killed")
     }
-    crate::halt_loop();
 }
 
 /// Keyboard interrupt handler
@@ -392,6 +407,14 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
+extern "x86-interrupt" fn mouse_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    //debug!("{:?}", hardware::mouse::read_simple_packet());
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Mouse.as_u8());
     }
 }
 

@@ -13,13 +13,17 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
-use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{queue::Queue, random};
+use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
-use crate::filesystem::descriptor::ProcessDescriptorTable;
+use crate::{
+    alloc::collections::{BTreeMap, BTreeSet},
+    vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
+};
 use crate::{errorln, println};
+use alloc::string::String;
 
 /// Default allocated heap size (in number of pages)
 const DEFAULT_HEAP_SIZE: u64 = 2;
@@ -174,6 +178,51 @@ pub unsafe extern "C" fn towards_user_give_heap(
     )
 }
 
+#[naked]
+/// # Safety
+/// TODO
+pub unsafe extern "C" fn towards_user_give_heap_args(
+    _heap_addr: u64,
+    _heap_size: u64,
+    _args: u64,
+    _rsp: u64,
+    _rip: u64,
+) -> ! {
+    asm!(
+        // Ceci n'est pas exécuté
+        "mov rax, 0x0", // data segment
+        "mov ds, eax",
+        "mov es, eax",
+        "mov fs, eax",
+        "mov gs, eax",
+        "mov rsp, rcx",
+        "add rsp, 8",
+        "push 0x42",
+        "push rax",  // stack segment
+        "push rcx",  // stack pointer
+        "push 518",  // cpu flags
+        "push 0x08", // code segment
+        "push r8",   // instruction pointer
+        "mov rax, 0",
+        "mov rbx, 0",
+        "mov rcx, 0",
+        //"mov rdx, 0", In this register we pass the pointer to the arguments
+        "mov rbp, 0",
+        "mov r8, 0",
+        "mov r9, 0",
+        "mov r10, 0",
+        "mov r11, 0",
+        "mov r12, 0",
+        "mov r13, 0",
+        "mov r14, 0",
+        "mov r15, 0",
+        "iretq",
+        options(noreturn,),
+    )
+}
+
+/// # Safety
+/// TODO
 pub unsafe fn allocate_additional_heap_pages(
     frame_allocator: &mut memory::BootInfoAllocator,
     start: u64,
@@ -193,7 +242,7 @@ pub unsafe fn allocate_additional_heap_pages(
             Ok(()) => (),
             Err(memory::MemoryError(err)) => {
                 errorln!(
-                    "Could not allocate the {}-th part of the heap. Error : {:?}",
+                    "Could not allocate the {}-th additional part of the heap. Error : {:?}",
                     i,
                     err
                 );
@@ -205,7 +254,7 @@ pub unsafe fn allocate_additional_heap_pages(
             &[0_u8; 0x1000],
         ) {
             Ok(()) => (),
-            Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+            Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
         };
     }
 }
@@ -317,6 +366,28 @@ pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
     res
 }
 
+/// Flattens arguments into a pages. Strings are NULL-ended
+pub fn flatten_arguments(args: Vec<String>) -> [u8; 0x1000] {
+    let mut res = [0_u8; 0x1000];
+    let mut index = 0;
+    for arg in args {
+        let bytes = arg.as_bytes();
+        let length = bytes.len();
+        for i in 0..length {
+            if i + index >= 0x1000 {
+                // If the length of the arguments is too large
+                // To make sure that, at least, the last argument is correctly terminated
+                res[i + index - 1] = 0;
+                break;
+            }
+            res[i + index] = bytes[i];
+        }
+        res[length + index] = 0;
+        index += length + 1;
+    }
+    res
+}
+
 /// Takes in a slice containing an ELF file,
 /// disassembles it and executes the program.
 ///
@@ -332,9 +403,15 @@ pub unsafe fn disassemble_and_launch(
     frame_allocator: &mut memory::BootInfoAllocator,
     _number_of_block: u64,
     stack_size: u64,
+    args: Vec<String>,
+    new_process: bool,
 ) -> ! {
     // TODO maybe consider changing this
-    let addr_stack: u64 = 0x1ffff8;
+    let addr_stack: u64 = if new_process {
+        0x1ffff8
+    } else {
+        get_current().stack_base
+    };
     // We get the `ElfFile` from the raw slice
     let elf = ElfFile::new(code).unwrap();
     // We get the main entry point and mmake sure it is
@@ -344,172 +421,206 @@ pub unsafe fn disassemble_and_launch(
         _ => panic!("Expected a 64-bit ELF!"),
     };
     // This allocates a new level-4 table
-    if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
-        // TODO Change this
-        ID_TABLE[0].state = State::Runnable;
-        // This represents the very end of all loaded segments
-        let mut maximum_address = 0;
-        // Loop over each section
-        for program in elf.program_iter() {
-            // Characteristics of the section
-            let address = program.virtual_addr();
-            let offset = program.offset();
-            let size = program.mem_size();
-            let file_size = program.file_size();
-            maximum_address = max(maximum_address, address + size);
-            // Section debug
-            /*
-            println!(
-                "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-                address,
-                offset,
-                size,
-                section.get_type()
-            );
-            */
-            match program.get_type() {
-                Ok(Type::Phdr) | Err(_) => continue,
-                Ok(_) => (),
-            };
-            if address == 0 {
-                continue;
-            }
-
-            let mut zeroed_data = Vec::new();
-            let _data = match program.get_type().unwrap() {
-                Type::Load => match program.get_data(&elf).unwrap() {
-                    SegmentData::Undefined(a) => a,
-                    SegmentData::Note64(_, a) => a,
-                    _ => panic!(":("),
-                },
-                _ => {
-                    for _ in 0..size {
-                        zeroed_data.push(0)
-                    }
-                    &zeroed_data[..]
-                }
-            };
-            let num_blocks = (size + offset) / 0x1000 + 1;
-            let mut flags =
-                PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | elf::MODIFY_WITH_EXEC;
-            if program.flags().is_write() {
-                flags |= PageTableFlags::WRITABLE;
-            }
-            if !program.flags().is_execute() {
-                flags |= PageTableFlags::NO_EXECUTE;
-            }
-            for i in 0..num_blocks {
-                // Allocate a frame for each page needed.
-                match frame_allocator.add_entry_to_table(
-                    level_4_table_addr,
-                    VirtAddr::new(address + (i as u64) * 0x1000),
-                    flags,
-                    true,
-                ) {
-                    Ok(()) => (),
-                    Err(memory::MemoryError(err)) => {
-                        errorln!(
-                            "Could not allocate the {}-th part of the code. Error : {:?}",
-                            i,
-                            err
-                        );
-                    }
-                }
-            }
-            match memory::write_into_virtual_memory(
-                level_4_table_addr,
-                VirtAddr::new(address),
-                _data,
-            ) {
-                Ok(()) => (),
-                Err(a) => errorln!("{:?} at section : {:?}", a, 0),
-            };
-            if size != file_size {
-                println!(
-                    "file_size and mem_size differ : file {}, mem {}",
-                    file_size, size
-                );
-                let mut padding = Vec::new();
-                for _ in 0..(size - file_size) {
-                    padding.push(0_u8);
-                }
-                memory::write_into_virtual_memory(
-                    level_4_table_addr,
-                    VirtAddr::new(address + size),
-                    &padding[..],
-                )
-                .unwrap();
-            }
+    let level_4_table_addr = if new_process {
+        match frame_allocator.allocate_level_4_frame() {
+            Ok(l4) => l4,
+            Err(_) => panic!("no more memory available"),
         }
-        // Allocate frames for the stack
-        for i in 0..stack_size {
-            match frame_allocator.add_entry_to_table(
-                level_4_table_addr,
-                VirtAddr::new(addr_stack - i * 0x1000),
-                PageTableFlags::USER_ACCESSIBLE
-                    | PageTableFlags::PRESENT
-                    | PageTableFlags::NO_EXECUTE
-                    | PageTableFlags::WRITABLE
-                    | elf::STACK,
-                false,
-            ) {
-                Ok(()) => (),
-                Err(memory::MemoryError(err)) => {
-                    errorln!(
-                        "Could not allocate the {}-th part of the stack. Error : {:?}",
-                        i,
-                        err
-                    );
-                    hardware::power::shutdown();
-                }
-            }
-        }
-        // Allocate pages for the heap
-        // We define the heap start address as
-        let heap_address = maximum_address + 0x8000_u64;
-        let heap_address_normalized = heap_address - (heap_address % 0x1000);
-        let heap_size = DEFAULT_HEAP_SIZE;
-        for i in 0..heap_size {
-            match frame_allocator.add_entry_to_table(
-                level_4_table_addr,
-                VirtAddr::new(heap_address_normalized + i * 0x1000),
-                PageTableFlags::USER_ACCESSIBLE
-                    | PageTableFlags::PRESENT
-                    | PageTableFlags::WRITABLE
-                    | elf::HEAP,
-                false,
-            ) {
-                Ok(()) => (),
-                Err(memory::MemoryError(err)) => {
-                    errorln!(
-                        "Could not allocate the {}-th part of the heap. Error : {:?}",
-                        i,
-                        err
-                    );
-                }
-            }
-            match memory::write_into_virtual_memory(
-                level_4_table_addr,
-                VirtAddr::new(heap_address_normalized + i * 0x1000),
-                &[0_u8; 0x1000],
-            ) {
-                Ok(()) => (),
-                Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
-            };
-        }
-
-        ID_TABLE[0].heap_address = heap_address_normalized;
-        ID_TABLE[0].heap_size = heap_size;
-
-        let (_cr3, cr3f) = Cr3::read();
-        Cr3::write(level_4_table_addr, cr3f);
-        println!("good luck user ;) {} {}", addr_stack, prog_entry);
-        println!("target : {:x}", prog_entry);
-        towards_user_give_heap(heap_address_normalized, heap_size, addr_stack, prog_entry);
-    // good luck user ;)
     } else {
-        panic!("could not launch process")
+        let (cr3, _) = Cr3::read();
+        cr3
+    };
+
+    // TODO Change this
+    ID_TABLE[0].state = State::Runnable;
+    // This represents the very end of all loaded segments
+    let mut maximum_address = 0;
+    // Loop over each section
+    for program in elf.program_iter() {
+        // Characteristics of the section
+        let address = program.virtual_addr();
+        let offset = program.offset();
+        let size = program.mem_size();
+        let file_size = program.file_size();
+        maximum_address = max(maximum_address, address + size);
+        // Section debug
+        /*
+        println!(
+            "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
+            address,
+            offset,
+            size,
+            section.get_type()
+        );
+        */
+        match program.get_type() {
+            Ok(Type::Phdr) | Err(_) => continue,
+            Ok(_) => (),
+        };
+        if address == 0 {
+            continue;
+        }
+
+        let mut zeroed_data = Vec::new();
+        let _data = match program.get_type().unwrap() {
+            Type::Load => match program.get_data(&elf).unwrap() {
+                SegmentData::Undefined(a) => a,
+                SegmentData::Note64(_, a) => a,
+                _ => panic!(":("),
+            },
+            _ => {
+                for _ in 0..size {
+                    zeroed_data.push(0)
+                }
+                &zeroed_data[..]
+            }
+        };
+        let num_blocks = (size + offset) / 0x1000 + 1;
+        let mut flags =
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | elf::MODIFY_WITH_EXEC;
+        if program.flags().is_write() {
+            flags |= PageTableFlags::WRITABLE;
+        }
+        if !program.flags().is_execute() {
+            flags |= PageTableFlags::NO_EXECUTE;
+        }
+        for i in 0..num_blocks {
+            // Allocate a frame for each page needed.
+            match frame_allocator.add_entry_to_table(
+                level_4_table_addr,
+                VirtAddr::new(address + (i as u64) * 0x1000),
+                flags,
+                true,
+            ) {
+                Ok(()) => (),
+                Err(memory::MemoryError(err)) => {
+                    errorln!(
+                        "Could not allocate the {}-th part of the code. Error : {:?}",
+                        i,
+                        err
+                    );
+                }
+            }
+        }
+        match memory::write_into_virtual_memory(level_4_table_addr, VirtAddr::new(address), _data) {
+            Ok(()) => (),
+            Err(a) => errorln!("{:?} at section : {:?}", a, 0),
+        };
+        if size != file_size {
+            println!(
+                "file_size and mem_size differ : file {}, mem {}",
+                file_size, size
+            );
+            let mut padding = Vec::new();
+            padding.resize(file_size as usize, 0_u8);
+            memory::write_into_virtual_memory(
+                level_4_table_addr,
+                VirtAddr::new(address + size),
+                &padding[..],
+            )
+            .unwrap();
+        }
     }
+    // Allocate frames for the stack
+    for i in 0..stack_size {
+        match frame_allocator.add_entry_to_table(
+            level_4_table_addr,
+            VirtAddr::new(addr_stack - i * 0x1000),
+            PageTableFlags::USER_ACCESSIBLE
+                | PageTableFlags::PRESENT
+                | PageTableFlags::NO_EXECUTE
+                | PageTableFlags::WRITABLE
+                | elf::STACK,
+            true,
+        ) {
+            Ok(()) => (),
+            Err(memory::MemoryError(err)) => {
+                errorln!(
+                    "Could not allocate the {}-th part of the stack. Error : {:?}",
+                    i,
+                    err
+                );
+                hardware::power::shutdown();
+            }
+        }
+    }
+    // Allocate pages for the heap
+    // We define the heap start address as
+    let heap_address = maximum_address + 0x8000_u64;
+    let heap_address_normalized = heap_address - (heap_address % 0x1000);
+    let heap_size = DEFAULT_HEAP_SIZE;
+    for i in 0..heap_size {
+        match frame_allocator.add_entry_to_table(
+            level_4_table_addr,
+            VirtAddr::new(heap_address_normalized + i * 0x1000),
+            PageTableFlags::USER_ACCESSIBLE
+                | PageTableFlags::PRESENT
+                | PageTableFlags::WRITABLE
+                | elf::HEAP,
+            false,
+        ) {
+            Ok(()) => (),
+            Err(memory::MemoryError(err)) => {
+                errorln!(
+                    "Could not allocate the {}-th part of the heap. Error : {:?}",
+                    i,
+                    err
+                );
+            }
+        }
+        match memory::write_into_virtual_memory(
+            level_4_table_addr,
+            VirtAddr::new(heap_address_normalized + i * 0x1000),
+            &[0_u8; 0x1000],
+        ) {
+            Ok(()) => (),
+            Err(a) => errorln!("{:?} at heap-section : {:?}", a, i),
+        };
+    }
+
+    // Allocate a page for the process's arguments.
+    let args_address = 0x1000;
+    match frame_allocator.add_entry_to_table(
+        level_4_table_addr,
+        VirtAddr::new(args_address),
+        PageTableFlags::USER_ACCESSIBLE
+            | PageTableFlags::PRESENT
+            | PageTableFlags::WRITABLE
+            | elf::HEAP,
+        false,
+    ) {
+        Ok(()) => (),
+        Err(memory::MemoryError(err)) => {
+            errorln!("Could not allocate the args page. Error : {:?}", err);
+        }
+    };
+    // Write the arguments onto the process's memory
+    match memory::write_into_virtual_memory(
+        level_4_table_addr,
+        VirtAddr::new(args_address),
+        &flatten_arguments(args),
+    ) {
+        Ok(()) => (),
+        Err(a) => errorln!("Error when writing arguments : {:?}", a),
+    };
+
+    get_current_as_mut().heap_address = heap_address_normalized;
+    get_current_as_mut().heap_size = heap_size;
+    if new_process {
+        get_current_as_mut().stack_base = addr_stack;
+    }
+
+    let (_cr3, cr3f) = Cr3::read();
+    Cr3::write(level_4_table_addr, cr3f);
+    println!("good luck user ;) {} {}", addr_stack, prog_entry);
+    println!("target : {:x}", prog_entry);
+    towards_user_give_heap_args(
+        heap_address_normalized,
+        heap_size,
+        args_address,
+        addr_stack,
+        prog_entry,
+    );
 }
 
 /// Main structure of a process.
@@ -537,11 +648,13 @@ pub struct Process {
     pub cr3: PhysAddr,
     pub cr3f: Cr3Flags,
     pub rsp: u64, // every registers are saved on the stack
+    pub stack_base: u64,
     state: State,
     owner: u64,
     pub heap_address: u64,
     pub heap_size: u64,
-    pub open_files: ProcessDescriptorTable
+    pub open_files: ProcessDescriptorTable,
+    pub screen: VirtualScreenID,
 }
 
 impl Process {
@@ -558,11 +671,13 @@ impl Process {
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
             rsp: 0,
+            stack_base: 0,
             state: State::Runnable,
             owner,
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            screen: VirtualScreenID::new(),
         }
     }
 
@@ -575,11 +690,13 @@ impl Process {
             cr3: PhysAddr::zero(),
             cr3f: Cr3Flags::empty(),
             rsp: 0,
+            stack_base: 0,
             state: State::SlotAvailable,
             owner: 0,
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            screen: VirtualScreenID::null(),
         }
     }
 
@@ -702,6 +819,11 @@ pub fn spawn_first_process() {
     let cr3 = x86_64::registers::control::Cr3::read();
     proc.cr3 = cr3.0.start_address();
     proc.cr3f = cr3.1;
+    if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
+        proc.screen = mainscreen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+    } else {
+        errorln!("could not find mainscreen in first process");
+    }
     unsafe {
         ID_TABLE[0] = proc;
     }
@@ -722,6 +844,8 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 }
 
 /// Returns the current process data structure as read only
+/// # Safety
+/// TODO
 pub fn get_current() -> &'static Process {
     unsafe { &ID_TABLE[CURRENT_PROCESS] }
 }
@@ -731,6 +855,13 @@ pub fn get_current() -> &'static Process {
 /// Returns the current process data structure as mutable
 pub unsafe fn get_current_as_mut() -> &'static mut Process {
     &mut ID_TABLE[CURRENT_PROCESS]
+}
+
+/// TODO safeguard the index
+/// # Safety
+/// TODO
+pub unsafe fn get_process(pid: usize) -> &'static Process {
+    &ID_TABLE[pid]
 }
 
 /// # Safety
@@ -756,6 +887,11 @@ pub unsafe fn fork() -> ID {
     let pid = son.pid;
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
+    son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
+    if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+        // Child process is spaned with a null-screen.
+        son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+    }
     ID_TABLE[pid.0 as usize] = son;
     println!("new process of id {:#?}", pid);
     WAITING_QUEUES[son.priority.0]

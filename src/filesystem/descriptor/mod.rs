@@ -10,7 +10,7 @@ const MAX_TOTAL_OPEN_FILES: usize = 256;
 /// Max number of openable files by a process
 const MAX_TOTAL_OPEN_FILES_BY_PROCESS: usize = 16;
 
-pub static mut GLOBAL_FILE_TABLE: GeneralFileTable = GeneralFileTable::new();
+static mut GLOBAL_FILE_TABLE: GeneralFileTable = GeneralFileTable::new();
 
 /// Contains all the open_file_tables
 #[derive(Clone,Debug)]
@@ -24,38 +24,27 @@ pub struct GeneralFileTable {
 impl GeneralFileTable {
     pub const fn new() -> Self {
         Self {
-            tables: [None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None],
+            tables: [
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None, None, None,
+            ],
             index: 0,
         }
     }
@@ -97,10 +86,22 @@ impl Default for GeneralFileTable {
 pub struct OpenFileTable {
     /// path of the file
     path: Path,
+    flags: u64,
+    offset: usize,
 }
 impl OpenFileTable {
-    pub fn new(path: Path) -> Self {
-        Self{path}
+    pub fn new(path: Path, flags: u64) -> Self {
+        Self {
+            path,
+            flags,
+            offset: 0,
+        }
+    }
+    pub fn get_path(&self) -> Path {
+        self.path.clone()
+    }
+    pub fn get_offset(&self) -> usize {
+        self.offset
     }
 }
 
@@ -130,16 +131,41 @@ pub struct ProcessDescriptorTable {
 
 impl ProcessDescriptorTable {
     pub const fn init() -> Self {
-        Self{
+        Self {
             files: [None; MAX_TOTAL_OPEN_FILES_BY_PROCESS],
             index: 0,
         }
     }
-    
+
     /// Returns reference to filetable from a filedescriptor.
-    pub fn get_file_table(&self, fd: FileDescriptor) -> &'static OpenFileTable {
-        unsafe{
-            GLOBAL_FILE_TABLE.get_file_table_ref(self.files[fd.into_usize()].unwrap())
+    pub fn get_file_table(
+        &self,
+        fd: FileDescriptor,
+    ) -> Result<&'static OpenFileTable, FileDesciptorError> {
+        if let Some(id) = self.files[fd.into_usize()] {
+            Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref(id) })
+        } else {
+            Err(FileDesciptorError())
+        }
+    }
+
+    pub fn add_file_table(&mut self, open_file_table: OpenFileTable) -> FileDescriptor {
+        // ! This `3` if temporary, only for test purposes
+        let mut i = 3;
+        while i < MAX_TOTAL_OPEN_FILES_BY_PROCESS {
+            if self.files[i].is_none() {
+                // File descriptor to be returned
+                break;
+            }
+            i += 1;
+        }
+        if i == MAX_TOTAL_OPEN_FILES_BY_PROCESS {
+            panic!("Too many opened files by process.");
+        } else {
+            let fd = i;
+            let index = unsafe { GLOBAL_FILE_TABLE.insert(open_file_table) };
+            self.files[i] = Some(index);
+            FileDescriptor::new(fd)
         }
     }
 
@@ -152,7 +178,8 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
-        todo!()
+        let open_file_table = OpenFileTable::new(_path, _flags);
+        self.add_file_table(open_file_table)
     }
 
     /// self.dup(4, 1) redirects fd 1 to the OpenFileTable
@@ -189,7 +216,8 @@ pub fn open(filename: String) -> FileDescriptor {
                             OpenFileTable::new(
                                 Path::from(
                                     filename.as_str()
-                                )
+                                ),
+                                0
                             )
                         )
                     );

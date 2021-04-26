@@ -35,7 +35,7 @@ use x86_64::{
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
     interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, test_panic,
-    vga, warningln, _TEST_PROGRAM,
+    vga, warningln, _TEST_PROGRAM2,
 };
 use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
@@ -65,6 +65,8 @@ fn panic(_info: &PanicInfo) -> ! {
 /// - the father loops
 /// - the son shuts down the computer
 /// Result : SUCCESS :D
+/// # Safety
+/// TODO
 pub unsafe extern "C" fn test_syscall() {
     asm!(
         "mov rax, 42",
@@ -89,6 +91,7 @@ pub fn init(_boot_info: &'static BootInfo) {
     initdebugln!();
     println!("Ceci est simplement un debug :)");
     warningln!("Ceci est un warning :|");
+    println!("{:?}", x86_64::registers::control::Cr4::read());
     errorln!("Ceci est une erreur :(");
     gdt::init();
 
@@ -120,6 +123,7 @@ pub fn init(_boot_info: &'static BootInfo) {
         }
     };
     // I/O Initialization
+    hardware::mouse::init().unwrap();
     keyboard::init();
     //vga::init();
 
@@ -140,6 +144,9 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     debug!("{:?}", unsafe { hardware::clock::Time::get() });
 
+    // Needs to be before `spawn_first_process`
+    vga::init();
+
     scheduler::process::spawn_first_process();
     unsafe {
         filesystem::init_vfs();
@@ -158,7 +165,14 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-            scheduler::process::disassemble_and_launch(_TEST_PROGRAM, frame_allocator, 1, 2);
+            scheduler::process::disassemble_and_launch(
+                _TEST_PROGRAM2,
+                frame_allocator,
+                1,
+                2,
+                Vec::new(),
+                true,
+            );
         }
     }
 

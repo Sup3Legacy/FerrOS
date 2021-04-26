@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Path(String);
 
 impl Path {
@@ -46,9 +46,21 @@ impl Path {
     pub fn get_name(&self) -> String {
         self.slice().get(0).unwrap_or(&String::from("")).clone()
     }
+    pub fn from_sliced(sliced: &[String]) -> Self {
+        let mut path = Self::new();
+        for e in sliced {
+            path.push_str(e);
+        }
+        path
+    }
 }
 impl Default for Path {
     fn default() -> Self {
         Self::new()
+    }
+}
+impl Clone for Path {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }

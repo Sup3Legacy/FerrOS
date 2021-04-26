@@ -39,6 +39,12 @@ impl CHAR {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VirtualScreenLayer(pub usize);
 
+impl VirtualScreenLayer {
+    pub fn new(layer: usize) -> Self {
+        Self(layer)
+    }
+}
+
 /// This is the virtual screen assigned to a process
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub struct VirtualScreen {
@@ -54,6 +60,39 @@ pub struct VirtualScreen {
 }
 
 impl VirtualScreen {
+    pub fn resize(&mut self, size: Coord) {
+        let blank = CHAR {
+            code: b' ',
+            color: self.color,
+        };
+        let mut new_buffer = Vec::new();
+        let _old_height = self.height;
+        let _old_width = self.width;
+        self.height = size.get_row();
+        self.width = size.get_col();
+        for _ in 0..self.height {
+            let mut line = Vec::new();
+            for _ in 0..self.width {
+                line.push(blank);
+            }
+            new_buffer.push(line);
+        }
+        let _old = self.buffer.clone();
+        self.buffer = new_buffer;
+        self.row_pos = 0;
+        self.col_pos = 0;
+        // TODO write back the old buffer into the new one
+        /*
+        for i in 0..old_height {
+            for j in 0..old_width {
+                self.write_byte();
+            }
+        }
+        */
+    }
+    pub fn replace(&mut self, location: Coord) {
+        self.position = location;
+    }
     pub fn get_char(&self, row: usize, col: usize) -> CHAR {
         self.buffer[row][col]
     }
@@ -69,13 +108,6 @@ impl VirtualScreen {
             b'\n' => self.new_line(),
             b'\r' => self.row_pos = 0,
             _ => {
-                if self.col_pos + self.col_pos * self.width == self.width * self.height - 1 {
-                    if self.col_pos == 0 {
-                        self.new_line();
-                        panic!("too many words");
-                    }
-                    self.scroll_up();
-                }
                 if self.col_pos == self.width {
                     self.new_line()
                 }
@@ -105,7 +137,7 @@ impl VirtualScreen {
     /// This functions positions the character pointer to the following line.
     /// If the screens overflows, it get scrolled up.
     fn new_line(&mut self) {
-        self.row_pos += 1 + (self.col_pos / self.width);
+        self.row_pos += 1; // + (self.col_pos / self.width)
         self.col_pos = 0;
         while self.row_pos >= self.height {
             self.scroll_up();
@@ -148,13 +180,13 @@ impl VirtualScreen {
         }
     }
 
-    pub fn write_byte_vec(&mut self, s: Vec<u8>) -> usize {
+    pub fn write_byte_vec(&mut self, s: &[u8]) -> usize {
         let l = s.len();
         for byte in s {
             match byte {
                 // useless match ?
-                0x20..=0x7e | b'\n' | b'\r' => self.write_byte(byte as u8),
-                _ => self.write_byte(byte as u8),
+                0x20..=0x7e | b'\n' | b'\r' => self.write_byte(*byte as u8),
+                _ => self.write_byte(*byte as u8),
             }
         }
         l
