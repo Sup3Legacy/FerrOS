@@ -74,7 +74,7 @@ enum FileType {
 /// * `group_misc` - 4 bits for the group's `rwxs` and the rest for `opened`, etc.
 ///
 /// TO DO : extend this header, because there is some space left in [`Header::padding`]
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct HeaderFlags {
     pub user_owner: u8,
@@ -109,7 +109,7 @@ pub enum FileMode {
 }
 
 /// A user's of group's or owner's ID. Might get replaced by a more general definition.
-#[repr(packed)]
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UGOID(pub u64);
 
@@ -119,7 +119,7 @@ pub struct UGOID(pub u64);
 ///
 /// * `lba` - the index of the `LBA` the sector belongs to.
 /// * `block` - its index within that `LBA`.
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Address {
     pub lba: u16,
@@ -136,21 +136,21 @@ pub struct Address {
 /// * `user` - the user's ID
 /// * `owner - the owner's ID
 /// * `group` - the group's ID
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Header {
-    pub file_type: Type,         // 1 byte
-    pub flags: HeaderFlags,      // 2 bytes
-    pub name: [u8; 32],          // 100 bytes
     pub user: UGOID,             // 8 bytes
     pub owner: UGOID,            // 8 bytes
     pub group: UGOID,            // 8 bytes
     pub parent_address: Address, // 4 bytes
     pub length: u32,             // 4 bytes. In case of a directory, it is the number of sub-items.
     pub blocks_number: u32,
-    pub mode: FileMode, // If Short then we list all blocks. Else each block contains the addresses of the data blocks.
-    pub padding: [u32; 10], // Padding to have a nice SHORT_MODE_LIMIT number
     pub blocks: [Address; SHORT_MODE_LIMIT as usize],
+    pub flags: HeaderFlags,      // 2 bytes
+    pub mode: FileMode, // If Short then we list all blocks. Else each block contains the addresses of the data blocks.
+    pub name: [u8; 32],          // 100 bytes
+    pub file_type: Type,         // 1 byte
+    pub padding: [u8; 40], // Padding to have a nice SHORT_MODE_LIMIT number
 }
 
 impl Header {
@@ -168,7 +168,7 @@ struct MemDir {
 }
 
 /// Memory representation of a raw file
-#[repr(packed)]
+#[repr(C)]
 pub struct MemFile {
     pub header: Header,
     pub data: Vec<u8>,
@@ -194,7 +194,7 @@ pub struct FileBlock {
 /// Memory representation of a LBA-Table.
 /// It contains its index of the first available sector
 /// as well as the occupation table of all its sectors
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct LBATable {
     index: u16,
@@ -203,7 +203,7 @@ pub struct LBATable {
 
 /// Memory representation of the global LBA table.
 /// It is never written to/read from the disk directly, but simply constructed at boot-time.
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct LBATableGlobal {
     index: u32,
@@ -211,7 +211,7 @@ pub struct LBATableGlobal {
 }
 
 /// Memory representation of the address blocks of a blob stored in long-mode.
-#[repr(packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct LongFile {
     pub addresses: [Address; 128],
@@ -468,22 +468,20 @@ impl UsTar {
                 file_header,
                 (header_address.lba * 512 + header_address.block) as u32,
             );
-            unsafe {
-                let blocks_to_write = slice_vec(&memfile.data);
-                for i in 0..blocks_number {
-                    let file_block = FileBlock {
-                        data: blocks_to_write[i as usize],
-                    };
-                    self.write_to_disk(
-                        file_block,
-                        (block_addresses[i as usize].lba * 512
-                            + block_addresses[i as usize].block
-                            + 1) as u32,
-                    );
-                }
-                self.lba_table_global.write_to_disk(self.port);
-                header_address
+            let blocks_to_write = slice_vec(&memfile.data);
+            for i in 0..blocks_number {
+                let file_block = FileBlock {
+                    data: blocks_to_write[i as usize],
+                };
+                self.write_to_disk(
+                    file_block,
+                    (block_addresses[i as usize].lba * 512
+                        + block_addresses[i as usize].block
+                        + 1) as u32,
+                );
             }
+            self.lba_table_global.write_to_disk(self.port);
+            header_address
         } else {
             //println!("Writing in long mode.");
             let blocks_number = file_header.blocks_number;
@@ -534,7 +532,7 @@ impl UsTar {
             }
 
             // Now we write all data blocks
-            let blocks_to_write = unsafe { slice_vec(&memfile.data) };
+            let blocks_to_write = slice_vec(&memfile.data);
             for i in 0..blocks_number {
                 let file_block = FileBlock {
                     data: blocks_to_write[i as usize],
@@ -571,16 +569,14 @@ impl UsTar {
                     if compteur >= length {
                         break;
                     }
-                    unsafe {
-                        file.data.push((sector.data[j] >> 8) as u8);
-                        file.data.push((sector.data[j] & 0xff) as u8);
-                    }
+                    file.data.push((sector.data[j] >> 8) as u8);
+                    file.data.push((sector.data[j] & 0xff) as u8);
                     compteur += 1;
                 }
             }
         } else if header.mode == FileMode::Long {
             //println!("Reading in long mode");
-            let mut compteur = 0;
+            let mut counter = 0;
             let number_address_block = header.blocks_number / 128 + {
                 if header.blocks_number % 128 == 0 {
                     0
@@ -595,29 +591,27 @@ impl UsTar {
                 let sector: LongFile =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..128 {
-                    if compteur >= length {
+                    if counter >= length {
                         break;
                     }
                     data_addresses.push(sector.addresses[j]);
-                    compteur += 1;
+                    counter += 1;
                 }
             }
 
             // Read these data blocks
-            compteur = 0;
+            counter = 0;
             for i in 0..header.blocks_number {
                 let address = data_addresses[i as usize];
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
-                    if compteur >= length {
+                    if counter >= length {
                         break;
                     }
-                    unsafe {
-                        file.data.push((sector.data[j] >> 8) as u8);
-                        file.data.push((sector.data[j] & 0xff) as u8);
-                    }
-                    compteur += 1;
+                    file.data.push((sector.data[j] >> 8) as u8);
+                    file.data.push((sector.data[j] & 0xff) as u8);
+                    counter += 1;
                 }
             }
         } else {
