@@ -21,10 +21,24 @@ We still managed to find enough documentation regarding the language-specific se
 # Theoretical plan
 
 Before talking about how our kernel works, let's first explain how we designed it.
+
 ## General idea
 
 To give a rough idea, our goal during this project was to write a sort of UNIX-like kernel (though we never designed our kernel as being really compatible with any *NIX OS). So the base idea isn't original at all. However, the choice of the language, as we thought, would make this project interesting, as OS written in Rust still are not common. One example would be Redox (TODO insert link), the best known and probably most advanced operating system written in Rust.
 
+## Main objectives
+
+When we first began working on FerrOS, we have fixed some objectives we wanted to achieve :
+
+* General-purpose kernel with a working userland
+* Some basic interactions using system calls
+* Preemptive multitasking with a not-too-naive scheduling algorithm (basically at least something more advanced than a simple round-robin) and some notion of priority.
+* As many accessible physical devices as possible (because that's fun)
+* Multi-screen (i.e. the screen can be shared by multiple processes). The reason behind this is pretty simple : how would you better demonstrate your working multitasking system than by having multiple processes write on the display at the same time? :)
+* Minimalist but functionnal userspace-library, which enables the user to write simple CLI programs.
+* A small functionnal shell (how original).
+
+This can be all summed up by "Have a working usermode shell that can do some basic stuff while a clock is running 'real-time' at the top of the screen".
 
 # Programming
 
@@ -67,9 +81,20 @@ One of the main reasons is that it is a straightforward scheduling algorithm. It
 
 ## Virtual File system
 
-The VFS is kind of the central piece of our kernel. It’s an energy field created by all living user-programs. It surrounds them and penetrates them. It binds the OS together.
+>The VFS is kind of the central piece of our kernel. It’s an energy field created by all living user-programs. It surrounds them and penetrates them. It binds the OS together [^1].
 
-Like in a real UNIX-like kernel, every device, be it hardware or software, can be accessed by an user-program through the abstract high-level interface of the VFS.
+Like in a real UNIX-like kernel, every device, be it hardware or software, can be accessed by an user-program through the abstract high-level interface of the VFS. In our opinion, this is a good example of an occurence where Rust really shows its strength. Our VFS represents a really meaty chunk of code and contains of lot of layers of abstraction. 
+
+The basic idea is the following : the VFS is an abstract tree whose branches are `String`s and whose leafs are various drivers. These drivers can be very different (we have a mouse driver, sound driver as well as a Tar driver, a RAM-disk driver, etc.) but every one of them implements the trait `Partition`, which presents a common abstract high-level interface, containing a few primitives (`read`, `write`, etc.). This is where we were really thankful of Rust's trait system, as we could unite a lot of drivers, which work completely differently under the hood (e.g. the driver for the Tar filesystem is over 1200-LOC long, contains multiple caches, a lot of data-structures and bytes handling all over the places, while the driver for the clock uses only some Port-based logic or the screen driver contains memory writes and buffer manipulations), in a single "simple" structure whithout worrying about any UB.
+
+So, when the VFS receives a query from a program (or from the kernel), it follows a path on its `Partition`-tree according to the `Path` contained in the `OpenFileTable` associated with the `FileDescriptor` given in argument to the query. If it eventually reaches a `Partition` (that is a driver), it simply forwards the query to that driver and returns its result. (if the path ends within the tree, the VFS handles the query itself. For example, if a program from the path `/`, it gets `proc, hardware, ustar`, i.e. the names of repertories in the root-folder).
+
+Given this structure, one can very simply add a new interface to the VFS, simply by adding a line into its initialization code (if the driver can be added at compile-time) or simply mutate the VFS main structure at runtime.
+
+Each node in the tree holds a hash-map (we use Rust's `BTreeMap`) which associates a folder-name to the associated node. Being able to use such high-level data-structure even if we are building to a "bare-metal" target is really comfortable enabled us to build such complex structures in our kernel.
+
+
+[^1]: Kernel Wars, A new filesystem
 
 ## Program/kernel interaction
 
