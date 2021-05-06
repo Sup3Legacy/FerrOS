@@ -146,10 +146,10 @@ pub struct Header {
     pub length: u32,             // 4 bytes. In case of a directory, it is the number of sub-items.
     pub blocks_number: u32,
     pub blocks: [Address; SHORT_MODE_LIMIT as usize],
-    pub flags: HeaderFlags,      // 2 bytes
+    pub flags: HeaderFlags, // 2 bytes
     pub mode: FileMode, // If Short then we list all blocks. Else each block contains the addresses of the data blocks.
-    pub name: [u8; 32],          // 100 bytes
-    pub file_type: Type,         // 1 byte
+    pub name: [u8; 32], // 100 bytes
+    pub file_type: Type, // 1 byte
     pub padding: [u8; 40], // Padding to have a nice SHORT_MODE_LIMIT number
 }
 
@@ -475,9 +475,8 @@ impl UsTar {
                 };
                 self.write_to_disk(
                     file_block,
-                    (block_addresses[i as usize].lba * 512
-                        + block_addresses[i as usize].block
-                        + 1) as u32,
+                    (block_addresses[i as usize].lba * 512 + block_addresses[i as usize].block + 1)
+                        as u32,
                 );
             }
             self.lba_table_global.write_to_disk(self.port);
@@ -705,8 +704,8 @@ impl UsTar {
 
 impl Partition for UsTar {
     fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
-        let file = unsafe{self.fetch_data(path)};
-        file.data[offset..offset+size].to_vec()
+        let file = unsafe { self.fetch_data(path) };
+        file.data[offset..offset + size].to_vec()
     }
 
     fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
