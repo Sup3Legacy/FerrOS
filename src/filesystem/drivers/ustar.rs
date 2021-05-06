@@ -708,7 +708,9 @@ impl Partition for UsTar {
         file.data[offset..offset + size].to_vec()
     }
 
-    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
+        // Blah blah
+        // addr = write_memfile_to_disk(&mut self, memfile)
         todo!()
     }
 

@@ -26,7 +26,7 @@ impl Partition for ScreenPartition {
         panic!("not allowed");
     }
 
-    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let process = process::get_current();

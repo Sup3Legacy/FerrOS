@@ -12,7 +12,7 @@ pub trait Partition {
 
     /// Writes a file
     /// Might wanna add some flags...
-    fn write(&self, path: Path, buffer: Vec<u8>) -> usize;
+    fn write(&mut self, path: Path, buffer: Vec<u8>) -> usize;
 
     /// Flushes all changes to a file
     fn flush(&self);

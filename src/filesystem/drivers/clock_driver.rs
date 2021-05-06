@@ -162,7 +162,7 @@ impl Partition for ClockDriver {
         vec
     }
 
-    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
         warningln!("User-program attempted to write in clock.");
         0
     }

@@ -19,7 +19,7 @@ impl Partition for HardWarePartition {
         todo!()
     }
 
-    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
         todo!()
     }
 
