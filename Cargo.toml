@@ -13,12 +13,12 @@ edition = "2018"
 [dependencies]
 bootloader = { version = "0.9.8", features = ["map_physical_memory", "sse"]}
 spin = "0.5.2"
-x86_64 = "0.13.2"
-pic8259_simple = "*"
+x86_64 = ">=0.14.1"
+pic8259_simple = {git="https://github.com/Pollux3737/pic8259_simple.git"}
 pc-keyboard = "*"
 linked_list_allocator = "*"
 uart_16550 = "*"
-vga= "*"
+vga= {git="https://github.com/Pollux3737/vga.git", rev="38bf676"}
 bitflags = "*"
 bit_field = "*"
 priority-queue = "1.1.1"
