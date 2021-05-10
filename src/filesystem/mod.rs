@@ -75,7 +75,7 @@ pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
         let _path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
-            vfs.write(_path, data)
+            vfs.write(_path, data, 0, 0) as usize
         } else {
             panic!("VFS not initialized in read_file.");
         }

@@ -145,7 +145,7 @@ impl Default for ClockDriver {
 }
 
 impl Partition for ClockDriver {
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
         let time = unsafe { Time::get() };
         let string = format!(
             "{} {} {} {} {} {} {} {}",
@@ -162,9 +162,9 @@ impl Partition for ClockDriver {
         vec
     }
 
-    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: &Path, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
         warningln!("User-program attempted to write in clock.");
-        0
+        -1
     }
 
     fn lseek(&self) {

@@ -11,11 +11,11 @@ pub trait SoftWareInterface {
 pub struct SoftwarePartition;
 
 impl Partition for SoftwarePartition {
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: &Path, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
         todo!()
     }
 

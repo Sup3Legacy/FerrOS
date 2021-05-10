@@ -38,12 +38,12 @@ fn u8slice_to_u64(slice: &[u8]) -> u64 {
 }
 
 impl Partition for SoundDriver {
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
         warningln!("User-program attempted to read in sound.");
         Vec::new()
     }
 
-    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: &Path, _buffer: &[u8], offset: usize, flags: u64) -> isize {
         let sound_number = _buffer.len() / (3 * 8);
         // Each sound packet is 3 u64
         print!("Got a sound, {}", _buffer.len());
@@ -54,7 +54,7 @@ impl Partition for SoundDriver {
             sound::add_sound(tone, length, begin);
             print!("Added a sound");
         }
-        sound_number * (3 * 8)
+        (sound_number * (3 * 8)) as isize
     }
 
     fn lseek(&self) {

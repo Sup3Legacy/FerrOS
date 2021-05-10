@@ -37,8 +37,8 @@ impl Default for ProcDriver {
 impl Partition for ProcDriver {
     #[allow(clippy::if_same_then_else)]
     #[allow(clippy::len_zero)]
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
-        let sliced = _path.slice();
+    fn read(&self, path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+        let sliced = path.slice();
         if sliced.len() == 2 {
             if let Ok(proc) = sliced[0].parse::<usize>() {
                 if let Ok(pi) = self.get_info(&sliced[1]) {
@@ -58,9 +58,9 @@ impl Partition for ProcDriver {
         todo!()
     }
 
-    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: &Path, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
         warningln!("User-program attempted to write in proc.");
-        0
+        -1
     }
 
     fn lseek(&self) {

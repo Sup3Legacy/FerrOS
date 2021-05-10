@@ -168,7 +168,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
         if args.rdi == 1 {
             unsafe {
                 if let Some(vfs) = &mut filesystem::VFS {
-                    vfs.write(Path::from("screen/screenfull"), t);
+                    vfs.write(Path::from("screen/screenfull"), t, 0, 0);
                 } else {
                     errorln!("Could not find VFS");
                 }
@@ -203,8 +203,8 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    let filename = unsafe{read_string_from_pointer(args.rdi)};    
-    let fd = descriptor::open(filename);  
+    let filename = unsafe { read_string_from_pointer(args.rdi) };
+    let fd = descriptor::open(filename);
     args.rax = fd.into_u64();
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };
@@ -223,7 +223,7 @@ extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStac
     let ret_code = descriptor::close(descriptor);
     match ret_code {
         Ok(()) => args.rax = 0,
-        Err(_) => args.rax = 1
+        Err(_) => args.rax = 1,
     };
 }
 

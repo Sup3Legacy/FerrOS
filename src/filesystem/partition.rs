@@ -8,11 +8,11 @@ pub trait Partition {
     /// Reads a file
     /// Takes as a parameter the path to the file, the offset and the size
     /// Returns the read buffer
-    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8>;
+    fn read(&self, path: &Path, offset: usize, size: usize) -> Vec<u8>;
 
     /// Writes a file
     /// Might wanna add some flags...
-    fn write(&mut self, path: Path, buffer: Vec<u8>) -> usize;
+    fn write(&mut self, path: &Path, buffer: &[u8], offset: usize, flags: u64) -> isize;
 
     /// Flushes all changes to a file
     fn flush(&self);

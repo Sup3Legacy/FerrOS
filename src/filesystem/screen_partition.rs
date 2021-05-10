@@ -22,11 +22,11 @@ impl ScreenPartition {
 }
 
 impl Partition for ScreenPartition {
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: &Path, _buffer: &[u8], offset: usize, flags: u64) -> isize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let process = process::get_current();
@@ -35,7 +35,7 @@ impl Partition for ScreenPartition {
                 if let Some(screen) = v_screen {
                     screen.write_byte_vec(&_buffer);
                     main_screen.draw();
-                    _buffer.len()
+                    _buffer.len() as isize
                 } else {
                     warningln!(
                         "Attempted to write in non-existing virtualscreen : {:?}",

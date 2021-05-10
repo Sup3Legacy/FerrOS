@@ -1,13 +1,21 @@
 #![allow(clippy::upper_case_acronyms)]
 
+use super::super::fsflags::OpenFlags;
 use super::super::partition::Partition;
 use super::disk_operations;
 use crate::data_storage::path::Path;
 use crate::println;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::vec::IntoIter;
 use alloc::vec::Vec;
 use core::{mem::transmute, todo};
+
+#[derive(Debug)]
+pub enum UsTarError {
+    GenericError,
+    FileNotFound,
+}
 
 /// Main cache for Path -> Adress conversion.
 /// Used to speed-up filesystem quarries while only allocating a small amount of data.
@@ -128,13 +136,13 @@ pub struct Address {
 
 /// A chunk's header
 ///
-/// *Fields$
+/// # Fields
 ///
 /// * `file_type` - a [`Type`] indicating what type this chunk is ([`Type::Dir`] or [`Type::File`]).
 /// * `flags` - a [`HeaderFlags`] holding the different permission flags of that chunk.
 /// * `name` - the chunk's name on a 32-wide char array.
 /// * `user` - the user's ID
-/// * `owner - the owner's ID
+/// * `owner` - the owner's ID
 /// * `group` - the group's ID
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -160,8 +168,8 @@ impl Header {
     }
 }
 
-#[derive(Debug)]
-struct MemDir {
+#[derive(Debug, Clone)]
+pub struct MemDir {
     name: String,
     address: Address,
     files: BTreeMap<String, Address>,
@@ -169,6 +177,7 @@ struct MemDir {
 
 /// Memory representation of a raw file
 #[repr(C)]
+#[derive(Debug, Clone)]
 pub struct MemFile {
     pub header: Header,
     pub data: Vec<u8>,
@@ -396,12 +405,94 @@ pub trait U16Array {
     fn from_u16_array(array: [u16; 256]) -> Self;
 }
 
+#[derive(Clone)]
+struct PathDecomp {
+    decomp: IntoIter<String>,
+    current_path: Path,
+    current_dir: MemDir,
+}
 pub struct UsTar {
     port: u16,
     lba_table_global: LBATableGlobal,
 }
 
 impl UsTar {
+    fn find_first_uncached(path: &Path) -> PathDecomp {
+        let mut decomp = path.slice().into_iter();
+        let mut current_path = Path::new();
+        let mut current_dir = unsafe { DIR_CACHE.0.get_mut(&current_path).unwrap() };
+        while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
+            current_dir = a;
+            if let Some(next_dir) = decomp.next() {
+                current_path.push_str(&next_dir);
+            }
+        }
+        PathDecomp {
+            decomp,
+            current_path,
+            current_dir: current_dir.clone(),
+        }
+    }
+
+    fn add_cache(&self, d: &mut PathDecomp) -> Result<(), UsTarError> {
+        let decomp = d.decomp.clone();
+        for next_dir in decomp {
+            d.current_path.push_str(&next_dir);
+            let next_address = d
+                .current_dir
+                .files
+                .get_mut(&next_dir)
+                .ok_or(UsTarError::FileNotFound)?;
+            let current_dir = self.memdir_from_address(*next_address);
+            unsafe {
+                DIR_CACHE
+                    .0
+                    .insert(Path::from(&d.current_path.to()), current_dir)
+            };
+            unsafe {
+                FILE_ADRESS_CACHE
+                    .0
+                    .insert(Path::from(&d.current_path.to()), *next_address)
+            };
+        }
+        Ok(())
+    }
+
+    pub fn find_address(&self, path: &Path) -> Result<Address, UsTarError> {
+        if let Some(addr) = unsafe { FILE_ADRESS_CACHE.0.get(&path) } {
+            Ok(*addr)
+        } else {
+            let mut path_decomp = UsTar::find_first_uncached(path);
+            self.add_cache(&mut path_decomp)?;
+            self.find_address(path)
+        }
+    }
+
+    pub fn find_memdir(&self, path: &Path) -> Result<MemDir, UsTarError> {
+        let memdir_res = unsafe { DIR_CACHE.0.get(path) };
+        if memdir_res.is_none() {
+            let mut path_decomp = UsTar::find_first_uncached(path);
+            self.add_cache(&mut path_decomp)?;
+            self.find_memdir(path)
+        } else {
+            Ok(memdir_res.unwrap().clone())
+        }
+    }
+
+    /// Fetches a `MemFile` from a `Path`.
+    /// It uses both caches to speed-up search
+    /// and mutate them on-the-fly to speed-up
+    /// future searches even more.
+    pub fn find_memfile(&self, path: &Path) -> Result<MemFile, UsTarError> {
+        let parent_dir = self.find_memdir(&path.get_parent())?;
+        for (file_name, file_address) in parent_dir.files.iter() {
+            if file_name == &path.get_name() {
+                return Ok(self.memfile_from_disk(file_address));
+            }
+        }
+        Err(UsTarError::FileNotFound)
+    }
+
     /// Returns a vector of fresh addresses. /!\ once they are returned, they are also marked as reserved by the filesystem!
     /// So one must avoid getting more addresses than needed (this could allocate all the disk with blank unused data).
     unsafe fn get_addresses(&mut self, n: u32) -> Vec<Address> {
@@ -548,7 +639,7 @@ impl UsTar {
         }
     }
 
-    pub fn read_memfile_from_disk(&self, address: Address) -> MemFile {
+    pub fn memfile_from_disk(&self, address: &Address) -> MemFile {
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = header.length;
         //println!("{:?}", header);
@@ -620,7 +711,7 @@ impl UsTar {
     }
 
     fn memdir_from_address(&self, address: Address) -> MemDir {
-        let file = self.read_memfile_from_disk(address);
+        let file = self.memfile_from_disk(&address);
         let data = file.data;
         let len = (file.header.length << 1) as usize; // x2 because header.length is in u16... Might change that
 
@@ -657,42 +748,6 @@ impl UsTar {
         }
     }
 
-    /// Fetches a `MemFile` from a `Path`.
-    /// It uses both caches to speed-up search
-    /// and mutate them on-the-fly to speed-up
-    /// future searches even more.
-    /// # Safety
-    /// TODO
-    pub unsafe fn fetch_data(&self, path: Path) -> MemFile {
-        if let Some(add) = FILE_ADRESS_CACHE.0.get(&path) {
-            self.read_memfile_from_disk(*add)
-        } else {
-            let mut decomp = path.slice().into_iter();
-            let mut current_path = Path::new();
-            let mut current_dir = DIR_CACHE.0.get_mut(&current_path).unwrap();
-            while let Some(a) = DIR_CACHE.0.get_mut(&current_path) {
-                current_dir = a;
-                if let Some(next_dir) = decomp.next() {
-                    current_path.push_str(&next_dir);
-                }
-            }
-            // At this point, we just came onto a directory that isn't already in cache.
-            for next_dir in decomp {
-                current_path.push_str(&next_dir);
-                let next_address = current_dir.files.get_mut(&next_dir).unwrap();
-                let current_dir = self.memdir_from_address(*next_address);
-                DIR_CACHE
-                    .0
-                    .insert(Path::from(&current_path.to()), current_dir);
-                FILE_ADRESS_CACHE
-                    .0
-                    .insert(Path::from(&current_path.to()), *next_address);
-            }
-            // This time, it should fall in the if because we cached all directories
-            self.fetch_data(path)
-        }
-    }
-
     pub fn write_to_disk(&self, data: impl U16Array, lba: u32) {
         disk_operations::write_sector(&data.to_u16_array(), lba, self.port);
     }
@@ -703,13 +758,48 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn read(&self, path: Path, offset: usize, size: usize) -> Vec<u8> {
-        let file = unsafe { self.fetch_data(path) };
+    fn read(&self, path: &Path, offset: usize, size: usize) -> Vec<u8> {
+        let file = match self.find_memfile(path) {
+            Ok(f) => f,
+            Err(_) => return Vec::new(),
+        };
         file.data[offset..offset + size].to_vec()
     }
 
-    fn write(&mut self, _path: Path, _buffer: Vec<u8>) -> usize {
-        // Blah blah
+    #[allow(unreachable_code)]
+    fn write(&mut self, path: &Path, _buffer: &[u8], offset: usize, flags: u64) -> isize {
+        let flag_set = OpenFlags::parse(flags);
+        if !(flag_set.contains(&OpenFlags::OWRO) || flag_set.contains(&OpenFlags::ORDWR)) {
+            return -1; // no right to write
+        }
+        // find the parent folder
+        let parent_path = &path.get_parent();
+        let parent_dir = if let Ok(a) = self.find_memdir(parent_path) {
+            a
+        } else {
+            return -1;
+        };
+
+        if !flag_set.contains(&OpenFlags::OCREAT) {
+            // look if the file is existant, fail otherwise
+        }
+        let header = Header {
+            user: UGOID(412),
+            owner: UGOID(666),
+            group: UGOID(007),
+            parent_address: todo!(),
+            length: todo!(),
+            blocks_number: todo!(),
+            blocks: todo!(),
+            flags: HeaderFlags {
+                user_owner: 0b1111_1111_u8,
+                group_misc: 0b1111_1111_u8,
+            },
+            mode: todo!(),
+            name: todo!(),
+            file_type: Type::File,
+            padding: [0_u8; 40],
+        };
         // addr = write_memfile_to_disk(&mut self, memfile)
         todo!()
     }
