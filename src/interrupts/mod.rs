@@ -321,13 +321,13 @@ unsafe extern "C" fn timer_interrupt_handler(
     registers: &mut Registers,
 ) {
     sound::handle();
-    println!(".{}/{}", COUNTER, QUANTUM);
+    //println!(".{}/{}", COUNTER, QUANTUM);
     //println!("{:#?}", stack_frame);
     //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
     //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
     //println!("r12:{} r11:{} rbp:{} rcx:{} rbx:{}", registers.r12, registers.r11, registers.rbp, registers.rcx, registers.rbx);
     if COUNTER == QUANTUM {
-        warningln!("Gonna change process");
+        //warningln!("Gonna change process");
         COUNTER = 0;
         //println!("{:#?}", stack_frame);
         let _stack_frame_2 = stack_frame.as_mut();
@@ -369,20 +369,12 @@ extern "x86-interrupt" fn page_fault_handler(
     let read_addr = Cr2::read();
     if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
         println!("terminated normally");
-        /* // This launch a new process when the other one has finished.
-        unsafe {
-            let (next, mut old) = process::terminated_normally(COUNTER);
-            COUNTER = 0;
-            let (cr3, cr3f) = CR"::read();
-            old.cr3 = cr3.start_address();
-            old.cr3f = cr3f;
-            Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-            old.rsp = VirtAddr::from_ptr(registers).as_u64();
-            process::leave_context(next.rsp);
-        }
-        */
         
-        hardware::power::shutdown();
+        unsafe {
+            let new = process::process_died(COUNTER, 0); // TODO fetch return code
+            process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
+        }
+
     } else if is_kernel_space(stack_frame.as_real().instruction_pointer) {
         bsod!("PAGE FAULT! {:#?}", stack_frame);
         bsod!("TRIED TO READ : {:#?}", Cr2::read());
