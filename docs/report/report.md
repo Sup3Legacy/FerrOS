@@ -126,7 +126,7 @@ On top of this code are build a few abstraction layers for easy handling of file
 
 ##### Memory allocator
 
-A very useful primitive traditionaly offered by a system's `libc` is, of course, `malloc`. We have our own heap allocator (it is based on Phil Opp.'s designe, that we improved a lot TODO expliquer où).
+A very useful primitive traditionaly offered by a system's `libc` is, of course, `malloc`. We have our own heap allocator (it is based on Phil Opp.'s design, that we improved a lot TODO expliquer où).
 
 When a program first executes, it is given as arguments the start address and the size of the heap is has been allocated by the kernel. The allocator is then initialized with these values.
 
@@ -135,3 +135,47 @@ This allocator is just a simple linked_list allocator. We improved it quite a lo
 - adding the automatic merging of contigous regions. Without it, a program could "run out" of heap space simply besauce of repeated allocations that fragmented the heap.
 - adding the automatic request of page allcoation. In case the allocator could not allocate a heap region because no big enough region was left, it would request, through a syscall, the kernel some additional pages that it would (depending of if the kernel responded positively or not) itnegrate into the heap.
 
+# Drivers
+
+In order to be able to interract with various hardware alemetns, we wrote a couple basic drivers.
+
+## VGA
+
+The most important driver in our system is obviously the screen! We opted for a standard text-based interface, as we didn't want to mess with video-mode and pixel-fonts (we made a few tests of video-mode and concluded we would not need the capabilities of a video-based display).
+
+For the display, we have multiple stacked interfaces. The most low-level one, in [`vga/mainscreen.rs`](../../src/vga/mainscreen.rs), handles all the basic logic associated  with a text-based terminal : it contains a reference to a fixed-sized buffer located at `0xb8000` and writes the individual characters into that buffer.
+
+As we wanted our system to be "multitasking-ready™", we needed some form of multi-screen abstraction layer. That is what [`vga/virtual_screen.rs`](../../src/vga/virtual_screen.rs) is for. The basic idea is the following : each process is given a `VirtualScreen`, instanciated with a null size. It is free (obviously, in a real system this would require some sort of permissions) to change its size ans location on the `MainScreen`. It can write into that `VirtualScreen` transparently, as if it was a free-sized physical screen (this is done through the `VFS` and take into account some special characters to change color, cursor location, etc.), even though a `VirtualScrene` is simply an abstract structure containing a buffer. Each `VirtualScreen` is associated a `Layer`, which determines whether it must be displayed on top of other screens it may collide with.
+
+The `MainScreen` (instantiated at startup) contains all `VirtualScreen`s in a priority-queue, indexed by layer. Whenever a `VirtualScreen` is written into, the `MainScreen` gets updated. It simply loops through all `VirtualScreen`s by order of increasing `Layer` and copies them into its buffer, at the given location and size.
+
+This way, we can have multiple process display text onto the screen concurrently, sharing it and/or overlapping one another while preserving a unified interface for the screen : from within a process, we do not need to worry about the offset of the `VirtualScreen`, we simply write into it as if we could use the entire screen! 
+
+There is however a small catch : as mentionned, the size and location (location on the physical screen) of a process' `VirtualScreen` can be changed by that process, which could potentially cause some issues. If we had more time, we would have implemented some sort of basic window managment system, like a simplified `i3`. Being aware of this limitation, we are still pretty proud of that part of the project, as it seems to us really nice being able to edit some text while a clock is asynchronously displaying the time on the top part of the screen!
+
+## Keyboard and mouse
+
+The other important driver we wrote is the keyboard one! There is nothing really special : we activated the corresponding interrupt and got some structures setup containing a `VecDeque` to store the incoming scancodes from the keyboard. Whenever a program reads bytes from `/hardware/keyboard`, these scancodes are poped from the queue and handed over to the process. We also implemented the same structure for the mouse, which can be accessed through `/hardware/mouse`, even though we currently have no user-program using the mouse!
+
+## Sound
+
+As we wanted to be able to offer the user a complete experience, we needed some sort of basic sound driver. We therefore use the integrated beeper as an 70s-style single-voice speaker. To be able to take full advantage of that horrible-sounding beeper, we wrote a "complex" interface build around a priority-queue. Each sound event is encoded into a `SoundElement`, containign some information, like its tone, length and time-offset (from current time) it should start on. This way, we can provide the driver with a series of noted each with an offset, in order to play some music without worrying about the program accessing the speaker ar the right time for the next note. 
+
+The priority-queue uses as priority a tuple `(time_to_start, sound_id)` so that the sound poped from the queue is always the one that the driver needs to start playing. This also handles the situation of having multiple sound overlap (e.g. sound A starts at `1` and lasts for `2` ticks and B starts at `2` and lasts for `2` ticks : A plays from `1` to `3` and B from `3` to `4`.)
+
+We simply keep track of the time by having a simple dummy variable incremented at each timer-interrupt (because the sound-driver updates its state at each such interrupt).
+
+This driver provides a simple interface : [sound/mod.rs](../../src/sound/mod.rs).
+
+There are some things we could have done if we had more time :
+
+* add a `repeat` fild into `SoundElement` so that one can get a repeating sound.
+* move from a beeper-based driver to a more advanced one using buffers, etc. This way, we could have provided a mroe complex interface using a number of different voices.
+
+## Clock
+
+We have a straight-forward (using OSdev) driver that reads the CMOS RTC and outputs the time informations. It can be accesses by the kernel or a program through `/hardware/clock`.
+
+## UsTar
+
+We really wanted to have a way to load and store data in a persistent way, using Qemu's disk emulation. Therefore we had to choose a filesystem format, so we took whatever the most simple one was : Tar. It went through some modifications and simplifications as we didn't need all features the original Tar format offers.

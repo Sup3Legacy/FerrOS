@@ -381,7 +381,7 @@ extern "x86-interrupt" fn page_fault_handler(
             process::leave_context(next.rsp);
         }
         */
-        
+
         hardware::power::shutdown();
     } else if is_kernel_space(stack_frame.as_real().instruction_pointer) {
         bsod!("PAGE FAULT! {:#?}", stack_frame);
