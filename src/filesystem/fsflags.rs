@@ -14,6 +14,7 @@ pub enum OpenFlags {
     OCREAT = 1 << 3,  // Create the file if doesn't exist
     OAPPEND = 1 << 4, // Writes at the end of the file
 }
+#[allow(clippy::from_over_into)] // voluntary, as the other way is undefined
 impl Into<u64> for OpenFlags {
     fn into(self) -> u64 {
         let ptr: *const OpenFlags = &self;

@@ -470,12 +470,13 @@ impl UsTar {
 
     pub fn find_memdir(&self, path: &Path) -> Result<MemDir, UsTarError> {
         let memdir_res = unsafe { DIR_CACHE.0.get(path) };
-        if memdir_res.is_none() {
-            let mut path_decomp = UsTar::find_first_uncached(path);
-            self.add_cache(&mut path_decomp)?;
-            self.find_memdir(path)
-        } else {
-            Ok(memdir_res.unwrap().clone())
+        match memdir_res {
+            Some(x) => Ok(x.clone()),
+            None => {
+                let mut path_decomp = UsTar::find_first_uncached(path);
+                self.add_cache(&mut path_decomp)?;
+                self.find_memdir(path)
+            }
         }
     }
 
@@ -546,9 +547,9 @@ impl UsTar {
         // Might want to Result<(), SomeError>
         let mut file_header = memfile.header;
         let _length = file_header.length; // TODO : make sure it is also the length of self.data
+        let blocks_number = file_header.blocks_number;
         if file_header.mode == FileMode::Short {
             //println!("Writing in short mode.");
-            let blocks_number = file_header.blocks_number;
             let header_address: Address = unsafe { self.get_addresses(1)[0] };
             let block_addresses: Vec<Address> = unsafe { self.get_addresses(blocks_number) };
             let mut addresses = [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize];
@@ -574,7 +575,6 @@ impl UsTar {
             header_address
         } else {
             //println!("Writing in long mode.");
-            let blocks_number = file_header.blocks_number;
             let number_address_block = blocks_number / 128 + {
                 if blocks_number % 128 == 0 {
                     0
@@ -772,34 +772,52 @@ impl Partition for UsTar {
         if !(flag_set.contains(&OpenFlags::OWRO) || flag_set.contains(&OpenFlags::ORDWR)) {
             return -1; // no right to write
         }
-        // find the parent folder
-        let parent_path = &path.get_parent();
-        let parent_dir = if let Ok(a) = self.find_memdir(parent_path) {
-            a
-        } else {
-            return -1;
+        // find the file
+        let memfile = self.find_memfile(path);
+        if memfile.is_err() {
+            // create the file?
+            if !flag_set.contains(&OpenFlags::OCREAT) {
+                return -1
+            } else {
+                // look for the parent folder in which we will create the file
+                let parent_path = path.get_parent();
+                let parent_dir = if let Ok(a) = self.find_memdir(&parent_path) {
+                    a
+                } else {
+                    return -1;
+                };
+                let name = path.get_name();
+                let bytes = name.as_bytes();
+                if name.len() > 32 {
+                    return -1
+                }
+                // convert it in a byte array
+                let mut name_arr = [0; 32];
+                name_arr[..name.len()].clone_from_slice(&bytes);
+                let header = Header {
+                user: UGOID(412),
+                owner: UGOID(666),
+                group: UGOID(007),
+                parent_address: parent_dir.address,
+                length: todo!(),
+                blocks_number: todo!(),
+                blocks: todo!(),
+                flags: HeaderFlags {
+                    user_owner: 0b1111_1111_u8,
+                    group_misc: 0b1111_1111_u8,
+                },
+                mode: todo!(),
+                name: name_arr,
+                file_type: Type::File,
+                padding: [0_u8; 40],
         };
-
+            }
+        }
+        // 
         if !flag_set.contains(&OpenFlags::OCREAT) {
             // look if the file is existant, fail otherwise
         }
-        let header = Header {
-            user: UGOID(412),
-            owner: UGOID(666),
-            group: UGOID(007),
-            parent_address: todo!(),
-            length: todo!(),
-            blocks_number: todo!(),
-            blocks: todo!(),
-            flags: HeaderFlags {
-                user_owner: 0b1111_1111_u8,
-                group_misc: 0b1111_1111_u8,
-            },
-            mode: todo!(),
-            name: todo!(),
-            file_type: Type::File,
-            padding: [0_u8; 40],
-        };
+
         // addr = write_memfile_to_disk(&mut self, memfile)
         todo!()
     }
