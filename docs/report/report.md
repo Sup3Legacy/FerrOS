@@ -14,7 +14,7 @@ One of the first considerations that had to be made for this project was the lan
 
 When we were first thinking about that language, someone (which asked to remain anonymous) told us :
 
-> Why don't you want to use C? It's obviously perfectly capable of doing whatever you want to achieve. Rust's safeness comes with a great amount of limitations; the one who give up their liberty to win some safety always gets nei#(IA]/l5QBmtl(Fx **Segmentation fault (core dumped).**
+> Why don't you want to use C? It's obviously perfectly capable of doing whatever you want to achieve. Rust's safeness comes with a great amount of limitations; those who give up their liberty to win some safety always get nei#(IA]/l5QBmtl(Fx **Segmentation fault (core dumped).**
 
 We were aware that this language, however, has a lot less documentations when it comes to system programing, as it is very young (the first stable version was released only 6 years ago) and only a few such projects have been written using it.
 
