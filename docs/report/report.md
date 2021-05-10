@@ -1,7 +1,7 @@
 ---
 title: FerrOS
 author: Gabriel \textsc{Doriath Döhler}, Paul \textsc{Fournier}, Constantin \textsc{Gierczak-Galle}, Samuel \textsc{Vivien}
-abstract: FerrOS is a UNIX-like OS based on a minimalist hybrid-approach-kernel. Its main particularity is the language it is written it. FerrOS is written in pure Rust.
+abstract: FerrOS is a UNIX-like OS based on a minimalist hybrid-kernel. Its main particularity is the language it is written it. FerrOS is written in pure Rust.
 toc: true
 numbersections: true
 ---
@@ -14,7 +14,7 @@ One of the first considerations that had to be made for this project was the lan
 
 When we were first thinking about that language, someone (which asked to remain anonymous) told us :
 
-> Why don't you want to use C? It's obviously perfectly capable of doing whatever you want to achieve. Rust's safeness comes with a great amount of limitations; those who give up their liberty to win some safety always get nei#(IA]/l5QBmtl(Fx **Segmentation fault (core dumped).**
+> But why would you want to use Rust instead of the all-mighty C? Rust's safeness comes with a great amount of limitations and those who give up their liberty for the sake of winning some temporary safety get neith#(IAç]/l5Q¦Bmçtl¿(Fx **Segmentation fault (core dumped)**
 
 We were aware that this language, however, has a lot less documentations when it comes to system programing, as it is very young (the first stable version was released only 6 years ago) and only a few such projects have been written using it.
 
