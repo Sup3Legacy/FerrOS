@@ -18,7 +18,7 @@ When we were first thinking about that language, someone (which asked to remain 
 
 We were aware that this language, however, has a lot less documentations when it comes to system programing, as it is very young (the first stable version was released only 6 years ago) and only a few such projects have been written using it.
 
-We still managed to find enough documentation regarding the language-specific settings we would need (ranging from the `asm!` macro to the configuration of a `no-std` bareback target) and could adapt all the technical documentation that is explained using the C programming language in most topic-specific resources (such as OSdev).
+We still managed to find enough documentation regarding the language-specific settings we would need (ranging from the `asm!` macro to the configuration of a `no-std` baremetal target) and could adapt all the technical documentation that is explained using the C programming language in most topic-specific resources (such as OSdev).
 
 
 
