@@ -1,3 +1,5 @@
+//! All the logic around `Process`
+
 use super::PROCESS_MAX_NUMBER;
 
 use bit_field::BitField;
@@ -40,7 +42,10 @@ extern "C" {
 
 #[naked]
 /// # Safety
-/// TODO
+///
+/// Highgly unsafe function!
+///
+/// Given `Cr3` and `rsp` values, it leaves the context.
 pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
     asm!(
         "mov cr3, rdi",
@@ -100,6 +105,8 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 #[naked]
 /// # Safety
 /// TODO
+///
+/// Goes towards the userland with a stack- and an instruction-pointer
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
@@ -139,6 +146,9 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 #[naked]
 /// # Safety
 /// TODO
+///
+/// Goes towards the userland with a stack- and an instruction-pointer.
+/// It is also given a heap.
 pub unsafe extern "C" fn towards_user_give_heap(
     _heap_addr: u64,
     _heap_size: u64,
@@ -181,6 +191,9 @@ pub unsafe extern "C" fn towards_user_give_heap(
 #[naked]
 /// # Safety
 /// TODO
+///
+/// Goes towards the userland with a stack- and an instruction-pointer.
+/// It is also given a heap and arguments.
 pub unsafe extern "C" fn towards_user_give_heap_args(
     _heap_addr: u64,
     _heap_size: u64,
@@ -223,6 +236,8 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
 
 /// # Safety
 /// TODO
+///
+/// allocates a given number of additional pages to the process' heap.
 pub unsafe fn allocate_additional_heap_pages(
     frame_allocator: &mut memory::BootInfoAllocator,
     start: u64,
@@ -333,6 +348,7 @@ pub unsafe fn launch_first_process(
     }
 }
 
+/// Converts flags
 pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
     let mut res = elf::MODIFY_WITH_EXEC | PageTableFlags::PRESENT;
     if flags.get_bit(0) {
@@ -443,16 +459,6 @@ pub unsafe fn disassemble_and_launch(
         let size = program.mem_size();
         let file_size = program.file_size();
         maximum_address = max(maximum_address, address + size);
-        // Section debug
-        /*
-        println!(
-            "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-            address,
-            offset,
-            size,
-            section.get_type()
-        );
-        */
         match program.get_type() {
             Ok(Type::Phdr) | Err(_) => continue,
             Ok(_) => (),
@@ -779,40 +785,9 @@ impl Default for ID {
     }
 }
 
-pub static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-];
+/// Main array of all processes
+pub static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] =
+    [Process::missing(); PROCESS_MAX_NUMBER as usize];
 
 pub fn spawn_first_process() {
     let mut proc = Process::create_new(ID::forge(0), Priority(0), 0);

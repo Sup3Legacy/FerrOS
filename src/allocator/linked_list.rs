@@ -40,7 +40,7 @@ impl ListNode {
         self.start_addr() + self.size
     }
     /// This function performs a partial merge. If possible,
-    /// it merges `self` and `self.next.
+    /// it merges `self` and `self.next`.
     ///
     /// Each time we want to remerge the heap, we want to perform at most 2 merge actions.
     /// This is what the `nb` argument stands for.
