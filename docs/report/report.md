@@ -12,6 +12,10 @@ numbersections: true
 
 One of the first considerations that had to be made for this project was the language. We chose to use the Rust language, as using a language with more abstraction capabilities than the commonly used C language could be interesting when writing an OS, as abstracting some structures and methods would be beneficial in terms of ease of development.
 
+When we were first thinking about that language, someone (which asked to remain anonymous) told us :
+
+> Why don't you want to use C? It's obviously perfectly capable of doing whatever you want to achieve. Rust's safeness comes with a great amount of limitations; the one who give up their liberty to win some safety always gets nei#(IA]/l5QBmtl(Fx **Segmentation fault (core dumped).**
+
 We were aware that this language, however, has a lot less documentations when it comes to system programing, as it is very young (the first stable version was released only 6 years ago) and only a few such projects have been written using it.
 
 We still managed to find enough documentation regarding the language-specific settings we would need (ranging from the `asm!` macro to the configuration of a `no-std` bareback target) and could adapt all the technical documentation that is explained using the C programming language in most topic-specific resources (such as OSdev).
