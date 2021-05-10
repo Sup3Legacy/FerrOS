@@ -369,13 +369,12 @@ extern "x86-interrupt" fn page_fault_handler(
     let read_addr = Cr2::read();
     if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
         println!("terminated normally");
-        
+
         unsafe {
             let new = process::process_died(COUNTER, 0); // TODO fetch return code
             COUNTER = 0;
             process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
         }
-
     } else if is_kernel_space(stack_frame.as_real().instruction_pointer) {
         bsod!("PAGE FAULT! {:#?}", stack_frame);
         bsod!("TRIED TO READ : {:#?}", Cr2::read());

@@ -879,11 +879,10 @@ pub fn listen() -> (u64, u64) {
                             );
                             frame_allocator.deallocate_4k_frame(ID_TABLE[pid].cr3);
                         }
-                        return (pid as u64, return_value as u64)
-                    },
-                    _ => ()
+                        return (pid as u64, return_value as u64);
+                    }
+                    _ => (),
                 }
-                
             }
         }
         (0, 0)

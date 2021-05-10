@@ -1003,7 +1003,11 @@ impl BootInfoAllocator {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     debug!("qsd");
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags, protected) {
+                    match self.deallocate_level_3_page(
+                        &mut *page_table_ptr,
+                        remove_flags,
+                        protected,
+                    ) {
                         Ok(flags_level_3) => {
                             if flags_level_3.is_empty() {
                                 table_4[i].set_flags(PageTableFlags::empty());
@@ -1049,7 +1053,11 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_2_page(&mut *page_table_ptr, remove_flags, protected) {
+                    match self.deallocate_level_2_page(
+                        &mut *page_table_ptr,
+                        remove_flags,
+                        protected,
+                    ) {
                         Ok(flags_level_2) => {
                             if flags_level_2.is_empty() {
                                 table_3[i].set_flags(PageTableFlags::empty());
@@ -1093,7 +1101,11 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_1_page(&mut *page_table_ptr, remove_flags, protected) {
+                    match self.deallocate_level_1_page(
+                        &mut *page_table_ptr,
+                        remove_flags,
+                        protected,
+                    ) {
                         Ok(flags_level_1) => {
                             if flags_level_1.is_empty() {
                                 table_2[i].set_flags(PageTableFlags::empty());

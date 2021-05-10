@@ -21,6 +21,7 @@ struct ListNode {
 }
 
 impl ListNode {
+    /// Creates a new `ListNode` given the parameters.
     const fn new(size: usize, first: bool) -> Self {
         ListNode {
             size,
@@ -38,6 +39,11 @@ impl ListNode {
     fn end_addr(&self) -> usize {
         self.start_addr() + self.size
     }
+    /// This function performs a partial merge. If possible,
+    /// it merges `self` and `self.next.
+    ///
+    /// Each time we want to remerge the heap, we want to perform at most 2 merge actions.
+    /// This is what the `nb` argument stands for.
     pub fn merge_partial(&mut self, nb: usize) {
         if nb != 0 && !self.first {
             let end_addr = self.end_addr();
@@ -46,7 +52,6 @@ impl ListNode {
                 let next_next = next_region.next.take();
                 // If a merge is possible
                 if next_region.start_addr() == end_addr {
-                    //println!("Performing a merge.");
                     // TODO This might be a bit wrong
                     self.size += next_size;
                     self.next = next_next;
@@ -57,8 +62,9 @@ impl ListNode {
                 }
             }
         } else {
-            //println!("Ouiiiii!!!");
-            if let Some(ref mut next_region) = self.next {
+            if nb == 0 {
+                return;
+            } else if let Some(ref mut next_region) = self.next {
                 next_region.merge_partial(nb - 1);
             }
         }
@@ -80,7 +86,6 @@ impl LinkedListAllocator {
         }
     }
     /// Adds a free region to the allocator. It works by placing a new `ListNode` at the front of the allocator with the given size.
-    /// TODO : add the functionnality of list simplification by merging contiguous free regions.
     #[allow(dead_code)]
     unsafe fn add_free_region_old(&mut self, addr: usize, size: usize) {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
@@ -99,31 +104,24 @@ impl LinkedListAllocator {
         assert!(size >= mem::size_of::<ListNode>());
         // Build new node
         let node = ListNode::new(size, false);
-        //
         let node_ptr = addr as *mut ListNode;
         node_ptr.write(node);
-        // Finds its place
-
         let mut current = &mut self.head;
         let mut _compte = 0;
 
         while let Some(ref mut next_region) = current.next {
-            //println!("{}", compte);
             _compte += 1;
-
             // We insert it here
             if next_region.start_addr() > addr {
                 (*node_ptr).next = Some(current.next.take().unwrap());
                 current.next = Some(&mut *node_ptr);
                 current.merge_partial(2);
-                //println!("Merge done.");
                 return;
             } else {
                 current = current.next.as_mut().unwrap();
             }
         }
         // If we arrive here, we simply need to append the new_region
-        //println!("Compteur : {}", compte);
         (*node_ptr).next = None;
         current.next = Some(&mut *node_ptr);
     }

@@ -8,12 +8,13 @@ use x86_64::instructions::port::Port;
 use crate::{debug, println};
 
 /// Max number of sounds in a session.
-const MAX_SOUND: u64 = 4096;
+const MAX_SOUND: u64 = 8192;
 
 /// Current sound tick. Incremented at each clock tick.
 /// TODO add guard to avoid overflowing this variable!
 static mut TICK: u64 = 0;
 
+/// Get current tick.
 fn get_tick() -> u64 {
     unsafe { TICK }
 }
@@ -25,9 +26,17 @@ fn incr_tick() {
     }
 }
 
+/// A basic ID structure
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 struct SoundID(u64);
 
+/// Holds all information about one sound event.
+///
+/// Fields :
+/// * `id`: this is the event's unique ID.
+/// * `tone`: the sound's tone in Hz.
+/// * `length`: the number of ticks the event should last for
+/// * `begin`: the (absolute) tick the event should begin at
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 struct SoundElement {
     id: SoundID,
@@ -74,9 +83,11 @@ impl SoundElement {
 }
 
 impl SoundQueue {
+    /// Creates new queue.
     pub fn new() -> Self {
         Self(PriorityQueue::with_default_hasher(), None)
     }
+    /// Creates and enques a new sound.
     pub fn create_and_enqueue(&mut self, tone: u32, length: u64, begin: u64) {
         debug!(
             "Pushed sound : {}, {}, {}",
@@ -89,6 +100,7 @@ impl SoundQueue {
             SoundPriority::new(core::u64::MAX - (begin + get_tick())),
         );
     }
+    /// Mutes the speaker
     pub fn mute(&self) {
         unsafe {
             let mut port61 = Port::new(0x61);
@@ -97,7 +109,7 @@ impl SoundQueue {
             port61.write(tmp);
         }
     }
-
+    /// Updates the sound
     pub fn handle(&mut self) {
         incr_tick();
         if let Some(sound) = self.1 {
@@ -130,7 +142,7 @@ impl SoundQueue {
         self.mute();
         self.1 = None;
     }
-
+    /// Changes the speaker's tone.
     fn play_sound(&self, element: SoundElement) {
         println!("Gonna play sound");
         unsafe {

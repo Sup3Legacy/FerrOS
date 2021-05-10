@@ -1,3 +1,4 @@
+/// Abstraction for coordinates on the screen. It is only partly useful.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Coord {
     col: usize,

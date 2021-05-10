@@ -2,6 +2,13 @@
 
 const MAX_SIZE: usize = 32;
 
+/// Queue error.
+///
+/// Possible meanings :
+/// * Overflow: This means the program attempted to push an element
+/// into a full `Queue`
+/// * Underflow : This means the program attempted to pop an element
+/// from an empty `Queue`
 #[derive(Debug)]
 pub enum Error {
     Overflow,
@@ -9,6 +16,8 @@ pub enum Error {
 }
 
 /// Bounded queue abstraction
+///
+/// It has O(1) `push` and `pop` operations
 pub struct Queue<T> {
     data: [Option<T>; MAX_SIZE],
     pushing: usize, // the next element will be put in data[min]

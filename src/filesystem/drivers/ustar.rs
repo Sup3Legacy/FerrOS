@@ -777,7 +777,7 @@ impl Partition for UsTar {
         if memfile.is_err() {
             // create the file?
             if !flag_set.contains(&OpenFlags::OCREAT) {
-                return -1
+                return -1;
             } else {
                 // look for the parent folder in which we will create the file
                 let parent_path = path.get_parent();
@@ -789,31 +789,31 @@ impl Partition for UsTar {
                 let name = path.get_name();
                 let bytes = name.as_bytes();
                 if name.len() > 32 {
-                    return -1
+                    return -1;
                 }
                 // convert it in a byte array
                 let mut name_arr = [0; 32];
                 name_arr[..name.len()].clone_from_slice(&bytes);
                 let header = Header {
-                user: UGOID(412),
-                owner: UGOID(666),
-                group: UGOID(007),
-                parent_address: parent_dir.address,
-                length: todo!(),
-                blocks_number: todo!(),
-                blocks: todo!(),
-                flags: HeaderFlags {
-                    user_owner: 0b1111_1111_u8,
-                    group_misc: 0b1111_1111_u8,
-                },
-                mode: todo!(),
-                name: name_arr,
-                file_type: Type::File,
-                padding: [0_u8; 40],
-        };
+                    user: UGOID(412),
+                    owner: UGOID(666),
+                    group: UGOID(007),
+                    parent_address: parent_dir.address,
+                    length: todo!(),
+                    blocks_number: todo!(),
+                    blocks: todo!(),
+                    flags: HeaderFlags {
+                        user_owner: 0b1111_1111_u8,
+                        group_misc: 0b1111_1111_u8,
+                    },
+                    mode: todo!(),
+                    name: name_arr,
+                    file_type: Type::File,
+                    padding: [0_u8; 40],
+                };
             }
         }
-        // 
+        //
         if !flag_set.contains(&OpenFlags::OCREAT) {
             // look if the file is existant, fail otherwise
         }
