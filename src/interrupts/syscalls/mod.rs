@@ -257,8 +257,12 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
     }
 }
 
-extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("exit not implemented");
+extern "C" fn syscall_7_exit(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    unsafe {
+        let new = process::process_died(interrupts::COUNTER, args.rdi);
+        interrupts::COUNTER = 0;
+        process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
+    }
 }
 
 extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

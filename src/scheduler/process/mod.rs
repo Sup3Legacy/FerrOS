@@ -846,11 +846,11 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 /// # Safety
 /// Depends of the usage of the data !
 /// From the number of cycles executed and return code, returns a new process
-pub unsafe fn process_died(_counter: u64, return_code: usize) -> &'static Process {
+pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process {
     let old_pid = CURRENT_PROCESS;
 
     // Change parentality
-    ID_TABLE[old_pid].state = State::Zombie(return_code);
+    ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
     for i in 0..(PROCESS_MAX_NUMBER as usize) {
         if (ID_TABLE[i].ppid == ID_TABLE[old_pid].pid) {
             ID_TABLE[i].ppid = ID_TABLE[old_pid].ppid;

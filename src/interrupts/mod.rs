@@ -372,6 +372,7 @@ extern "x86-interrupt" fn page_fault_handler(
         
         unsafe {
             let new = process::process_died(COUNTER, 0); // TODO fetch return code
+            COUNTER = 0;
             process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
         }
 
