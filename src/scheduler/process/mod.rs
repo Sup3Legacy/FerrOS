@@ -851,6 +851,11 @@ pub unsafe fn process_died(_counter: u64, return_code: usize) -> &'static Proces
 
     // Change parentality
     ID_TABLE[old_pid].state = State::Zombie(return_code);
+    for i in 0..(PROCESS_MAX_NUMBER as usize) {
+        if (ID_TABLE[i].ppid == ID_TABLE[old_pid].pid) {
+            ID_TABLE[i].ppid = ID_TABLE[old_pid].ppid;
+        }
+    }
 
     let new_pid = next_pid_to_run().0 as usize;
     CURRENT_PROCESS = new_pid;
@@ -858,6 +863,31 @@ pub unsafe fn process_died(_counter: u64, return_code: usize) -> &'static Proces
     &ID_TABLE[new_pid]
 }
 
+pub fn listen() -> (u64, u64) {
+    unsafe {
+        let ppid = ID::forge(CURRENT_PROCESS as u64);
+        for pid in 0..(PROCESS_MAX_NUMBER as usize) {
+            if ID_TABLE[pid].ppid == ppid {
+                match ID_TABLE[pid].state {
+                    State::Zombie(return_value) => {
+                        ID_TABLE[pid].state = State::SlotAvailable;
+                        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+                            frame_allocator.deallocate_level_4_page(
+                                ID_TABLE[pid].cr3,
+                                PageTableFlags::USER_ACCESSIBLE,
+                            );
+                            frame_allocator.deallocate_4k_frame(ID_TABLE[pid].cr3);
+                        }
+                        return (pid as u64, return_value as u64)
+                    },
+                    _ => ()
+                }
+                
+            }
+        }
+        (0, 0)
+    }
+}
 
 /// Returns the current process data structure as read only
 /// # Safety

@@ -27,7 +27,7 @@ use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAd
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 22;
+const SYSCALL_NUMBER: u64 = 23;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -54,6 +54,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_19_set_focus,
     syscall_20_debug,
     syscall_21_memrequest,
+    syscall_22_listen,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -358,6 +359,12 @@ extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut Interru
     debug!("Fullfilled memrequest");
     current_process.heap_size += additional;
     args.rax = additional
+}
+
+extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    let (rax, rdi) =  scheduler::process::listen();
+    args.rax = rax;
+    args.rdi = rdi;
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
