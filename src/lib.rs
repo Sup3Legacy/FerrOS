@@ -33,7 +33,7 @@ pub mod vga;
 
 extern crate alloc;
 
-pub static _TEST_PROGRAM: &[u8] = include_bytes!("user_program/test_io");
+pub static _TEST_PROGRAM: &[u8] = include_bytes!("user_program/test_listen");
 
 pub static _TEST_PROGRAM2: &[u8] = include_bytes!("user_program/test_io2");
 

@@ -761,7 +761,7 @@ impl ID {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
             unsafe {
                 if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {
-                    return ID(new);
+                    return ID(new % PROCESS_MAX_NUMBER);
                 }
             }
         }
