@@ -104,7 +104,7 @@ pub fn init(_boot_info: &'static BootInfo) {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
             let (level_4_frame, _) = Cr3::read();
             frame_allocator
-                .deallocate_level_4_page(level_4_frame.start_address(), PageTableFlags::BIT_9)
+                .deallocate_level_4_page(level_4_frame.start_address(), PageTableFlags::BIT_9, false)
                 .expect("Didn't manage to clean bootloader data");
             frame_allocator
                 .add_forced_entry_to_table(

@@ -875,6 +875,7 @@ pub fn listen() -> (u64, u64) {
                             frame_allocator.deallocate_level_4_page(
                                 ID_TABLE[pid].cr3,
                                 PageTableFlags::USER_ACCESSIBLE,
+                                true,
                             );
                             frame_allocator.deallocate_4k_frame(ID_TABLE[pid].cr3);
                         }

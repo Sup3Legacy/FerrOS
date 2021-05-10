@@ -52,7 +52,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &str) -> ! {
         let current = super::get_current();
 
         // deallocate precedent file
-        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
+        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
             Ok(b) => {
                 if !b {
                     debug!("page table is not empty")
@@ -64,7 +64,7 @@ pub unsafe fn load_elf_for_exec(_file_name: &str) -> ! {
         };
 
         // deallocate precedent heap
-        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP) {
+        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP, true) {
             Ok(b) => {
                 if !b {
                     debug!("page table is not empty")
@@ -103,7 +103,7 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         let mut current = super::get_current_as_mut();
 
         // deallocate precedent file
-        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC) {
+        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
             Ok(b) => {
                 if !b {
                     debug!("page table is not empty")
@@ -115,7 +115,7 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         };
 
         // deallocate precedent heap
-        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP_ADDED) {
+        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP_ADDED, true) {
             Ok(b) => {
                 if !b {
                     debug!("page table is not empty")
