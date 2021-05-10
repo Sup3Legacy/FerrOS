@@ -11,7 +11,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bootloader = { version = "0.9.8", features = ["map_physical_memory", "sse"]}
+bootloader = { git = "https://github.com/samsa1/bootloader.git", features = ["map_physical_memory", "sse"]}
 spin = "0.5.2"
 x86_64 = ">=0.14.1"
 pic8259_simple = {git="https://github.com/Pollux3737/pic8259_simple.git"}
