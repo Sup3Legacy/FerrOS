@@ -261,10 +261,18 @@ extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStac
     panic!("exit not implemented");
 }
 
-extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
-        interrupts::COUNTER = interrupts::QUANTUM;
-        x86_64::instructions::interrupts::enable_and_hlt();
+        let (next, mut old) = process::gives_switch(interrupts::COUNTER);
+        interrupts::COUNTER = 0;
+
+        let (cr3, cr3f) = Cr3::read();
+        old.cr3 = cr3.start_address();
+        old.cr3f = cr3f;
+
+        old.rsp = VirtAddr::from_ptr(args).as_u64();
+
+        process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
     }
 }
 

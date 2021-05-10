@@ -332,7 +332,7 @@ unsafe extern "C" fn timer_interrupt_handler(
         //println!("{:#?}", stack_frame);
         let _stack_frame_2 = stack_frame.as_mut();
         //println!("entered");
-        let (next, mut old) = process::gives_switch(COUNTER);
+        let (next, mut old) = process::gives_switch(QUANTUM);
 
         //println!("here");
         let (cr3, cr3f) = Cr3::read();
