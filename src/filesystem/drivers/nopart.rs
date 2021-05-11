@@ -25,7 +25,6 @@ impl Partition for NoPart {
         todo!()
     }
 
-
     fn lseek(&self) {
         todo!()
     }

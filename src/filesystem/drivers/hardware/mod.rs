@@ -27,7 +27,6 @@ impl Partition for HardWarePartition {
         todo!()
     }
 
-
     fn flush(&self) {
         todo!()
     }

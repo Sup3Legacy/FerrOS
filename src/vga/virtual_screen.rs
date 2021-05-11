@@ -6,8 +6,7 @@ use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
 use crate::data_storage::screen::Coord;
-use crate::println;
-use crate::warningln;
+use crate::{println, warningln, debug};
 
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.
@@ -174,11 +173,27 @@ impl VirtualScreen {
     /// # Arguments
     /// * `s : &str` - the string to print.
     pub fn write_string(&mut self, s: &str) {
-        for (index, byte) in s.chars().into_iter().enumerate() {
+        let char_vec = s.chars().collect::<Vec<char>>();
+        let len = char_vec.len();
+        let mut i = 0;
+        while i < len {
+            let byte = char_vec[i] as u8;
             match byte as u8 {
                 b'\n' => self.new_line(),
                 b'\r' => self.row_pos = 0,
-                b'\x1b' => return self.handle_escaped(&s[index..]), // Escape code
+                b'\x1b' => {
+                    // Escape code
+                    let mut end = i;
+                    for j in i..len {
+                        if char::is_alphabetic(char_vec[j]) {
+                            end = j;
+                            break;
+                        }
+                    }
+                    assert!(end > i);
+                    self.handle_escaped(&char_vec[i..=end]);
+                    i = end
+                }
                 _ => {
                     if self.col_pos == self.width {
                         self.new_line()
@@ -190,72 +205,89 @@ impl VirtualScreen {
                     self.col_pos += 1;
                 }
             };
+            i += 1;
         }
     }
 
-    fn handle_escaped(&mut self, s: &str) {
-        let splitted = s
-            .split_inclusive(char::is_alphabetic)
-            .collect::<Vec<&str>>();
-        let escaped = splitted[0];
-        let mut sweet = String::new();
-        for partial_str in splitted[1..].iter() {
-            sweet.push_str(partial_str);
-        }
+    fn handle_escaped(&mut self, code: &[char]) {
         // Handle escape code
-        let code = escaped.chars().collect::<Vec<char>>();
         let escaped_length = code.len();
         let terminator = code[escaped_length - 1];
+        debug!("Got escaped code : {:?}", code);
         assert_eq!(code[0] as u8, b'\x1b');
         assert!(char::is_alphabetic(terminator));
         match terminator {
             'A' => {
-                let n = code[1] as usize;
+                let n = code[2] as usize;
                 if n >= self.row_pos {
                     self.row_pos = 0;
                 } else {
                     self.row_pos -= n;
                 }
-            },
+            }
             'B' => {
-                let n = code[1] as usize;
+                let n = code[2] as usize;
                 if n + self.row_pos >= self.height - 1 {
                     self.row_pos = self.height - 1;
                 } else {
                     self.row_pos += n;
                 }
-            },
+            }
             'C' => {
-                let n = code[1] as usize;
+                let n = code[2] as usize;
                 if n + self.col_pos >= self.width - 1 {
                     self.col_pos = self.width - 1;
                 } else {
                     self.col_pos += n;
                 }
-            },
+            }
             'D' => {
-                let n = code[1] as usize;
+                let n = code[2] as usize;
                 if n >= self.col_pos {
                     self.col_pos = 0;
                 } else {
                     self.col_pos -= n;
                 }
-            },
+            }
             'E' => (),
             'F' => (),
             'G' => (),
             'H' => (),
             'I' => (),
-            'J' => (),
+            'J' => {
+                let code = code[2];
+                match code as u8 {
+                    0 => (),
+                    1 => (),
+                    2 => self._clear(),
+                    _ => warningln!("Unknown J (clear screen) code : {}", code),
+                }
+            }
             'K' => (),
             'S' => (),
             'T' => (),
-            'm' => (),
-            _ => warningln!("Could not read escape code {}", escaped),
+            'm' => {
+                let code = code[2];
+                match code as u8 {
+                    1..=16 => {
+                        // Change foreground color
+                        let mut col = self.color.0;
+                        col &= 0b11110000;
+                        col += code as u8 - 1;
+                        self.color = ColorCode(col)
+                    }
+                    101..=116 => {
+                        // Change background color
+                        let mut col = self.color.0;
+                        col &= 0b00001111;
+                        col += (code as u8 - 101) << 4;
+                        self.color = ColorCode(col)
+                    }
+                    _ => warningln!("Unknown colour code : {}", code),
+                }
+            }
+            _ => warningln!("Could not read escape code {:?}", code),
         }
-
-        // Handle following sequence
-        self.write_string(&sweet)
     }
 
     pub fn write_byte_vec(&mut self, s: &[u8]) -> usize {

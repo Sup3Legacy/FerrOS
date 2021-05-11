@@ -242,7 +242,7 @@ extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-//    debug!("fork");
+    //    debug!("fork");
     let _rax = args.rax;
     unsafe {
         args.rax = 0;
@@ -298,10 +298,7 @@ extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut Interrup
     _args.rax = unsafe { process::CURRENT_PROCESS } as u64
 }
 
-extern "C" fn syscall_11_set_screen_size(
-    args: &mut RegistersMini,
-    _isf: &mut InterruptStackFrame,
-) {
+extern "C" fn syscall_11_set_screen_size(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let height = args.rdi;
     let width = args.rsi;
     debug!("resize {} {}", height, width);
