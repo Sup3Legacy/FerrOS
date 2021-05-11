@@ -302,10 +302,10 @@ extern "C" fn syscall_11_set_screen_size(args: &mut RegistersMini, _isf: &mut In
     let height = args.rdi;
     let width = args.rsi;
     debug!("resize {} {}", height, width);
-    if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
+    /*if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
         let process = process::get_current();
         mainscreen.resize_vscreen(&process.screen, Coord::new(width as usize, height as usize));
-    }
+    }*/
 }
 
 extern "C" fn syscall_12_set_screen_position(
@@ -315,10 +315,10 @@ extern "C" fn syscall_12_set_screen_position(
     let height = args.rdi;
     let width = args.rsi;
     debug!("move {} {}", height, width);
-    if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
+    /*if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
         let process = process::get_current();
         mainscreen.replace_vscreen(&process.screen, Coord::new(width as usize, height as usize));
-    }
+    }*/
 }
 
 extern "C" fn syscall_13_getcwd(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

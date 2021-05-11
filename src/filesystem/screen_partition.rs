@@ -75,14 +75,7 @@ impl Partition for ScreenPartition {
     }
 
     fn duplicate(&mut self, path: &Path, id: usize) -> Option<usize> {
-        unsafe {
-            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let s = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
-                Some(s.as_usize())
-            } else {
-                None
-            }
-        }
+        Some(id)
     }
 
     fn lseek(&self) {

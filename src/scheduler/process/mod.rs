@@ -660,7 +660,7 @@ pub struct Process {
     pub heap_address: u64,
     pub heap_size: u64,
     pub open_files: ProcessDescriptorTable,
-    pub screen: VirtualScreenID,
+    //pub screen: VirtualScreenID,
 }
 
 impl Process {
@@ -683,7 +683,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
-            screen: VirtualScreenID::new(),
+            //screen: VirtualScreenID::new(),
         }
     }
 
@@ -702,7 +702,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
-            screen: VirtualScreenID::null(),
+            //screen: VirtualScreenID::null(),
         }
     }
 
@@ -794,11 +794,11 @@ pub fn spawn_first_process() {
     let cr3 = x86_64::registers::control::Cr3::read();
     proc.cr3 = cr3.0.start_address();
     proc.cr3f = cr3.1;
-    if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
+    /*if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
         proc.screen = mainscreen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
     } else {
         errorln!("could not find mainscreen in first process");
-    }
+    }*/
     let screen_file_name = "screen/screenfull";
     proc.open_files
         .create_file_table(Path::from(&screen_file_name), 0_u64);
@@ -851,10 +851,7 @@ pub fn listen() -> (u64, u64) {
                 match ID_TABLE[pid].state {
                     State::Zombie(return_value) => {
                         ID_TABLE[pid].state = State::SlotAvailable;
-                        let save_screen = ID_TABLE[CURRENT_PROCESS].screen;
-                        ID_TABLE[CURRENT_PROCESS].screen = ID_TABLE[pid].screen;
                         ID_TABLE[pid].open_files.close();
-                        ID_TABLE[CURRENT_PROCESS].screen = save_screen;
                         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                             frame_allocator.deallocate_level_4_page(
                                 ID_TABLE[pid].cr3,
@@ -918,10 +915,6 @@ pub unsafe fn fork() -> ID {
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
     son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
-    if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-        // Child process is spaned with a null-screen.
-        son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
-    }
     let screen_file_name = "screen/screenfull";
     son.open_files
         .create_file_table(Path::from(&screen_file_name), 0_u64);
