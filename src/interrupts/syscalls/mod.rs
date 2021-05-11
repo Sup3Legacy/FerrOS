@@ -165,7 +165,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 index += 1;
             }
         }
-        if false && args.rdi == 1 {
+        /*if false && args.rdi == 1 {
             unsafe {
                 if let Some(vfs) = &mut filesystem::VFS {
                     vfs.write(Path::from("screen/screenfull"), t, 0, 0);
@@ -181,30 +181,30 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             }
             debug!("on shell : {}", t2);
             args.rax = index;
+        } else {*/
+        let fd = args.rdi;
+        args.rax = 0;
+        let process = process::get_current();
+        let oft_res = process
+            .open_files
+            .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+        if let Ok(oft) = oft_res {
+            let res = filesystem::write_file(oft, t);
+            args.rax = res as u64;
         } else {
-            let fd = args.rdi;
-            args.rax = 0;
-            let process = process::get_current();
-            let oft_res = process
-                .open_files
-                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
-            if let Ok(oft) = oft_res {
-                let res = filesystem::write_file(oft, t);
-                args.rax = res as u64;
-            } else {
-                warningln!("Could not get OpenFileTable");
-                for i in 0..10 {
-                    let oft_res = process
-                        .open_files
-                        .get_file_table(descriptor::FileDescriptor::new(fd as usize));
-                    match process.open_files.files[i] {
-                        Some(_) => warningln!("{} -> is one", i),
-                        None => warningln!("{} -> none", i)
-                    };
-                }
-                panic!("{}", fd);
+            warningln!("Could not get OpenFileTable");
+            for i in 0..10 {
+                let oft_res = process
+                    .open_files
+                    .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+                match process.open_files.files[i] {
+                    Some(_) => warningln!("{} -> is one", i),
+                    None => warningln!("{} -> none", i)
+                };
             }
+            panic!("{}", fd);
         }
+        //}
     } else {
         warningln!("no a valid address");
         args.rax = 0;
