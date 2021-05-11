@@ -4,26 +4,27 @@ use crate::scheduler;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, warningln};
 
+use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
 /// Drives the `proc` repertory
 pub struct ProcDriver {
-    infos: Vec<ProcInfoDriver>,
+    infos: BTreeMap<String, ProcInfoDriver>,
 }
 
 pub struct ErrProc();
 
 impl ProcDriver {
     pub fn new() -> Self {
-        Self { infos: Vec::new() }
+        Self {
+            infos: BTreeMap::new(),
+        }
     }
     pub fn get_info(&self, id: &str) -> Result<&ProcInfoDriver, ErrProc> {
-        for pi in self.infos.iter() {
-            if pi.keyword == *id {
-                return Ok(pi);
-            }
+        if let Some(res) = self.infos.get(id) {
+            return Ok(res);
         }
         Err(ErrProc())
     }
