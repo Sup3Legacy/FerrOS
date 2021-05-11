@@ -139,7 +139,6 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    //warningln!("printing");
     let (cr3, _) = Cr3::read();
     let mut size = min(args.rdx, 1024);
     if memory::check_if_has_flags(
@@ -233,7 +232,7 @@ extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("fork");
+//    debug!("fork");
     let _rax = args.rax;
     unsafe {
         args.rax = 0;
@@ -290,11 +289,12 @@ extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut Interrup
 }
 
 extern "C" fn syscall_11_set_screen_size(
-    _args: &mut RegistersMini,
+    args: &mut RegistersMini,
     _isf: &mut InterruptStackFrame,
 ) {
-    let height = _args.rdi;
-    let width = _args.rsi;
+    let height = args.rdi;
+    let width = args.rsi;
+    debug!("resize {} {}", height, width);
     if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
         let process = process::get_current();
         mainscreen.resize_vscreen(&process.screen, Coord::new(width as usize, height as usize));
@@ -302,11 +302,12 @@ extern "C" fn syscall_11_set_screen_size(
 }
 
 extern "C" fn syscall_12_set_screen_position(
-    _args: &mut RegistersMini,
+    args: &mut RegistersMini,
     _isf: &mut InterruptStackFrame,
 ) {
-    let height = _args.rdi;
-    let width = _args.rsi;
+    let height = args.rdi;
+    let width = args.rsi;
+    debug!("move {} {}", height, width);
     if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
         let process = process::get_current();
         mainscreen.replace_vscreen(&process.screen, Coord::new(width as usize, height as usize));

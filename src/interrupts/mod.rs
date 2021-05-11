@@ -368,7 +368,6 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     let read_addr = Cr2::read();
     if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
-        println!("terminated normally");
 
         unsafe {
             let new = process::process_died(COUNTER, 0); // TODO fetch return code

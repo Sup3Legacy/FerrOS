@@ -914,7 +914,6 @@ pub unsafe fn fork() -> ID {
         son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
     }
     ID_TABLE[pid.0 as usize] = son;
-    println!("new process of id {:#?}", pid);
     WAITING_QUEUES[son.priority.0]
         .push(pid)
         .expect("Could not push son process into the queue");

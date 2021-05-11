@@ -35,7 +35,7 @@ use x86_64::{
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
     interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, test_panic,
-    vga, warningln, _TEST_PROGRAM2,
+    vga, warningln, _TEST_PROGRAM,
 };
 use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
@@ -170,7 +170,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     unsafe {
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
             scheduler::process::disassemble_and_launch(
-                _TEST_PROGRAM2,
+                _TEST_PROGRAM,
                 frame_allocator,
                 1,
                 2,

@@ -840,7 +840,6 @@ impl BootInfoAllocator {
                     (*new_table)[index].set_flags(flags);
                 }
             }
-            println!("new cr3 address : {:#?}", new_table_addr);
             Ok(new_table_addr)
         } else {
             Err(MemoryError(String::from(
@@ -983,7 +982,6 @@ impl BootInfoAllocator {
         remove_flags: PageTableFlags,
         protected: bool,
     ) -> Result<bool, MemoryError> {
-        print!("{} -> ", self.state());
         let mut failed = false;
 
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
@@ -994,14 +992,7 @@ impl BootInfoAllocator {
             let flags = table_4[i].flags();
             if flags.contains(PageTableFlags::PRESENT) {
                 if flags.contains(remove_flags) {
-                    debug!(
-                        "0x{:x?}, {:x?}, {}",
-                        table_4[i].addr().as_u64() + PHYSICAL_OFFSET,
-                        PHYSICAL_OFFSET,
-                        i
-                    );
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
-                    debug!("qsd");
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
                     match self.deallocate_level_3_page(
                         &mut *page_table_ptr,
@@ -1028,7 +1019,6 @@ impl BootInfoAllocator {
             }
         }
 
-        println!("{} memory state", self.state());
         if failed {
             Err(MemoryError(String::from(
                 "Could not deallocate level 4 page",
