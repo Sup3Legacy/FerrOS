@@ -27,8 +27,17 @@ impl VirtualScreenID {
         let new = NEXT_ID.fetch_add(1, Ordering::Relaxed); // Maybe better to reallow previous numbers
         Self(new)
     }
+
+    pub fn forge(id : usize) -> Self {
+        Self(id as u64)
+    }
+
     pub const fn null() -> Self {
         Self(0)
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
     }
 }
 impl Default for VirtualScreenID {

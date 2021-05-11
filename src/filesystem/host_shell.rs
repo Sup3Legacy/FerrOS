@@ -12,11 +12,16 @@ impl HostShellPartition {
 }
 
 impl Partition for HostShellPartition {
-    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+
+    fn open(&mut self, _path: &Path) -> usize {
+        0
+    }
+
+    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(&mut self, _path: &Path, buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(&mut self, _path: &Path, _id: usize, buffer: &[u8], offset: usize, flags: u64) -> isize {
         let mut sortie = String::new();
         let size = buffer.len();
         for i in 0..size {
@@ -26,8 +31,12 @@ impl Partition for HostShellPartition {
         size as isize
     }
 
-    fn close(&mut self, path: &Path) -> bool {
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
         false
+    }
+
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+        Some(0)
     }
 
     fn lseek(&self) {

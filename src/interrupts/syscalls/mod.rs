@@ -9,7 +9,7 @@ use crate::data_storage::{
     screen::Coord,
 };
 use crate::filesystem;
-use crate::filesystem::descriptor;
+use crate::filesystem::{open_mode_from_flags, descriptor};
 use crate::hardware;
 use crate::interrupts;
 use crate::memory;
@@ -214,7 +214,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let filename = unsafe { read_string_from_pointer(args.rdi) };
-    let fd = descriptor::open(filename);
+    let fd = descriptor::open(filename, open_mode_from_flags(args.rsi));
     args.rax = fd.into_u64();
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };

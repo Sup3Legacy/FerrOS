@@ -23,6 +23,12 @@ impl Path {
     pub fn owned_to(self) -> String {
         self.0
     }
+
+    /// Create an identical path
+    pub fn duplicate(&self) -> Self {
+        Path::from(&self.0.clone())
+    }
+
     /// Slices the `Path` and returns a `Vec<String>`
     pub fn slice(&self) -> Vec<String> {
         let sliced = self

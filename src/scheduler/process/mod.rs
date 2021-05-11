@@ -832,7 +832,7 @@ pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process 
     // Change parentality
     ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
     for i in 0..(PROCESS_MAX_NUMBER as usize) {
-        if (ID_TABLE[i].ppid == ID_TABLE[old_pid].pid) {
+        if ID_TABLE[i].ppid == ID_TABLE[old_pid].pid {
             ID_TABLE[i].ppid = ID_TABLE[old_pid].ppid;
         }
     }

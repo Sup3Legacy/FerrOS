@@ -38,12 +38,16 @@ fn u8slice_to_u64(slice: &[u8]) -> u64 {
 }
 
 impl Partition for SoundDriver {
-    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn open(&mut self, _path: &Path) -> usize {
+        0
+    }
+
+    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         warningln!("User-program attempted to read in sound.");
         Vec::new()
     }
 
-    fn write(&mut self, _path: &Path, _buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], offset: usize, flags: u64) -> isize {
         let sound_number = _buffer.len() / (3 * 8);
         // Each sound packet is 3 u64
         print!("Got a sound, {}", _buffer.len());
@@ -57,8 +61,12 @@ impl Partition for SoundDriver {
         (sound_number * (3 * 8)) as isize
     }
 
-    fn close(&mut self, _path: &Path) -> bool {
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
         false
+    }
+
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+        Some(0)
     }
 
     fn lseek(&self) {

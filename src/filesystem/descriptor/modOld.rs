@@ -93,15 +93,13 @@ pub struct OpenFileTable {
     path: Path,
     flags: u64,
     offset: usize,
-    id: usize,
 }
 impl OpenFileTable {
-    pub fn new(path: Path, flags: u64, id: usize) -> Self {
+    pub fn new(path: Path, flags: u64) -> Self {
         Self {
             path,
             flags,
             offset: 0,
-            id,
         }
     }
     pub fn get_path(&self) -> Path {
@@ -109,26 +107,6 @@ impl OpenFileTable {
     }
     pub fn get_offset(&self) -> usize {
         self.offset
-    }
-
-    pub fn get_id(&self) -> usize {
-        self.id
-    }
-
-    pub fn duplicate(&self) -> Option<Self> {
-        match super::duplicate_file(&self) {
-            None => None,
-            Some(new_id) => {
-                Some(
-                    Self {
-                        path: self.path.duplicate(),
-                        flags: self.flags,
-                        offset: self.offset,
-                        id: new_id,
-                    }
-                )
-            }
-        }
     }
 }
 
@@ -205,11 +183,7 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
-        let id = match super::open_file(&path, super::open_mode_from_flags(flags)) {
-            Ok(i) => i,
-            Err(_) => return FileDescriptor::new(usize::MAX),
-        };
-        let open_file_table = OpenFileTable::new(path, flags, id);
+        let open_file_table = OpenFileTable::new(path, flags);
         self.add_file_table(open_file_table)
     }
 
@@ -237,7 +211,7 @@ impl ProcessDescriptorTable {
     }
 }
 
-pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
+pub fn open(filename: String) -> FileDescriptor {
     let current_process = unsafe { process::get_current_as_mut() };
     // look for a place to put the next file in the process file descriptor table
     let mut new_pfdt = current_process.open_files;
@@ -251,14 +225,10 @@ pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
             }
             None => {
                 new_pfdt.index = i;
-                let id = match super::open_file(&Path::from(&filename), mode) {
-                    Ok(i) => i,
-                    Err(_) => return FileDescriptor::new(usize::MAX),
-                };
                 unsafe {
                     new_pfdt.files[i] = Some(
                         GLOBAL_FILE_TABLE
-                            .insert(OpenFileTable::new(Path::from(filename.as_str()), 0, id)),
+                            .insert(OpenFileTable::new(Path::from(filename.as_str()), 0)),
                     );
                 }
             }

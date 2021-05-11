@@ -33,23 +33,31 @@ pub struct RamDisk {
 
 /// This interfaces enables a RAM-Disk to get used alongside every other device.
 impl Partition for RamDisk {
-    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn open(&mut self, _path: &Path) -> usize {
         todo!()
     }
 
-    fn write(&mut self, _path: &Path, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
+    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn close(&mut self, _path: &Path) -> bool {
+    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
         todo!()
     }
 
-    fn lseek(&self) {
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+        todo!()
+    }
+    
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
         todo!()
     }
 
     fn flush(&self) {
+        todo!()
+    }
+
+    fn lseek(&self) {
         todo!()
     }
 

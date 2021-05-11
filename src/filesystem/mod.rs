@@ -6,6 +6,8 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use partition::Partition;
+
 use core::todo;
 
 pub mod descriptor;
@@ -67,19 +69,29 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
+pub fn open_mode_from_flags(flags: u64) -> OpenMode {
+    OpenMode::Read
+}
+
 /// Main interface of the filesystem.
 ///
 /// Every interaction of a user-program with hardware and/or
 /// its stdin/stdout/stderr goes through this abstracted interface.
-pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
-    todo!();
+pub fn open_file(path: &Path, mode: OpenMode) -> Result<usize, vfs::ErrVFS> {
+    unsafe {
+        if let Some(ref mut vfs) = VFS {
+            vfs.open(path, mode)
+        } else {
+            panic!("VFS not initialized in open_file. {}", path.to());
+        }
+    }
 }
 
 pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
         let path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
-            vfs.write(path, data, oft.get_offset(), 0) as usize
+            vfs.write(path, oft.get_id(), data, oft.get_offset(), 0) as usize
         } else {
             panic!("VFS not initialized in write_file.");
         }
@@ -91,9 +103,20 @@ pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
         let path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.read(path, offset, length)
+            vfs.read(path, oft.get_id(), offset, length)
         } else {
             panic!("VFS not initialized in read_file.");
+        }
+    }
+}
+
+pub fn duplicate_file(oft: &OpenFileTable) -> Option<usize> {
+    unsafe {
+        let path = oft.get_path();
+        if let Some(ref mut vfs) = VFS {
+            vfs.duplicate(path, oft.get_id())
+        } else {
+            panic!("VFS not initialized in duplicate_file")
         }
     }
 }
@@ -105,7 +128,7 @@ pub fn get_data(_path: Path) -> &'static [u8] {
 fn test() {
     println!(
         "{:?}",
-        open_file(Path::from(&String::from("test")), OpenMode::Read)
+        open_file(&Path::from(&String::from("test")), OpenMode::Read)
     );
 }
 
@@ -114,7 +137,7 @@ pub fn close_file(oft: &OpenFileTable) {
         let path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.close(path);
+            vfs.close(path, oft.get_id());
         } else {
             panic!("VFS not initialized in close_file.");
         }

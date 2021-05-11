@@ -758,7 +758,11 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn read(&self, path: &Path, offset: usize, size: usize) -> Vec<u8> {
+    fn open(&mut self, _path: &Path) -> usize {
+        todo!()
+    }
+
+    fn read(&mut self, path: &Path, _id: usize, offset: usize, size: usize) -> Vec<u8> {
         let file = match self.find_memfile(path) {
             Ok(f) => f,
             Err(_) => return Vec::new(),
@@ -767,7 +771,7 @@ impl Partition for UsTar {
     }
 
     #[allow(unreachable_code)]
-    fn write(&mut self, path: &Path, _buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(&mut self, path: &Path, _id: usize, _buffer: &[u8], offset: usize, flags: u64) -> isize {
         let flag_set = OpenFlags::parse(flags);
         if !(flag_set.contains(&OpenFlags::OWRO) || flag_set.contains(&OpenFlags::ORDWR)) {
             return -1; // no right to write
@@ -822,8 +826,12 @@ impl Partition for UsTar {
         todo!()
     }
 
-    fn close(&mut self, _path: &Path) -> bool {
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
         false
+    }
+
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+        todo!()
     }
 
     fn lseek(&self) {
