@@ -277,7 +277,7 @@ impl VirtualScreen {
                         col += n as u8 - 1;
                         self.color = ColorCode(col)
                     }
-                    21..=26 => {
+                    21..=36 => {
                         // Change background color
                         let mut col = self.color.0;
                         col &= 0b00001111;
