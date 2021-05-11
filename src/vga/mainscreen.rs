@@ -120,13 +120,8 @@ impl MainScreen {
                         }
                     }
                 }
-            } else {
-                println!(
-                    "MainScreen : could not map ID to v_screen : {:?}",
-                    v_screen_id
-                );
+                self.roll_queue.push(v_screen_id, _layer);
             }
-            self.roll_queue.push(v_screen_id, _layer);
         }
         self.spill_queue();
     }
@@ -165,6 +160,13 @@ impl MainScreen {
         self.map.insert(vs_id, screen);
         self.queue.push(vs_id, layer);
         vs_id
+    }
+
+    pub fn delete_screen(&mut self, vs_id: VirtualScreenID) {
+        match self.map.remove(&vs_id) {
+            Some(mut screen) => screen.delete(),
+            None => (),
+        };
     }
 
     pub fn get_screen(&mut self, id: &VirtualScreenID) -> Option<&mut VirtualScreen> {

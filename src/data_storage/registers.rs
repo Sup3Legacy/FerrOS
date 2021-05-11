@@ -1,3 +1,5 @@
+/// Holds the value of a complete set of the `x86-64` GP registers.
+/// It is used to read from/write into a process' registers during a syscall.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Registers {
@@ -19,6 +21,7 @@ pub struct Registers {
 }
 
 impl Registers {
+    /// Returns a zero-initialized set of registers
     pub const fn new() -> Self {
         Registers {
             rax: 0,

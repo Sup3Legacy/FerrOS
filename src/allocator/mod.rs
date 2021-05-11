@@ -1,4 +1,5 @@
 //use alloc::alloc::{GlobalAlloc, Layout};
+use linked_list::LinkedListAllocator;
 use x86_64::{
     addr::VirtAddr,
     structures::paging::{
@@ -11,22 +12,21 @@ pub mod linked_list;
 
 /// The start adress of the kernel heap.
 pub const HEAP_START: usize = 0x4444_4444_0000;
+
 /// The size of the kernel heap. It is for now pretty small.
 pub const HEAP_SIZE: usize = 100000 * 1024;
 
+/// Handles any allocation error.
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
     panic!("Allocation error : {:?}", layout)
 }
 
-use linked_list::LinkedListAllocator;
-
+/// Main allocator
 #[global_allocator]
 static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 
-/// Inits the Allocator, responsible for the...
-///
-/// TODO : continue working on this
+/// Initializes the Allocator
 pub fn init(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
@@ -71,6 +71,7 @@ impl<A> Locked<A> {
     }
 }
 
+/// Aligns up the address given the align offset
 fn align_up(addr: usize, align: usize) -> usize {
     (addr + align - 1) & !(align - 1)
 }

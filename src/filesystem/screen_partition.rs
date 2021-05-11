@@ -1,7 +1,8 @@
 use super::partition::Partition;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, errorln};
-use crate::{vga::mainscreen, warningln};
+use crate::{debug, vga::mainscreen, warningln};
+use alloc::string::String;
 use alloc::vec::Vec;
 
 /// Used to define an empty partition
@@ -22,25 +23,26 @@ impl ScreenPartition {
 }
 
 impl Partition for ScreenPartition {
-    fn read(&self, _path: Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(&self, _path: Path, _buffer: Vec<u8>) -> usize {
+    fn write(&mut self, _path: &Path, _buffer: &[u8], offset: usize, flags: u64) -> isize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let process = process::get_current();
                 let v_screen_id = process.screen;
                 let v_screen = main_screen.get_vscreen_mut(&v_screen_id);
                 if let Some(screen) = v_screen {
-                    screen.write_byte_vec(&_buffer);
+                    screen.write_string(&(String::from_utf8_lossy(_buffer)));
                     main_screen.draw();
-                    _buffer.len()
+                    _buffer.len() as isize
                 } else {
                     warningln!(
                         "Attempted to write in non-existing virtualscreen : {:?}",
                         v_screen_id
                     );
+                    panic!("exit");
                     0
                 }
             } else {
@@ -48,6 +50,17 @@ impl Partition for ScreenPartition {
                 0
             }
         }
+    }
+
+    fn close(&mut self, path: &Path) -> bool {
+        unsafe {
+            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+                let process = process::get_current();
+                let v_screen_id = process.screen;
+                main_screen.delete_screen(v_screen_id);
+            }
+        }
+        false
     }
 
     fn lseek(&self) {

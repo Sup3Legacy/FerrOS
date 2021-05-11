@@ -26,8 +26,8 @@ enum MouseBytes {
 }
 
 impl MouseBytes {
-    pub fn to_byte(&self) -> u8 {
-        *self as u8
+    pub fn to_byte(self) -> u8 {
+        self as u8
     }
 }
 
@@ -81,7 +81,7 @@ impl MousePacket {
             y_movement,
         }
     }
-    pub fn to_bytes(&self) -> (u8, u8, u8) {
+    pub fn to_bytes(self) -> (u8, u8, u8) {
         let mut first = 0_u8;
         first.set_bit(0, self.left_button);
         first.set_bit(1, self.middle_button);

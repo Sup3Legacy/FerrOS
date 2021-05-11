@@ -12,6 +12,7 @@
 #![feature(option_result_unwrap_unchecked)]
 #![feature(const_raw_ptr_deref)]
 #![feature(slice_as_chunks)]
+#![feature(vec_into_raw_parts)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;

@@ -11,14 +11,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bootloader = { version = "0.9.8", features = ["map_physical_memory", "sse"]}
+bootloader = { git = "https://github.com/samsa1/bootloader.git", features = ["map_physical_memory", "sse"]}
 spin = "0.5.2"
-x86_64 = "0.13.2"
-pic8259_simple = "*"
+x86_64 = ">=0.14.1"
+pic8259_simple = {git="https://github.com/Pollux3737/pic8259_simple.git"}
 pc-keyboard = "*"
 linked_list_allocator = "*"
 uart_16550 = "*"
-vga= "*"
+vga= {git="https://github.com/Pollux3737/vga.git", rev="38bf676"}
 bitflags = "*"
 bit_field = "*"
 priority-queue = "1.1.1"
@@ -53,7 +53,7 @@ test-timeout = 60  # Number of seconds before timeout.
 run-args = [
     "-drive", "format=raw,file=disk/disk.img,index=2",
     "-boot", "c",
-    "-soundhw", "pcspk",
+    #"-soundhw", "pcspk",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
     "-serial", "stdio",  # Redirect the output of the serial port to stdout.
     "-cpu", "max,+ssse3,+sse4.1,+sse4.2", #,+avx512f,+avx512vl

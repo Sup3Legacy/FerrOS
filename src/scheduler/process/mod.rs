@@ -1,3 +1,5 @@
+//! All the logic around `Process`
+
 use super::PROCESS_MAX_NUMBER;
 
 use bit_field::BitField;
@@ -14,7 +16,7 @@ use x86_64::{PhysAddr, VirtAddr};
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
 use crate::alloc::vec::Vec;
-use crate::data_storage::{queue::Queue, random};
+use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
@@ -40,7 +42,10 @@ extern "C" {
 
 #[naked]
 /// # Safety
-/// TODO
+///
+/// Highgly unsafe function!
+///
+/// Given `Cr3` and `rsp` values, it leaves the context.
 pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
     asm!(
         "mov cr3, rdi",
@@ -100,6 +105,8 @@ pub unsafe extern "C" fn leave_context(_rsp: u64) {
 #[naked]
 /// # Safety
 /// TODO
+///
+/// Goes towards the userland with a stack- and an instruction-pointer
 pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
     asm!(
         // Ceci n'est pas exécuté
@@ -139,6 +146,9 @@ pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
 #[naked]
 /// # Safety
 /// TODO
+///
+/// Goes towards the userland with a stack- and an instruction-pointer.
+/// It is also given a heap.
 pub unsafe extern "C" fn towards_user_give_heap(
     _heap_addr: u64,
     _heap_size: u64,
@@ -181,6 +191,9 @@ pub unsafe extern "C" fn towards_user_give_heap(
 #[naked]
 /// # Safety
 /// TODO
+///
+/// Goes towards the userland with a stack- and an instruction-pointer.
+/// It is also given a heap and arguments.
 pub unsafe extern "C" fn towards_user_give_heap_args(
     _heap_addr: u64,
     _heap_size: u64,
@@ -223,6 +236,8 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
 
 /// # Safety
 /// TODO
+///
+/// allocates a given number of additional pages to the process' heap.
 pub unsafe fn allocate_additional_heap_pages(
     frame_allocator: &mut memory::BootInfoAllocator,
     start: u64,
@@ -333,6 +348,7 @@ pub unsafe fn launch_first_process(
     }
 }
 
+/// Converts flags
 pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
     let mut res = elf::MODIFY_WITH_EXEC | PageTableFlags::PRESENT;
     if flags.get_bit(0) {
@@ -443,16 +459,6 @@ pub unsafe fn disassemble_and_launch(
         let size = program.mem_size();
         let file_size = program.file_size();
         maximum_address = max(maximum_address, address + size);
-        // Section debug
-        /*
-        println!(
-            "Block, address : 0x{:x?}, offset : 0x{:x?}, size : 0x{:x?}, type : {:?}",
-            address,
-            offset,
-            size,
-            section.get_type()
-        );
-        */
         match program.get_type() {
             Ok(Type::Phdr) | Err(_) => continue,
             Ok(_) => (),
@@ -761,7 +767,7 @@ impl ID {
             let new = NEXT_ID.fetch_add(1, Ordering::Relaxed);
             unsafe {
                 if ID_TABLE[(new % PROCESS_MAX_NUMBER) as usize].state == State::SlotAvailable {
-                    return ID(new);
+                    return ID(new % PROCESS_MAX_NUMBER);
                 }
             }
         }
@@ -779,40 +785,9 @@ impl Default for ID {
     }
 }
 
-pub static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] = [
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-    Process::missing(),
-];
+/// Main array of all processes
+pub static mut ID_TABLE: [Process; PROCESS_MAX_NUMBER as usize] =
+    [Process::missing(); PROCESS_MAX_NUMBER as usize];
 
 pub fn spawn_first_process() {
     let mut proc = Process::create_new(ID::forge(0), Priority(0), 0);
@@ -824,6 +799,12 @@ pub fn spawn_first_process() {
     } else {
         errorln!("could not find mainscreen in first process");
     }
+    let screen_file_name = "screen/screenfull";
+    proc.open_files
+        .create_file_table(Path::from(&screen_file_name), 0_u64);
+    let shell_file_name = "screen/host_shell";
+    proc.open_files
+        .create_file_table(Path::from(&shell_file_name), 0_u64);
     unsafe {
         ID_TABLE[0] = proc;
     }
@@ -841,6 +822,55 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
     let new_pid = next_pid_to_run().0 as usize;
     CURRENT_PROCESS = new_pid;
     (&ID_TABLE[new_pid], &mut ID_TABLE[old_pid])
+}
+
+/// # Safety
+/// Depends of the usage of the data !
+/// From the number of cycles executed and return code, returns a new process
+pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process {
+    let old_pid = CURRENT_PROCESS;
+    // Change parentality
+    ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
+    for i in 0..(PROCESS_MAX_NUMBER as usize) {
+        if (ID_TABLE[i].ppid == ID_TABLE[old_pid].pid) {
+            ID_TABLE[i].ppid = ID_TABLE[old_pid].ppid;
+        }
+    }
+
+    let new_pid = next_pid_to_run().0 as usize;
+    CURRENT_PROCESS = new_pid;
+
+    &ID_TABLE[new_pid]
+}
+
+pub fn listen() -> (u64, u64) {
+    unsafe {
+        let ppid = ID::forge(CURRENT_PROCESS as u64);
+        for pid in 0..(PROCESS_MAX_NUMBER as usize) {
+            if ID_TABLE[pid].ppid == ppid {
+                match ID_TABLE[pid].state {
+                    State::Zombie(return_value) => {
+                        ID_TABLE[pid].state = State::SlotAvailable;
+                        let save_screen = ID_TABLE[CURRENT_PROCESS].screen;
+                        ID_TABLE[CURRENT_PROCESS].screen = ID_TABLE[pid].screen;
+                        ID_TABLE[pid].open_files.close();
+                        ID_TABLE[CURRENT_PROCESS].screen = save_screen;
+                        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+                            frame_allocator.deallocate_level_4_page(
+                                ID_TABLE[pid].cr3,
+                                PageTableFlags::USER_ACCESSIBLE,
+                                true,
+                            );
+                            frame_allocator.deallocate_4k_frame(ID_TABLE[pid].cr3);
+                        }
+                        return (pid as u64, return_value as u64);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        (0, 0)
+    }
 }
 
 /// Returns the current process data structure as read only
@@ -892,8 +922,14 @@ pub unsafe fn fork() -> ID {
         // Child process is spaned with a null-screen.
         son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
     }
+    let screen_file_name = "screen/screenfull";
+    son.open_files
+        .create_file_table(Path::from(&screen_file_name), 0_u64);
+    let shell_file_name = "screen/host_shell";
+    son.open_files
+        .create_file_table(Path::from(&shell_file_name), 0_u64);
+
     ID_TABLE[pid.0 as usize] = son;
-    println!("new process of id {:#?}", pid);
     WAITING_QUEUES[son.priority.0]
         .push(pid)
         .expect("Could not push son process into the queue");
@@ -980,8 +1016,17 @@ fn add_idle(pid: ID) {
 unsafe fn next_pid_to_run() -> ID {
     let mut prio = next_priority_to_run();
     // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
-    while WAITING_QUEUES[prio].is_empty() {
+    while prio < MAX_PRIO && WAITING_QUEUES[prio].is_empty() {
         prio -= 1; // need to check priority
+    }
+    if prio >= MAX_PRIO {
+        prio = 0;
+        while prio < MAX_PRIO && WAITING_QUEUES[prio].is_empty() {
+            prio += 1;
+        }
+        if prio == MAX_PRIO {
+            return ID(CURRENT_PROCESS as u64);
+        }
     }
     let old_pid = ID(CURRENT_PROCESS as u64);
     let old_priority = ID_TABLE[old_pid.0 as usize].priority.0;

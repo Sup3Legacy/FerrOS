@@ -5,15 +5,20 @@ use crate::println;
 
 mod sound_queue;
 
+/// Sound driver
 lazy_static! {
     static ref SOUND_QUEUE: Mutex<sound_queue::SoundQueue> =
         Mutex::new(sound_queue::SoundQueue::new());
 }
 
+/// Updates the sound-driver. This need to happen periodically (e.g. at each Timer-interrupt).
 pub fn handle() {
     SOUND_QUEUE.lock().handle();
 }
 
+/// Main entry-point to add a sound into the sound-driver.
+///
+/// This fucntion can be called directly by the kernel or indirectly by a program through the `VFS`
 pub fn add_sound(tone: u64, length: u64, begin: u64) {
     println!("Received : {}, {}, {}", tone, length, begin);
     SOUND_QUEUE

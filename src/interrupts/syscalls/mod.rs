@@ -27,7 +27,7 @@ use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAd
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 22;
+const SYSCALL_NUMBER: u64 = 23;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -54,6 +54,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_19_set_focus,
     syscall_20_debug,
     syscall_21_memrequest,
+    syscall_22_listen,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -138,7 +139,6 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 
 /// write. arg0 : unsigned int fd, arg1 : const char *buf, size_t count
 extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    //warningln!("printing");
     let (cr3, _) = Cr3::read();
     let mut size = min(args.rdx, 1024);
     if memory::check_if_has_flags(
@@ -165,36 +165,46 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 index += 1;
             }
         }
-        if args.rdi == 1 {
+        /*if false && args.rdi == 1 {
             unsafe {
                 if let Some(vfs) = &mut filesystem::VFS {
-                    vfs.write(Path::from("screen/screenfull"), t);
+                    vfs.write(Path::from("screen/screenfull"), t, 0, 0);
                 } else {
                     errorln!("Could not find VFS");
                 }
             }
             args.rax = index;
-        } else if args.rdi == 2 {
+        } else if false && args.rdi == 2 {
             let mut t2 = String::new();
             for i in t {
                 t2.push(i as char);
             }
             debug!("on shell : {}", t2);
             args.rax = index;
+        } else {*/
+        let fd = args.rdi;
+        args.rax = 0;
+        let process = process::get_current();
+        let oft_res = process
+            .open_files
+            .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+        if let Ok(oft) = oft_res {
+            let res = filesystem::write_file(oft, t);
+            args.rax = res as u64;
         } else {
-            let fd = args.rdi;
-            args.rax = 0;
-            let process = process::get_current();
-            let oft_res = process
-                .open_files
-                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
-            if let Ok(oft) = oft_res {
-                let res = filesystem::write_file(oft, t);
-                args.rax = res as u64;
-            } else {
-                warningln!("Could not get OpenFileTable");
+            warningln!("Could not get OpenFileTable");
+            for i in 0..10 {
+                let oft_res = process
+                    .open_files
+                    .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+                match process.open_files.files[i] {
+                    Some(_) => warningln!("{} -> is one", i),
+                    None => warningln!("{} -> none", i),
+                };
             }
+            panic!("{}", fd);
         }
+        //}
     } else {
         warningln!("no a valid address");
         args.rax = 0;
@@ -203,19 +213,9 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    //     args.rax = 1;
-    //     let mut filename_addr = args.rdi;
-    //     debug!("filename_ptr : {:#x}", filename_addr);
-    //     let filename = unsafe{*(filename_addr as *const u8) as char};
-    //     debug!("filename: {:#?}",filename);
-    //     for _i in 0..100 {
-    //         let filename = unsafe{*(filename_addr as *const u8) as char};
-    //         debug!("{:#?}", filename);
-    //         filename_addr += 1_u64;
-    //     }
-    //     let filename = unsafe{*(filename_addr as *const u8) as char};
-    //     debug!("filename: {:#?}",filename);
-    //     warningln!("open not implemented");
+    let filename = unsafe { read_string_from_pointer(args.rdi) };
+    let fd = descriptor::open(filename);
+    args.rax = fd.into_u64();
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };
 
@@ -228,8 +228,13 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
 }
 
 /// close file. arg0 : unsigned int fd
-extern "C" fn syscall_3_close(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("close not implemented")
+extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    let descriptor = args.rdi;
+    let ret_code = descriptor::close(descriptor);
+    match ret_code {
+        Ok(()) => args.rax = 0,
+        Err(_) => args.rax = 1,
+    };
 }
 
 extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
@@ -237,7 +242,7 @@ extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("fork");
+    //    debug!("fork");
     let _rax = args.rax;
     unsafe {
         args.rax = 0;
@@ -261,14 +266,26 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
     }
 }
 
-extern "C" fn syscall_7_exit(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    panic!("exit not implemented");
+extern "C" fn syscall_7_exit(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    unsafe {
+        let new = process::process_died(interrupts::COUNTER, args.rdi);
+        interrupts::COUNTER = 0;
+        process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
+    }
 }
 
-extern "C" fn syscall_8_wait(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
-        interrupts::COUNTER = interrupts::QUANTUM;
-        x86_64::instructions::interrupts::enable_and_hlt();
+        let (next, mut old) = process::gives_switch(interrupts::COUNTER);
+        interrupts::COUNTER = 0;
+
+        let (cr3, cr3f) = Cr3::read();
+        old.cr3 = cr3.start_address();
+        old.cr3f = cr3f;
+
+        old.rsp = VirtAddr::from_ptr(args).as_u64();
+
+        process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
     }
 }
 
@@ -281,12 +298,10 @@ extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut Interrup
     _args.rax = unsafe { process::CURRENT_PROCESS } as u64
 }
 
-extern "C" fn syscall_11_set_screen_size(
-    _args: &mut RegistersMini,
-    _isf: &mut InterruptStackFrame,
-) {
-    let height = _args.rdi;
-    let width = _args.rsi;
+extern "C" fn syscall_11_set_screen_size(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    let height = args.rdi;
+    let width = args.rsi;
+    debug!("resize {} {}", height, width);
     if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
         let process = process::get_current();
         mainscreen.resize_vscreen(&process.screen, Coord::new(width as usize, height as usize));
@@ -294,11 +309,12 @@ extern "C" fn syscall_11_set_screen_size(
 }
 
 extern "C" fn syscall_12_set_screen_position(
-    _args: &mut RegistersMini,
+    args: &mut RegistersMini,
     _isf: &mut InterruptStackFrame,
 ) {
-    let height = _args.rdi;
-    let width = _args.rsi;
+    let height = args.rdi;
+    let width = args.rsi;
+    debug!("move {} {}", height, width);
     if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
         let process = process::get_current();
         mainscreen.replace_vscreen(&process.screen, Coord::new(width as usize, height as usize));
@@ -363,6 +379,12 @@ extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut Interru
     debug!("Fullfilled memrequest");
     current_process.heap_size += additional;
     args.rax = additional
+}
+
+extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    let (rax, rdi) = scheduler::process::listen();
+    args.rax = rax;
+    args.rdi = rdi;
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
