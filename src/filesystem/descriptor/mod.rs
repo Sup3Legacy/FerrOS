@@ -67,12 +67,15 @@ impl GeneralFileTable {
 
     /// Deletes an entry in the table files.
     /// Should close be added ?
-    pub fn delete(&mut self, index: usize) {
+    pub fn delete(&mut self, index: usize) -> Result<(), FileDesciptorError>{
         match &self.tables[index] {
             Some(file) => super::close_file(&file),
-            None => ()
+            None => {
+                return Err(FileDesciptorError())
+            }
         }
         self.tables[index] = None;
+        Ok(())
     }
 
     /// Returns mutable copy of a given entry
@@ -197,6 +200,19 @@ impl ProcessDescriptorTable {
         self.files[operand.into_usize()] = self.files[target.into_usize()];
         Ok(())
     }
+
+    pub unsafe fn close(
+        &mut self
+    ) {
+        for i in 0..MAX_TOTAL_OPEN_FILES_BY_PROCESS {
+            match self.files[i] {
+                Some(fd) => {
+                    GLOBAL_FILE_TABLE.delete(fd);
+                }
+                _ => ()
+            }
+        }
+    }
 }
 
 pub fn open(filename: String) -> FileDescriptor {
@@ -232,14 +248,10 @@ pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
     match current_proccess.open_files.files[descriptor as usize] {
         None => return Err(FileDesciptorError()),
         Some(idx) => {
-            unsafe {
-                match GLOBAL_FILE_TABLE.tables[idx] {
-                    None => return Err(FileDesciptorError()),
-                    Some(_) => GLOBAL_FILE_TABLE.tables[idx] = None,
-                };
-            }
             current_proccess.open_files.files[descriptor as usize] = None;
+            unsafe {
+                GLOBAL_FILE_TABLE.delete(idx)
+            }
         }
     }
-    Ok(())
 }

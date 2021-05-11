@@ -16,7 +16,7 @@ use x86_64::{PhysAddr, VirtAddr};
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
 use crate::alloc::vec::Vec;
-use crate::data_storage::{queue::Queue, random};
+use crate::data_storage::{queue::Queue, random, path::Path};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
@@ -823,7 +823,6 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 /// From the number of cycles executed and return code, returns a new process
 pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process {
     let old_pid = CURRENT_PROCESS;
-
     // Change parentality
     ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
     for i in 0..(PROCESS_MAX_NUMBER as usize) {
@@ -846,6 +845,10 @@ pub fn listen() -> (u64, u64) {
                 match ID_TABLE[pid].state {
                     State::Zombie(return_value) => {
                         ID_TABLE[pid].state = State::SlotAvailable;
+                        let save_screen = ID_TABLE[CURRENT_PROCESS].screen;
+                        ID_TABLE[CURRENT_PROCESS].screen = ID_TABLE[pid].screen;
+                        ID_TABLE[pid].open_files.close();
+                        ID_TABLE[CURRENT_PROCESS].screen = save_screen;
                         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                             frame_allocator.deallocate_level_4_page(
                                 ID_TABLE[pid].cr3,
@@ -913,6 +916,8 @@ pub unsafe fn fork() -> ID {
         // Child process is spaned with a null-screen.
         son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
     }
+    let screen_file_name = "screen/screenfull";
+    son.open_files.create_file_table(Path::from(&screen_file_name), 0_u64);
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)

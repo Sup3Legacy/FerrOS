@@ -41,6 +41,7 @@ impl Partition for ScreenPartition {
                         "Attempted to write in non-existing virtualscreen : {:?}",
                         v_screen_id
                     );
+                    panic!("exit");
                     0
                 }
             } else {
