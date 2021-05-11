@@ -68,6 +68,10 @@ impl GeneralFileTable {
     /// Deletes an entry in the table files.
     /// Should close be added ?
     pub fn delete(&mut self, index: usize) {
+        match &self.tables[index] {
+            Some(file) => super::close_file(&file),
+            None => ()
+        }
         self.tables[index] = None;
     }
 

@@ -57,6 +57,10 @@ impl Partition for SoundDriver {
         (sound_number * (3 * 8)) as isize
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        false
+    }
+
     fn lseek(&self) {
         todo!()
     }

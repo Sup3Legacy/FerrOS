@@ -22,4 +22,7 @@ pub trait Partition {
 
     /// This is the function the kernel reads through.
     fn read_raw(&self);
+
+    /// Close
+    fn close(&mut self, path: &Path) -> bool;
 }

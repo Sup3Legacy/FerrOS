@@ -23,6 +23,11 @@ impl Partition for HardWarePartition {
         todo!()
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        todo!()
+    }
+
+
     fn flush(&self) {
         todo!()
     }

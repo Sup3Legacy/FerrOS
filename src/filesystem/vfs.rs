@@ -65,6 +65,39 @@ impl PartitionNode {
         }
     }
 
+    pub fn remove_entry(
+        &mut self,
+        sliced_path: &Vec<String>,
+        index: usize,
+    ) -> Result<bool, ()> {
+        match self {
+            PartitionNode::Node(next) => {
+                if index >= sliced_path.len() {
+                    return Err(());
+                }
+
+                if let Some(next_part) = next.get_mut(&sliced_path[index]) {
+                    match next_part.remove_entry(&sliced_path, index + 1) {
+                        Err(()) => Err(()),
+                        Ok(is_empty) => {
+                            if is_empty {
+                                next.remove_entry(&sliced_path[index]);
+                                Ok(next.is_empty())
+                            } else {
+                                Ok(is_empty)
+                            }
+                        }
+                    }
+                } else {
+                    Err(())
+                }
+            }
+            PartitionNode::Leaf(part) => {
+                Ok(part.close(&Path::from_sliced(&sliced_path[index..])))
+            },
+        }
+    }
+
     pub fn add_entry(
         &mut self,
         sliced_path: Vec<String>,
@@ -121,8 +154,8 @@ impl VFS {
         self.partitions.root.add_entry(sliced, 0, data)
     }
 
-    pub fn close(&self) {
-        todo!()
+    pub fn close(&mut self, path: Path) -> Result<bool, ()> {
+        self.partitions.root.remove_entry(&path.slice(), 0)
     }
 
     pub fn read(&'static mut self, path: Path, offset: usize, length: usize) -> Vec<u8> {

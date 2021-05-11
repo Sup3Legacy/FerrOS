@@ -279,4 +279,8 @@ impl VirtualScreen {
         self.row_pos = old_row;
         self.col_pos = old_col;
     }
+
+    pub fn delete(&mut self) {
+        return;
+    }
 }

@@ -19,6 +19,11 @@ impl Partition for SoftwarePartition {
         todo!()
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        todo!()
+    }
+
+
     fn flush(&self) {
         todo!()
     }

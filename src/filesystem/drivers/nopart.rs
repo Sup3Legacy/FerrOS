@@ -21,6 +21,11 @@ impl Partition for NoPart {
         todo!()
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        todo!()
+    }
+
+
     fn lseek(&self) {
         todo!()
     }

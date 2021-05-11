@@ -73,21 +73,21 @@ pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
 
 pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
-        let _path = oft.get_path();
+        let path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
-            vfs.write(_path, data, 0, 0) as usize
+            vfs.write(path, data, oft.get_offset(), 0) as usize
         } else {
-            panic!("VFS not initialized in read_file.");
+            panic!("VFS not initialized in write_file.");
         }
     }
 }
 
 pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
     unsafe {
-        let _path = oft.get_path();
+        let path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.read(_path, offset, length)
+            vfs.read(path, offset, length)
         } else {
             panic!("VFS not initialized in read_file.");
         }
@@ -103,4 +103,16 @@ fn test() {
         "{:?}",
         open_file(Path::from(&String::from("test")), OpenMode::Read)
     );
+}
+
+pub fn close_file(oft: &OpenFileTable) {
+    unsafe {
+        let path = oft.get_path();
+        let offset = oft.get_offset();
+        if let Some(ref mut vfs) = VFS {
+            vfs.close(path);
+        } else {
+            panic!("VFS not initialized in close_file.");
+        }
+    }
 }

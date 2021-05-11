@@ -63,6 +63,11 @@ impl Partition for ProcDriver {
         -1
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        false
+    }
+
+
     fn lseek(&self) {
         todo!()
     }

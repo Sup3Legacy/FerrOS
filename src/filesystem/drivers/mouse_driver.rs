@@ -41,6 +41,11 @@ impl Partition for MouseDriver {
         -1
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        todo!()
+    }
+
+
     fn lseek(&self) {
         todo!()
     }

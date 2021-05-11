@@ -822,6 +822,10 @@ impl Partition for UsTar {
         todo!()
     }
 
+    fn close(&mut self, _path: &Path) -> bool {
+        false
+    }
+
     fn lseek(&self) {
         todo!()
     }

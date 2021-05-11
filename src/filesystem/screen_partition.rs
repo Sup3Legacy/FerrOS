@@ -50,6 +50,17 @@ impl Partition for ScreenPartition {
         }
     }
 
+    fn close(&mut self, path: &Path) -> bool {
+        unsafe {
+            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+                let process = process::get_current();
+                let v_screen_id = process.screen;
+                main_screen.delete_screen(v_screen_id);
+            }
+        }
+        false
+    }
+
     fn lseek(&self) {
         panic!("not allowed");
     }
