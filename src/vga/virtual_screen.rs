@@ -6,8 +6,7 @@ use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
 use crate::data_storage::screen::Coord;
-use crate::println;
-use crate::warningln;
+use crate::{println, warningln, debug};
 
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.
@@ -214,6 +213,7 @@ impl VirtualScreen {
         // Handle escape code
         let escaped_length = code.len();
         let terminator = code[escaped_length - 1];
+        debug!("Got escaped code : {:?}", code);
         assert_eq!(code[0] as u8, b'\x1b');
         assert!(char::is_alphabetic(terminator));
         match terminator {
