@@ -1014,8 +1014,17 @@ fn add_idle(pid: ID) {
 unsafe fn next_pid_to_run() -> ID {
     let mut prio = next_priority_to_run();
     // Find the lowest priority at least as urgent as the one indated by the ticket that is not empty
-    while WAITING_QUEUES[prio].is_empty() {
+    while prio < MAX_PRIO && WAITING_QUEUES[prio].is_empty() {
         prio -= 1; // need to check priority
+    }
+    if prio >= MAX_PRIO {
+        prio = 0;
+        while prio < MAX_PRIO && WAITING_QUEUES[prio].is_empty() {
+            prio += 1;
+        }
+        if prio == MAX_PRIO {
+            return ID(CURRENT_PROCESS as u64);
+        }
     }
     let old_pid = ID(CURRENT_PROCESS as u64);
     let old_priority = ID_TABLE[old_pid.0 as usize].priority.0;
