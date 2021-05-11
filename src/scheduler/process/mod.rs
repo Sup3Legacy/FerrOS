@@ -799,6 +799,10 @@ pub fn spawn_first_process() {
     } else {
         errorln!("could not find mainscreen in first process");
     }
+    let screen_file_name = "screen/screenfull";
+    proc.open_files.create_file_table(Path::from(&screen_file_name), 0_u64);
+    let shell_file_name = "screen/host_shell";
+    proc.open_files.create_file_table(Path::from(&shell_file_name), 0_u64);
     unsafe {
         ID_TABLE[0] = proc;
     }
@@ -918,6 +922,8 @@ pub unsafe fn fork() -> ID {
     }
     let screen_file_name = "screen/screenfull";
     son.open_files.create_file_table(Path::from(&screen_file_name), 0_u64);
+    let shell_file_name = "screen/host_shell";
+    son.open_files.create_file_table(Path::from(&shell_file_name), 0_u64);
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)

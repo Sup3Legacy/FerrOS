@@ -158,7 +158,7 @@ impl ProcessDescriptorTable {
 
     pub fn add_file_table(&mut self, open_file_table: OpenFileTable) -> FileDescriptor {
         // ! This `3` if temporary, only for test purposes
-        let mut i = 3;
+        let mut i = 1;
         while i < MAX_TOTAL_OPEN_FILES_BY_PROCESS {
             if self.files[i].is_none() {
                 // File descriptor to be returned
@@ -177,7 +177,7 @@ impl ProcessDescriptorTable {
     }
 
     /// TODO : add fields like flags, etc.
-    pub fn create_file_table(&mut self, _path: Path, _flags: u64) -> FileDescriptor {
+    pub fn create_file_table(&mut self, path: Path, flags: u64) -> FileDescriptor {
         // Here we create a new OpenFileTable.
         // We fill it with all the passed values,
         // inserts it into the GLOBAL_FILE_TABLE
@@ -185,7 +185,7 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
-        let open_file_table = OpenFileTable::new(_path, _flags);
+        let open_file_table = OpenFileTable::new(path, flags);
         self.add_file_table(open_file_table)
     }
 

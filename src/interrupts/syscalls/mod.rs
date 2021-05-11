@@ -165,7 +165,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 index += 1;
             }
         }
-        if args.rdi == 1 {
+        if false && args.rdi == 1 {
             unsafe {
                 if let Some(vfs) = &mut filesystem::VFS {
                     vfs.write(Path::from("screen/screenfull"), t, 0, 0);
@@ -174,7 +174,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 }
             }
             args.rax = index;
-        } else if args.rdi == 2 {
+        } else if false && args.rdi == 2 {
             let mut t2 = String::new();
             for i in t {
                 t2.push(i as char);
@@ -193,6 +193,16 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 args.rax = res as u64;
             } else {
                 warningln!("Could not get OpenFileTable");
+                for i in 0..10 {
+                    let oft_res = process
+                        .open_files
+                        .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+                    match process.open_files.files[i] {
+                        Some(_) => warningln!("{} -> is one", i),
+                        None => warningln!("{} -> none", i)
+                    };
+                }
+                panic!("{}", fd);
             }
         }
     } else {

@@ -15,6 +15,7 @@ pub mod partition;
 pub mod screen_partition;
 pub mod test;
 pub mod vfs;
+pub mod host_shell;
 
 // disk_operations here is only temporary.
 // TODO remove it and add interface in driver::ustar
@@ -45,6 +46,9 @@ pub unsafe fn init_vfs() {
         let s4 = drivers::sound::SoundDriver::new();
         vfs.add_file(Path::from("hardware/sound"), Box::new(s4))
             .expect("could not create sound driver.");
+        let s5 = host_shell::HostShellPartition::new();
+        vfs.add_file(Path::from("screen/host_shell"), Box::new(s5))
+            .expect("could not create shell printer.");
     } else {
         panic!("should not happen")
     }
