@@ -1,6 +1,7 @@
 use super::partition::Partition;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, errorln};
+use crate::data_storage::screen::Coord;
 use crate::{debug, vga::mainscreen, vga::virtual_screen::VirtualScreenLayer, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -64,17 +65,23 @@ impl Partition for ScreenPartition {
         }
     }
 
-    fn close(&mut self, path: &Path, id: usize) -> bool {
+    fn close(&mut self, _path: &Path, id: usize) -> bool {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(id);
-                main_screen.delete_screen(v_screen_id);
+                main_screen.delete_screen(v_screen_id)
+            } else {
+                panic!("should not happen")
             }
         }
-        false
     }
 
     fn duplicate(&mut self, path: &Path, id: usize) -> Option<usize> {
+        unsafe {
+            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+                main_screen.duplicated(mainscreen::VirtualScreenID::forge(id))
+            }
+        }
         Some(id)
     }
 
@@ -89,6 +96,23 @@ impl Partition for ScreenPartition {
     fn read_raw(&self) {
         panic!("not allowed");
     }
+
+    fn give_param(&mut self, _path: &Path, id:usize, param: usize) -> usize {
+        unsafe {
+            if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
+                let v_screen_id = mainscreen::VirtualScreenID::forge(id);
+                if param >> 63 == 1 {
+                    main_screen.resize_vscreen(&v_screen_id, Coord::new(param & 0xFF, (param >> 32) & 0xFF))
+                } else {
+                    main_screen.replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, (param >> 32)))
+                }
+                0
+            } else {
+                usize::MAX
+            }
+        }
+    }
+
 }
 impl Default for ScreenPartition {
     fn default() -> Self {

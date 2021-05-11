@@ -42,4 +42,9 @@ impl Partition for SoftwarePartition {
     fn read_raw(&self) {
         todo!()
     }
+
+    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+        usize::MAX
+    }
+
 }

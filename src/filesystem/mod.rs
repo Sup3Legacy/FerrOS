@@ -110,6 +110,18 @@ pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
     }
 }
 
+pub fn modify_file(oft: &OpenFileTable, param: usize) -> usize {
+    unsafe {
+        let path = oft.get_path();
+        let offset = oft.get_offset();
+        if let Some(ref mut vfs) = VFS {
+            vfs.give_param(&path, oft.get_id(), param)
+        } else {
+            panic!("VFS not initialized in read_file.");
+        }
+    }
+}
+
 pub fn duplicate_file(oft: &OpenFileTable) -> Option<usize> {
     unsafe {
         let path = oft.get_path();

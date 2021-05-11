@@ -30,4 +30,7 @@ pub trait Partition {
 
     /// Close
     fn close(&mut self, path: &Path, id: usize) -> bool;
+
+    /// Param
+    fn give_param(&mut self, path: &Path, id: usize, param: usize) -> usize;
 }

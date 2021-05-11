@@ -125,6 +125,33 @@ impl PartitionNode {
             PartitionNode::Leaf(_) => Err(ErrVFS()),
         }
     }
+
+    pub fn give_param(
+        &mut self,
+        sliced_path: Vec<String>,
+        index: usize,
+        id: usize,
+        param: usize,
+    ) -> usize {
+        match self {
+            PartitionNode::Node(next) => {
+                if index == sliced_path.len() {
+                    return usize::MAX;
+                }
+                if next.get(&sliced_path[index]).is_some() {
+                    if let Some(next_part) = next.get_mut(&sliced_path[index]) {
+                        next_part.give_param(sliced_path, index + 1, id, param)
+                    } else {
+                        panic!("should not happen")
+                    }
+                } else {
+                    panic!("should not happen")
+                }
+            }
+            PartitionNode::Leaf(part) => part.give_param(&Path::from_sliced(&sliced_path[index..]), id, param),
+        }
+    }
+
 }
 
 /// This should be the main interface of the filesystem.
@@ -150,6 +177,10 @@ impl VFS {
 
     pub fn close(&mut self, path: Path, id: usize) -> Result<bool, ()> {
         self.partitions.root.remove_entry(&path.slice(), 0, id)
+    }
+
+    pub fn give_param(&mut self, path: &Path, id: usize, param: usize) -> usize {
+        self.partitions.root.give_param(path.slice(), 0, id, param)
     }
 
     pub fn read(&'static mut self, path: Path, id: usize, offset: usize, length: usize) -> Vec<u8> {

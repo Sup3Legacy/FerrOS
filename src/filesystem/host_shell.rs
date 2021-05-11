@@ -50,4 +50,9 @@ impl Partition for HostShellPartition {
     fn read_raw(&self) {
         panic!("not allowed");
     }
+
+    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+        usize::MAX
+    }
+
 }

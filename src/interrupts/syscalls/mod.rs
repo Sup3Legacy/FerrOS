@@ -299,26 +299,38 @@ extern "C" fn syscall_10_get_puid(_args: &mut RegistersMini, _isf: &mut Interrup
 }
 
 extern "C" fn syscall_11_set_screen_size(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    let height = args.rdi;
-    let width = args.rsi;
+    let height = args.rdi as usize;
+    let width = args.rsi as usize;
     debug!("resize {} {}", height, width);
-    /*if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
-        let process = process::get_current();
-        mainscreen.resize_vscreen(&process.screen, Coord::new(width as usize, height as usize));
-    }*/
+    let process = process::get_current();
+    let oft_res = process
+        .open_files
+        .get_file_table(descriptor::FileDescriptor::new(1));
+    if let Ok(oft) = oft_res {
+        let res = filesystem::modify_file(oft, (1 << 63) | (height << 32) | width);
+        args.rax = res as u64;
+    } else {
+        args.rax = u64::MAX;
+    }
 }
 
 extern "C" fn syscall_12_set_screen_position(
     args: &mut RegistersMini,
     _isf: &mut InterruptStackFrame,
 ) {
-    let height = args.rdi;
-    let width = args.rsi;
+    let height = args.rdi as usize;
+    let width = args.rsi as usize;
     debug!("move {} {}", height, width);
-    /*if let Some(mainscreen) = unsafe { &mut vga::mainscreen::MAIN_SCREEN } {
-        let process = process::get_current();
-        mainscreen.replace_vscreen(&process.screen, Coord::new(width as usize, height as usize));
-    }*/
+    let process = process::get_current();
+    let oft_res = process
+        .open_files
+        .get_file_table(descriptor::FileDescriptor::new(1));
+    if let Ok(oft) = oft_res {
+        let res = filesystem::modify_file(oft, (height << 32) | width);
+        args.rax = res as u64;
+    } else {
+        args.rax = u64::MAX;
+    }
 }
 
 extern "C" fn syscall_13_getcwd(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

@@ -88,6 +88,11 @@ impl Partition for ProcDriver {
     fn read_raw(&self) {
         todo!()
     }
+
+    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+        usize::MAX
+    }
+
 }
 
 /// Drives a single file in a `proc/pid` repertory
