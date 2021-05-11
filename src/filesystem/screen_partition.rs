@@ -1,7 +1,7 @@
 use super::partition::Partition;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, errorln};
-use crate::{vga::mainscreen, warningln};
+use crate::{vga::mainscreen, warningln, debug};
 use alloc::string::String;
 use alloc::vec::Vec;
 

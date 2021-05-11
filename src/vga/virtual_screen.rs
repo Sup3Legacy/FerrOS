@@ -175,9 +175,6 @@ impl VirtualScreen {
     pub fn write_string(&mut self, s: &str) {
         let char_vec = s.chars().collect::<Vec<char>>();
         let len = char_vec.len();
-        if len > 0 {
-            debug!("Got string : {:?}", char_vec);
-        }
         let mut i = 0;
         while i < len {
             let byte = char_vec[i] as u8;
@@ -208,6 +205,7 @@ impl VirtualScreen {
                     self.col_pos += 1;
                 }
             };
+            self.set_cursor();
             i += 1;
         }
     }
