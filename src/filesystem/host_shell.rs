@@ -1,4 +1,3 @@
-
 use super::partition::Partition;
 
 use crate::{data_storage::path::Path, print};
@@ -42,5 +41,4 @@ impl Partition for HostShellPartition {
     fn read_raw(&self) {
         panic!("not allowed");
     }
-
 }

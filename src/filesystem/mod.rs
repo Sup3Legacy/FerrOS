@@ -11,11 +11,11 @@ use core::todo;
 pub mod descriptor;
 pub mod drivers;
 pub mod fsflags;
+pub mod host_shell;
 pub mod partition;
 pub mod screen_partition;
 pub mod test;
 pub mod vfs;
-pub mod host_shell;
 
 // disk_operations here is only temporary.
 // TODO remove it and add interface in driver::ustar

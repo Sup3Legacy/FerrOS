@@ -199,7 +199,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                     .get_file_table(descriptor::FileDescriptor::new(fd as usize));
                 match process.open_files.files[i] {
                     Some(_) => warningln!("{} -> is one", i),
-                    None => warningln!("{} -> none", i)
+                    None => warningln!("{} -> none", i),
                 };
             }
             panic!("{}", fd);

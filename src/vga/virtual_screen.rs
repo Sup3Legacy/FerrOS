@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
 use crate::data_storage::screen::Coord;
-use crate::{println, warningln, debug};
+use crate::{debug, println, warningln};
 
 /// COPY OF THE ONE IN MOD
 /// A ColorCode is the data of a foreground color and a background one.
@@ -175,6 +175,9 @@ impl VirtualScreen {
     pub fn write_string(&mut self, s: &str) {
         let char_vec = s.chars().collect::<Vec<char>>();
         let len = char_vec.len();
+        if len > 0 {
+            debug!("Got string : {:?}", char_vec);
+        }
         let mut i = 0;
         while i < len {
             let byte = char_vec[i] as u8;
@@ -255,35 +258,35 @@ impl VirtualScreen {
             'H' => (),
             'I' => (),
             'J' => {
-                let code = code[2];
-                match code as u8 {
+                let n = code[2];
+                match n as u8 {
                     0 => (),
                     1 => (),
                     2 => self._clear(),
-                    _ => warningln!("Unknown J (clear screen) code : {}", code),
+                    _ => warningln!("Unknown J (clear screen) code : {}", n),
                 }
             }
             'K' => (),
             'S' => (),
             'T' => (),
             'm' => {
-                let code = code[2];
-                match code as u8 {
+                let n = code[2];
+                match n as u8 {
                     1..=16 => {
                         // Change foreground color
                         let mut col = self.color.0;
                         col &= 0b11110000;
-                        col += code as u8 - 1;
+                        col += n as u8 - 1;
                         self.color = ColorCode(col)
                     }
-                    101..=116 => {
+                    21..=26 => {
                         // Change background color
                         let mut col = self.color.0;
                         col &= 0b00001111;
-                        col += (code as u8 - 101) << 4;
+                        col += (n as u8 - 21) << 4;
                         self.color = ColorCode(col)
                     }
-                    _ => warningln!("Unknown colour code : {}", code),
+                    _ => warningln!("Unknown colour code : {}", n),
                 }
             }
             _ => warningln!("Could not read escape code {:?}", code),

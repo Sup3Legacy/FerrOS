@@ -2,6 +2,7 @@ use super::partition::Partition;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, errorln};
 use crate::{vga::mainscreen, warningln};
+use alloc::string::String;
 use alloc::vec::Vec;
 
 /// Used to define an empty partition
@@ -33,7 +34,7 @@ impl Partition for ScreenPartition {
                 let v_screen_id = process.screen;
                 let v_screen = main_screen.get_vscreen_mut(&v_screen_id);
                 if let Some(screen) = v_screen {
-                    screen.write_byte_vec(&_buffer);
+                    screen.write_string(&(String::from_utf8_lossy(_buffer)));
                     main_screen.draw();
                     _buffer.len() as isize
                 } else {
