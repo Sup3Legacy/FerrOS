@@ -23,7 +23,6 @@ impl Partition for SoftwarePartition {
         todo!()
     }
 
-
     fn flush(&self) {
         todo!()
     }

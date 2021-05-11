@@ -67,12 +67,10 @@ impl GeneralFileTable {
 
     /// Deletes an entry in the table files.
     /// Should close be added ?
-    pub fn delete(&mut self, index: usize) -> Result<(), FileDesciptorError>{
+    pub fn delete(&mut self, index: usize) -> Result<(), FileDesciptorError> {
         match &self.tables[index] {
             Some(file) => super::close_file(&file),
-            None => {
-                return Err(FileDesciptorError())
-            }
+            None => return Err(FileDesciptorError()),
         }
         self.tables[index] = None;
         Ok(())
@@ -201,15 +199,13 @@ impl ProcessDescriptorTable {
         Ok(())
     }
 
-    pub unsafe fn close(
-        &mut self
-    ) {
+    pub unsafe fn close(&mut self) {
         for i in 0..MAX_TOTAL_OPEN_FILES_BY_PROCESS {
             match self.files[i] {
                 Some(fd) => {
                     GLOBAL_FILE_TABLE.delete(fd);
                 }
-                _ => ()
+                _ => (),
             }
         }
     }
@@ -249,9 +245,7 @@ pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
         None => return Err(FileDesciptorError()),
         Some(idx) => {
             current_proccess.open_files.files[descriptor as usize] = None;
-            unsafe {
-                GLOBAL_FILE_TABLE.delete(idx)
-            }
+            unsafe { GLOBAL_FILE_TABLE.delete(idx) }
         }
     }
 }

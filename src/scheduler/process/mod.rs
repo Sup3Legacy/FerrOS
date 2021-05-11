@@ -16,7 +16,7 @@ use x86_64::{PhysAddr, VirtAddr};
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
 use crate::alloc::vec::Vec;
-use crate::data_storage::{queue::Queue, random, path::Path};
+use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem::descriptor::ProcessDescriptorTable;
 use crate::hardware;
 use crate::memory;
@@ -917,7 +917,8 @@ pub unsafe fn fork() -> ID {
         son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
     }
     let screen_file_name = "screen/screenfull";
-    son.open_files.create_file_table(Path::from(&screen_file_name), 0_u64);
+    son.open_files
+        .create_file_table(Path::from(&screen_file_name), 0_u64);
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)

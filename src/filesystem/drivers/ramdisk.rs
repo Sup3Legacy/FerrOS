@@ -45,7 +45,6 @@ impl Partition for RamDisk {
         todo!()
     }
 
-
     fn lseek(&self) {
         todo!()
     }

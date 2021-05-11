@@ -65,11 +65,7 @@ impl PartitionNode {
         }
     }
 
-    pub fn remove_entry(
-        &mut self,
-        sliced_path: &Vec<String>,
-        index: usize,
-    ) -> Result<bool, ()> {
+    pub fn remove_entry(&mut self, sliced_path: &Vec<String>, index: usize) -> Result<bool, ()> {
         match self {
             PartitionNode::Node(next) => {
                 if index >= sliced_path.len() {
@@ -92,9 +88,7 @@ impl PartitionNode {
                     Err(())
                 }
             }
-            PartitionNode::Leaf(part) => {
-                Ok(part.close(&Path::from_sliced(&sliced_path[index..])))
-            },
+            PartitionNode::Leaf(part) => Ok(part.close(&Path::from_sliced(&sliced_path[index..]))),
         }
     }
 

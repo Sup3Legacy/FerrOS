@@ -162,7 +162,7 @@ impl MainScreen {
         vs_id
     }
 
-    pub fn delete_screen(&mut self, vs_id : VirtualScreenID) {
+    pub fn delete_screen(&mut self, vs_id: VirtualScreenID) {
         match self.map.remove(&vs_id) {
             Some(mut screen) => screen.delete(),
             None => (),
