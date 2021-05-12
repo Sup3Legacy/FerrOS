@@ -315,6 +315,7 @@ def build_ustar(tree, parent = Address(0, 0)):
                 address = build_ustar(e)
                 children.append((name, address))
                 
+            USTAR.set_sector_data(header_address.lba, header_address.index, tree.header.get_data())
             dir_data = tree.get_data()
             for i in range(sector_number):
                 current_add = block_addresses[i]
