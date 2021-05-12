@@ -14,9 +14,8 @@ def construct_filesystem_tree(path):
         print(child)
         child_path = os.path.join(path, child)
         if os.path.isfile(child_path):
-            name = child
             data = open(child_path, "rb")
-            files.append(File(list(data.read()), name))
+            files.append(File(list(data.read()), child))
             data.close()
         else:
             # if the child is a directory

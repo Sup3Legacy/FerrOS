@@ -130,7 +130,8 @@ class Sector:
         self.data = [0 for _ in range(512)]
 
     def fill_data(self, data):
-        assert len(data) <= 512
+        assert(len(self.data) == 512)
+        assert(len(data) <= 512)
         if len(data) == 512:
             self.data = data
         else:
@@ -139,6 +140,7 @@ class Sector:
             # TODO should maybe make sure the rest is 0
     
     def get_data(self):
+        assert(len(self.data) == 512)
         return self.data[:]
 
 class Lba:
@@ -176,14 +178,17 @@ class Lba:
     
     def get_data(self):
         data = self.get_lba_table()
+        assert(len(data) == 512)
         for e in self.data:
             data += e.get_data()
+            assert(len(data)%512 == 0)
         # Because we only use 510 sectors from each lba
         data += [0 for _ in range(512)]
+        assert(len(data) == 512 **2)
         return data
     
     def set_sector_data(self, i, data):
-        self.data[i].data = data
+        self.data[i].fill_data(data)
 
 class Ustar:
     def __init__(self):
@@ -222,7 +227,6 @@ class Ustar:
         data = []
         for lba in self.data:
             d = lba.get_data()
-            print(sum(d))
             data += d
         return data
     
@@ -298,8 +302,8 @@ def build_ustar(tree, parent = Address(0, 0)):
     elif isinstance(tree, Dir):
         print("added dir")
         length = len(tree)
-        sector_number = length // 16 # We can put 16 children per sector
-        if length % 16 > 0:
+        sector_number = length >> 9 # We can put 16 children per sector
+        if length % 512 > 0:
             sector_number += 1
         mode = tree.mode()
         if mode == 0:
@@ -315,7 +319,9 @@ def build_ustar(tree, parent = Address(0, 0)):
                 address = build_ustar(e)
                 children.append((name, address))
                 
-            USTAR.set_sector_data(header_address.lba, header_address.index, tree.header.get_data())
+            header_data = tree.header.get_data()
+            assert(len(header_data) == 512)
+            USTAR.set_sector_data(header_address.lba, header_address.index, header_data)
             dir_data = tree.get_data()
             for i in range(sector_number):
                 current_add = block_addresses[i]
