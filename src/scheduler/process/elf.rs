@@ -50,7 +50,6 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
     };
     let code: &[u8] = &read_file_from_path(Path::from(file_name));
 
-    let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
 
     if let Ok(_level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         let current = super::get_current();
