@@ -786,6 +786,7 @@ impl Partition for UsTar {
             Err(_) => return Vec::new(),
         };
         println!("Got vec of length : {}", file.data.len());
+        println!("size : {}", size);
         file.data[offset..offset + size].to_vec()
     }
 

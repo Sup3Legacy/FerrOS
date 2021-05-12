@@ -1,6 +1,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::println;
+
 /// This represents a Path in the kernel.
 /// It is a simple wrapper around a `String`
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -70,11 +72,17 @@ impl Path {
     }
     /// Builds a `Path` from a slice of `String`
     pub fn from_sliced(sliced: &[String]) -> Self {
-        let mut path = Self::new();
+        let mut path = String::new();
+        let mut first = true;
         for e in sliced {
+            if first {
+                first = false;
+            } else {
+                path.push_str("/");
+            }
             path.push_str(e);
         }
-        path
+        Self::from(&path)
     }
 }
 impl Default for Path {

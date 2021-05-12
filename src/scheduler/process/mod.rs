@@ -429,6 +429,7 @@ pub unsafe fn disassemble_and_launch(
         get_current().stack_base
     };
     // We get the `ElfFile` from the raw slice
+    println!("Code len : {}", code.len());
     let elf = ElfFile::new(code).unwrap();
     // We get the main entry point and mmake sure it is
     // a 64-bit ELF file

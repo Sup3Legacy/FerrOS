@@ -50,6 +50,8 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
     };
     let code: &[u8] = &read_file_from_path(Path::from(file_name));
 
+    warningln!("Code len 1 => {}", code.len());
+
     if let Ok(_level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         let current = super::get_current();
 

@@ -119,7 +119,9 @@ pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
 pub fn read_file_from_path(path: Path) -> Vec<u8> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            vfs.read(path, usize::MAX, 0, usize::MAX)
+            let file = vfs.read(path, usize::MAX, 0, usize::MAX);
+            println!("{} <- len in read_file_from_path", file.len());
+            file
         } else {
             panic!("VFS not initialized in read_file.");
         }

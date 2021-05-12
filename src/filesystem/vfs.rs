@@ -11,6 +11,8 @@ use super::drivers::nopart::NoPart;
 
 use crate::data_storage::path::Path;
 
+use crate::debug;
+
 #[derive(Debug)]
 pub struct ErrVFS();
 
@@ -195,8 +197,10 @@ impl VFS {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
-        let (partition, _remaining_path) = res_partition.unwrap();
-        partition.read(&path, id, offset, length)
+        let (partition, remaining_path) = res_partition.unwrap();
+        let file = partition.read(&remaining_path, id, offset, length);
+        debug!("{} <- len in vfs.read", file.len());
+        file
     }
 
     /// TODO use offset and flag information
