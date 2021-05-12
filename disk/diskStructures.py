@@ -19,7 +19,7 @@ class Address:
         if i < 2:
             return (self.lba >> (8 * i)) & 255
         else:
-            return (self.index >> (8 * (i-2))) & 255
+            return ((self.index + 1) >> (8 * (i-2))) & 255
         
 
 
@@ -49,13 +49,13 @@ class Header:
         data[ 0: 8] = [0, 0, 0, 0, 0, 0, 0, 0] # user
         data[ 8:16] = [0, 0, 0, 0, 0, 0, 0, 0] # owner
         data[16:24] = [0, 0, 0, 0, 0, 0, 0, 0] # group
-        data[24:28] = [self.parent.part(i) for i in range(4)] # parent address
-        data[28:32] = [(self.size >> (i * 8)) & 255 for i in range(4)] # length
-        data[32:36] = [(self.nb_bloc >> (i * 8)) & 255 for i in range(4)] # nb blocs
+        data[24:28] = [self.parent.part(i) for i in range(0, 4)] # parent address
+        data[28:32] = [(self.size >> (i * 8)) & 255 for i in range(0, 4)] # length
+        data[32:36] = [(self.nb_bloc >> (i * 8)) & 255 for i in range(0, 4)] # nb blocs
         data[36:36+SHORT_MODE_LIMIT*4] = self.block_addresses
         assert(SHORT_MODE_LIMIT == 100)
         data[436:438] = [0, 0] # flags
-        data[438:439] = [int(self.nb_bloc <= SHORT_MODE_LIMIT)] # mode
+        data[438:439] = [int(self.nb_bloc > SHORT_MODE_LIMIT)] # mode
         data[439:471] = [ord(i) for i in self.name] + [0] * (32 - len(self.name)) # name
         data[471:472] = [self.type] # file type
         data[472:512] = [0 for i in range(40)] # padding
@@ -203,6 +203,7 @@ class Ustar:
             if self.available[i]:
                 res = self.data[i].get_available()
                 if res != -1:
+                    # print("given :", (i, res))
                     return (i, res)
                 else:
                     self.available[i] = False
@@ -236,7 +237,7 @@ class Ustar:
 # Glboal ustar object
 USTAR = Ustar()
 
-def build_ustar(tree, parent = Address(0, 0)):
+def build_ustar(tree, parent = Address(0, 1)):
     # tree is suposed to be a Dir containing the file hierarchy
     if isinstance(tree, File):
         length = len(tree) # number of children
@@ -306,6 +307,7 @@ def build_ustar(tree, parent = Address(0, 0)):
         if length % 512 > 0:
             sector_number += 1
         mode = tree.mode()
+        print("Dir ", tree.header.name, " nb_bloc ", sector_number)
         if mode == 0:
             header_address = USTAR.get_address()
             block_addresses = [USTAR.get_address() for _ in range(sector_number)]
@@ -326,7 +328,8 @@ def build_ustar(tree, parent = Address(0, 0)):
             for i in range(sector_number):
                 current_add = block_addresses[i]
                 USTAR.set_sector_data(current_add.lba, current_add.index, dir_data[i*512:(i+1)*512])
-            
+            print("Header nb_bloc ", int(tree.header.nb_bloc > SHORT_MODE_LIMIT))
+            return header_address
 
         elif mode == 1:
             print("long")

@@ -424,7 +424,13 @@ impl UsTar {
             port: DISK_PORT,
             lba_table_global: LBATableGlobal::load_from_disk(DISK_PORT),
         };
-        unsafe {DIR_CACHE.0.insert(Path::from("root"), res.memdir_from_address(Address{ lba: 0, block: 1 })) };
+        unsafe {
+            DIR_CACHE.0.insert(
+                Path::from("root"),
+                res.memdir_from_address(Address { lba: 0, block: 1 }),
+            )
+        };
+        unsafe { println!("DIR_CACHE : {:?}", DIR_CACHE.0) };
         res
     }
 
@@ -656,15 +662,19 @@ impl UsTar {
 
     pub fn memfile_from_disk(&self, address: &Address) -> MemFile {
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
-        let length = header.length;
+        let length = match header.file_type {
+            Type::File => header.length,
+            Type::Dir => header.length * 16,
+        };
         //println!("{:?}", header);
         let mut file = MemFile {
             header,
             data: Vec::new(),
         };
-        println!("{:?}, {}", header.name, header.length);
+        println!("{:?}, {}, {:?}", header.name, header.length, header.mode);
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
+            println!("information: {}, {}", header.blocks_number, header.length);
             let mut counter = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
@@ -679,6 +689,7 @@ impl UsTar {
                     counter += 1;
                 }
             }
+            println!("read data : {:?}", file.data);
         } else if header.mode == FileMode::Long {
             //println!("Reading in long mode");
             let mut counter = 0;
@@ -689,7 +700,7 @@ impl UsTar {
                     1
                 }
             };
-            println!("information: {}", header.blocks_number);
+
             let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
             for i in 0..number_address_block {
@@ -704,7 +715,7 @@ impl UsTar {
                     counter += 1;
                 }
             }
-
+            println!("LEL {:?}", data_addresses);
             // Read these data blocks
             counter = 0;
             for i in 0..header.blocks_number {
@@ -723,6 +734,7 @@ impl UsTar {
         } else {
             panic!("No mode selected in file");
         }
+        println!("Finished that file");
         file
     }
 
@@ -732,22 +744,24 @@ impl UsTar {
         let len = (file.header.length << 1) as usize; // x2 because header.length is in u16... Might change that
 
         // These assert_eq are only here for debugging purposes
-        assert_eq!(len as usize, data.len()); // length in u8 of the data segment of the directory
+        //assert_eq!(len as usize, data.len()); // length in u8 of the data segment of the directory
         assert_eq!(file.header.file_type, Type::Dir); // Checks whether the blob is really a directory
-        //assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
+                                                      //assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
         let mut files: BTreeMap<String, Address> = BTreeMap::new();
         println!("#0");
         let number = len / 32; // number of sub_items of the dir
-        for i in 0..number {
-            let mut name = String::new();
+        println!("Number : {} {}", number, len);
+        for i in 0..(len / 2) {
+            let mut name_vec = Vec::new();
             let mut itter = 0;
             while itter < 28 && data[32 * i + itter] != 0 {
-                name.push(data[32 * i + itter] as char);
+                name_vec.push(data[32 * i + itter] as u8);
                 itter += 1;
             }
+            let name = String::from_utf8_lossy(&name_vec[..]).into_owned();
             let temp_address = Address {
-                lba: ((data[32 * i] as u16) << 8) + (data[32 * i + 1] as u16), // TODO /!\ May be incorrect
-                block: ((data[32 * i + 2] as u16) << 8) + (data[32 * i + 3] as u16), // TODO /!\ May be incorrect
+                lba: ((data[32 * i + 28] as u8 as u16) << 8) + (data[32 * i + 29] as u8 as u16), // TODO /!\ May be incorrect
+                block: ((data[32 * i + 30] as u8 as u16) << 8) + (data[32 * i + 31] as u8 as u16), // TODO /!\ May be incorrect
             };
             files.entry(name).or_insert(temp_address);
         }
