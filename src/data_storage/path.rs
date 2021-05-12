@@ -50,10 +50,17 @@ impl Path {
             Self::from(&self.to())
         } else {
             sliced.pop();
+            let mut first = true;
             let mut res = String::new();
             for elt in sliced.iter() {
+                if first {
+                    first = false
+                } else {
+                    res.push_str("/")
+                }
                 res.push_str(elt);
             }
+
             Self::from(&res)
         }
     }
