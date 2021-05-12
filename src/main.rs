@@ -151,7 +151,6 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Needs to be before `spawn_first_process`
     vga::init();
 
-
     unsafe {
         filesystem::init_vfs();
     }

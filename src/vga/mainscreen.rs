@@ -28,7 +28,7 @@ impl VirtualScreenID {
         Self(new)
     }
 
-    pub fn forge(id : usize) -> Self {
+    pub fn forge(id: usize) -> Self {
         Self(id as u64)
     }
 
@@ -182,7 +182,7 @@ impl MainScreen {
                 } else {
                     self.map.insert(vs_id, (amount - 1, screen));
                 }
-            },
+            }
             None => (),
         };
         false
@@ -192,8 +192,8 @@ impl MainScreen {
         match self.map.remove(&vs_id) {
             Some((amount, mut screen)) => {
                 self.map.insert(vs_id, (amount + 1, screen));
-            },
-            None => ()
+            }
+            None => (),
         }
     }
 

@@ -47,7 +47,14 @@ impl Partition for SoundDriver {
         Vec::new()
     }
 
-    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        offset: usize,
+        flags: u64,
+    ) -> isize {
         let sound_number = _buffer.len() / (3 * 8);
         // Each sound packet is 3 u64
         print!("Got a sound, {}", _buffer.len());
@@ -84,5 +91,4 @@ impl Partition for SoundDriver {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }

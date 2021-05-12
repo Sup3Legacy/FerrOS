@@ -36,7 +36,6 @@ impl Default for ProcDriver {
 }
 
 impl Partition for ProcDriver {
-
     fn open(&mut self, _path: &Path) -> usize {
         0
     }
@@ -64,7 +63,14 @@ impl Partition for ProcDriver {
         todo!()
     }
 
-    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         warningln!("User-program attempted to write in proc.");
         -1
     }
@@ -92,7 +98,6 @@ impl Partition for ProcDriver {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }
 
 /// Drives a single file in a `proc/pid` repertory

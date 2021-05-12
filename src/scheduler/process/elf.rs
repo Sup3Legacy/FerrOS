@@ -1,8 +1,8 @@
+use crate::data_storage::path::Path;
+use crate::filesystem::read_file_from_path;
 use crate::memory;
 use crate::_TEST_PROGRAM;
 use crate::{debug, errorln, warningln};
-use crate::filesystem::read_file_from_path;
-use crate::data_storage::path::Path;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::max;
@@ -49,7 +49,6 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
         None => panic!("the frame allocator wasn't initialized"),
     };
     let code: &[u8] = &read_file_from_path(Path::from(file_name));
-
 
     if let Ok(_level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
         let current = super::get_current();

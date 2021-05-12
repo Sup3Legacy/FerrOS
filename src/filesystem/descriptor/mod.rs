@@ -118,16 +118,12 @@ impl OpenFileTable {
     pub fn duplicate(&self) -> Option<Self> {
         match super::duplicate_file(&self) {
             None => None,
-            Some(new_id) => {
-                Some(
-                    Self {
-                        path: self.path.duplicate(),
-                        flags: self.flags,
-                        offset: self.offset,
-                        id: new_id,
-                    }
-                )
-            }
+            Some(new_id) => Some(Self {
+                path: self.path.duplicate(),
+                flags: self.flags,
+                offset: self.offset,
+                id: new_id,
+            }),
         }
     }
 }
@@ -256,10 +252,11 @@ pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
                     Err(_) => return FileDescriptor::new(usize::MAX),
                 };
                 unsafe {
-                    new_pfdt.files[i] = Some(
-                        GLOBAL_FILE_TABLE
-                            .insert(OpenFileTable::new(Path::from(filename.as_str()), 0, id)),
-                    );
+                    new_pfdt.files[i] = Some(GLOBAL_FILE_TABLE.insert(OpenFileTable::new(
+                        Path::from(filename.as_str()),
+                        0,
+                        id,
+                    )));
                 }
             }
         };

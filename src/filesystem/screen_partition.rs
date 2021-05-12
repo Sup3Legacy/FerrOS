@@ -1,7 +1,7 @@
 use super::partition::Partition;
+use crate::data_storage::screen::Coord;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, errorln};
-use crate::data_storage::screen::Coord;
 use crate::{debug, vga::mainscreen, vga::virtual_screen::VirtualScreenLayer, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -24,7 +24,6 @@ impl ScreenPartition {
 }
 
 impl Partition for ScreenPartition {
-
     fn open(&mut self, _path: &Path) -> usize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
@@ -36,12 +35,18 @@ impl Partition for ScreenPartition {
         }
     }
 
-
     fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(&mut self, _path: &Path, id: usize, buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        id: usize,
+        buffer: &[u8],
+        offset: usize,
+        flags: u64,
+    ) -> isize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(id);
@@ -97,14 +102,18 @@ impl Partition for ScreenPartition {
         panic!("not allowed");
     }
 
-    fn give_param(&mut self, _path: &Path, id:usize, param: usize) -> usize {
+    fn give_param(&mut self, _path: &Path, id: usize, param: usize) -> usize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(id);
                 if param >> 63 == 1 {
-                    main_screen.resize_vscreen(&v_screen_id, Coord::new(param & 0xFF, (param >> 32) & 0xFF))
+                    main_screen.resize_vscreen(
+                        &v_screen_id,
+                        Coord::new(param & 0xFF, (param >> 32) & 0xFF),
+                    )
                 } else {
-                    main_screen.replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, (param >> 32)))
+                    main_screen
+                        .replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, (param >> 32)))
                 }
                 0
             } else {
@@ -112,7 +121,6 @@ impl Partition for ScreenPartition {
             }
         }
     }
-
 }
 impl Default for ScreenPartition {
     fn default() -> Self {

@@ -9,7 +9,7 @@ use crate::data_storage::{
     screen::Coord,
 };
 use crate::filesystem;
-use crate::filesystem::{open_mode_from_flags, descriptor};
+use crate::filesystem::{descriptor, open_mode_from_flags};
 use crate::hardware;
 use crate::interrupts;
 use crate::memory;
@@ -242,7 +242,7 @@ extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    //    debug!("fork");
+    debug!("fork");
     let _rax = args.rax;
     unsafe {
         args.rax = 0;
@@ -261,8 +261,11 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
 extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("exec");
     let addr: *const String = VirtAddr::new(args.rdi).as_ptr();
+    let path = unsafe {
+        String::from_raw_parts(args.rdi as *mut u8, args.rsi as usize, args.rsi as usize)
+    };
     unsafe {
-        process::elf::load_elf_for_exec(&*addr);
+        process::elf::load_elf_for_exec(&path);
     }
 }
 

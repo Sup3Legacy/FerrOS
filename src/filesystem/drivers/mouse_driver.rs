@@ -40,7 +40,14 @@ impl Partition for MouseDriver {
         res
     }
 
-    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], offset: usize, _flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        offset: usize,
+        _flags: u64,
+    ) -> isize {
         warningln!("User-program attempted to write in mouse.");
         -1
     }
@@ -68,5 +75,4 @@ impl Partition for MouseDriver {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }

@@ -418,18 +418,19 @@ pub struct UsTar {
 }
 
 impl UsTar {
-
     pub fn new() -> Self {
         disk_operations::init(DISK_PORT);
-        Self {
+        let res = Self {
             port: DISK_PORT,
             lba_table_global: LBATableGlobal::load_from_disk(DISK_PORT),
-        }
+        };
+        unsafe {DIR_CACHE.0.insert(Path::from("root"), res.memdir_from_address(Address{ lba: 0, block: 1 })) };
+        res
     }
 
     fn find_first_uncached(path: &Path) -> PathDecomp {
         let mut decomp = path.slice().into_iter();
-        let mut current_path = Path::new();
+        let mut current_path = Path::from("root");
         let mut current_dir = unsafe { DIR_CACHE.0.get_mut(&current_path).unwrap() };
         while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
             current_dir = a;
@@ -480,6 +481,7 @@ impl UsTar {
 
     pub fn find_memdir(&self, path: &Path) -> Result<MemDir, UsTarError> {
         let memdir_res = unsafe { DIR_CACHE.0.get(path) };
+        println!(":D");
         match memdir_res {
             Some(x) => Ok(x.clone()),
             None => {
@@ -495,9 +497,12 @@ impl UsTar {
     /// and mutate them on-the-fly to speed-up
     /// future searches even more.
     pub fn find_memfile(&self, path: &Path) -> Result<MemFile, UsTarError> {
+        println!(":(");
         let parent_dir = self.find_memdir(&path.get_parent())?;
+        println!("wtf man");
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
+                println!("Hmhmm");
                 return Ok(self.memfile_from_disk(file_address));
             }
         }
@@ -684,6 +689,7 @@ impl UsTar {
                     1
                 }
             };
+            println!("information: {}", header.blocks_number);
             let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
             for i in 0..number_address_block {
@@ -728,8 +734,9 @@ impl UsTar {
         // These assert_eq are only here for debugging purposes
         assert_eq!(len as usize, data.len()); // length in u8 of the data segment of the directory
         assert_eq!(file.header.file_type, Type::Dir); // Checks whether the blob is really a directory
-        assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
+        //assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
         let mut files: BTreeMap<String, Address> = BTreeMap::new();
+        println!("#0");
         let number = len / 32; // number of sub_items of the dir
         for i in 0..number {
             let mut name = String::new();
@@ -773,15 +780,24 @@ impl Partition for UsTar {
     }
 
     fn read(&mut self, path: &Path, _id: usize, offset: usize, size: usize) -> Vec<u8> {
+        println!("Got request : {:?}", path);
         let file = match self.find_memfile(path) {
             Ok(f) => f,
             Err(_) => return Vec::new(),
         };
+        println!("Got vec of length : {}", file.data.len());
         file.data[offset..offset + size].to_vec()
     }
 
     #[allow(unreachable_code)]
-    fn write(&mut self, path: &Path, _id: usize, _buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(
+        &mut self,
+        path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        offset: usize,
+        flags: u64,
+    ) -> isize {
         let flag_set = OpenFlags::parse(flags);
         if !(flag_set.contains(&OpenFlags::OWRO) || flag_set.contains(&OpenFlags::ORDWR)) {
             return -1; // no right to write
@@ -859,5 +875,4 @@ impl Partition for UsTar {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }

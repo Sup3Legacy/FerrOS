@@ -73,7 +73,7 @@ pub fn init(port: u16) {
 
 /// function that from la sector of the disk outputs the data stored at the corresponding place (lba's count starts at 1!)
 pub fn read_sector(lba: u32, port: u16) -> [u16; 256] {
-    println!("read_sector : {} {}", lba, port);
+    //println!("read_sector : {} {}", lba, port);
     let mut a = [0_u16; 256];
     unsafe {
         read((&mut a) as *mut [u16; 256], lba, port);
@@ -81,7 +81,7 @@ pub fn read_sector(lba: u32, port: u16) -> [u16; 256] {
     unsafe {
         flush_cache(port);
     }
-    println!("flushed");
+    //println!("flushed");
     a
 }
 

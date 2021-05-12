@@ -23,7 +23,14 @@ impl Partition for HardWarePartition {
         todo!()
     }
 
-    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         todo!()
     }
 
@@ -50,5 +57,4 @@ impl Partition for HardWarePartition {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }

@@ -19,14 +19,21 @@ impl Partition for SoftwarePartition {
         todo!()
     }
 
-    fn write(&mut self, _path: &Path, _id: usize, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         todo!()
     }
 
     fn close(&mut self, _path: &Path, _id: usize) -> bool {
         todo!()
     }
-    
+
     fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
         todo!()
     }
@@ -46,5 +53,4 @@ impl Partition for SoftwarePartition {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }

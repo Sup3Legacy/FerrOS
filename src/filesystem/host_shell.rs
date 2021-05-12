@@ -12,7 +12,6 @@ impl HostShellPartition {
 }
 
 impl Partition for HostShellPartition {
-
     fn open(&mut self, _path: &Path) -> usize {
         0
     }
@@ -21,7 +20,14 @@ impl Partition for HostShellPartition {
         panic!("not allowed");
     }
 
-    fn write(&mut self, _path: &Path, _id: usize, buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        buffer: &[u8],
+        offset: usize,
+        flags: u64,
+    ) -> isize {
         let mut sortie = String::new();
         let size = buffer.len();
         for i in 0..size {
@@ -54,5 +60,4 @@ impl Partition for HostShellPartition {
     fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
         usize::MAX
     }
-
 }

@@ -5,7 +5,6 @@ use alloc::vec::Vec;
 /// needs to implement this trait in order to get integrated into the
 /// VFS.
 pub trait Partition {
-
     fn open(&mut self, path: &Path) -> usize;
     /// Reads a file
     /// Takes as a parameter the path to the file, the offset and the size

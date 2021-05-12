@@ -65,7 +65,12 @@ impl PartitionNode {
         }
     }
 
-    pub fn remove_entry(&mut self, sliced_path: &Vec<String>, index: usize, id: usize) -> Result<bool, ()> {
+    pub fn remove_entry(
+        &mut self,
+        sliced_path: &Vec<String>,
+        index: usize,
+        id: usize,
+    ) -> Result<bool, ()> {
         match self {
             PartitionNode::Node(next) => {
                 if index >= sliced_path.len() {
@@ -88,7 +93,9 @@ impl PartitionNode {
                     Err(())
                 }
             }
-            PartitionNode::Leaf(part) => Ok(part.close(&Path::from_sliced(&sliced_path[index..]), id)),
+            PartitionNode::Leaf(part) => {
+                Ok(part.close(&Path::from_sliced(&sliced_path[index..]), id))
+            }
         }
     }
 
@@ -148,10 +155,11 @@ impl PartitionNode {
                     panic!("should not happen")
                 }
             }
-            PartitionNode::Leaf(part) => part.give_param(&Path::from_sliced(&sliced_path[index..]), id, param),
+            PartitionNode::Leaf(part) => {
+                part.give_param(&Path::from_sliced(&sliced_path[index..]), id, param)
+            }
         }
     }
-
 }
 
 /// This should be the main interface of the filesystem.
@@ -192,7 +200,14 @@ impl VFS {
     }
 
     /// TODO use offset and flag information
-    pub fn write(&'static mut self, path: Path, id: usize, data: Vec<u8>, offset: usize, flags: u64) -> isize {
+    pub fn write(
+        &'static mut self,
+        path: Path,
+        id: usize,
+        data: Vec<u8>,
+        offset: usize,
+        flags: u64,
+    ) -> isize {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
