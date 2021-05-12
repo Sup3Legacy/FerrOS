@@ -276,6 +276,7 @@ impl LBATableGlobal {
         }; LBA_TABLES_COUNT as usize];
         // Load the LBA tables from disk
         for i in 0..LBA_TABLES_COUNT {
+            println!("Importing table {}/{}", i, LBA_TABLES_COUNT);
             let new = LBATable::from_u16_array(disk_operations::read_sector(512 * i, port));
             // update the global LBA-table's index if found the first non-full LBA.
             if new.index != 510 && index == LBA_TABLES_COUNT {
@@ -417,6 +418,15 @@ pub struct UsTar {
 }
 
 impl UsTar {
+
+    pub fn new() -> Self {
+        disk_operations::init(DISK_PORT);
+        Self {
+            port: DISK_PORT,
+            lba_table_global: LBATableGlobal::load_from_disk(DISK_PORT),
+        }
+    }
+
     fn find_first_uncached(path: &Path) -> PathDecomp {
         let mut decomp = path.slice().into_iter();
         let mut current_path = Path::new();

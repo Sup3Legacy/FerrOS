@@ -1,6 +1,8 @@
 use crate::memory;
 use crate::_TEST_PROGRAM;
 use crate::{debug, errorln, warningln};
+use crate::filesystem::read_file_from_path;
+use crate::data_storage::path::Path;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::max;
@@ -41,11 +43,13 @@ pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
 /// # Safety
 /// TODO
-pub unsafe fn load_elf_for_exec(_file_name: &str) -> ! {
+pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
     };
+    let code: &[u8] = &read_file_from_path(Path::from(file_name));
+
     let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
 
     if let Ok(_level_4_table_addr) = frame_allocator.allocate_level_4_frame() {

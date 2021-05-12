@@ -51,6 +51,12 @@ pub unsafe fn init_vfs() {
         let s5 = host_shell::HostShellPartition::new();
         vfs.add_file(Path::from("screen/host_shell"), Box::new(s5))
             .expect("could not create shell printer.");
+
+        println!("New UsTar");
+        let s6 = ustar::UsTar::new();
+        println!("UsTar created");
+        vfs.add_file(Path::from("User"), Box::new(s6))
+            .expect("could not create disk driver.");
     } else {
         panic!("should not happen")
     }
@@ -104,6 +110,16 @@ pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
             vfs.read(path, oft.get_id(), offset, length)
+        } else {
+            panic!("VFS not initialized in read_file.");
+        }
+    }
+}
+
+pub fn read_file_from_path(path: Path) -> Vec<u8> {
+    unsafe {
+        if let Some(ref mut vfs) = VFS {
+            vfs.read(path, usize::MAX, 0, usize::MAX)
         } else {
             panic!("VFS not initialized in read_file.");
         }
