@@ -24,13 +24,16 @@ impl ScreenPartition {
 }
 
 impl Partition for ScreenPartition {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            return None;
+        }
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let s = main_screen.new_screen(0, 0, 25, 80, VirtualScreenLayer::new(0));
-                s.as_usize()
+                Some(s.as_usize())
             } else {
-                panic!("Mainscreen uninitialised")
+                None
             }
         }
     }

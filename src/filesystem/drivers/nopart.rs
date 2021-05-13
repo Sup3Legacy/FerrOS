@@ -13,7 +13,7 @@ impl NoPart {
 }
 
 impl Partition for NoPart {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
         todo!()
     }
 

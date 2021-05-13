@@ -177,7 +177,10 @@ impl VFS {
             return Err(ErrVFS());
         }
         let (partition, remaining_path) = res_partition.unwrap();
-        Ok(partition.open(&remaining_path))
+        match partition.open(&remaining_path) {
+            None => Err(ErrVFS()),
+            Some(d) => Ok(d),
+        }
     }
 
     pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {

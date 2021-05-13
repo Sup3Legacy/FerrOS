@@ -31,6 +31,10 @@ impl Path {
         Path::from(&self.0.clone())
     }
 
+    pub fn len(&self) -> usize {
+        self.slice().len()
+    }
+
     /// Slices the `Path` and returns a `Vec<String>`
     pub fn slice(&self) -> Vec<String> {
         let sliced = self

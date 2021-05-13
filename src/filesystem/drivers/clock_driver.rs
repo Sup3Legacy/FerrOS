@@ -145,8 +145,12 @@ impl Default for ClockDriver {
 }
 
 impl Partition for ClockDriver {
-    fn open(&mut self, _path: &Path) -> usize {
-        0
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            None
+        } else {
+            Some(0)
+        }
     }
 
     fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {

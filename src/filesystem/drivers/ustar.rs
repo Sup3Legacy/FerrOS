@@ -789,7 +789,7 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
         todo!()
     }
 

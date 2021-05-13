@@ -12,8 +12,8 @@ impl HostShellPartition {
 }
 
 impl Partition for HostShellPartition {
-    fn open(&mut self, _path: &Path) -> usize {
-        0
+    fn open(&mut self, _path: &Path) -> Option<usize> {
+        Some(0)
     }
 
     fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {

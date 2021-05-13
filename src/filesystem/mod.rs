@@ -12,6 +12,7 @@ use core::todo;
 
 pub mod descriptor;
 pub mod drivers;
+pub mod fifo;
 pub mod fsflags;
 pub mod host_shell;
 pub mod partition;
@@ -51,6 +52,10 @@ pub unsafe fn init_vfs() {
         let s5 = host_shell::HostShellPartition::new();
         vfs.add_file(Path::from("screen/host_shell"), Box::new(s5))
             .expect("could not create shell printer.");
+
+        let s6 = fifo::FiFoPartition::new();
+        vfs.add_file(Path::from("communication/fifo"), Box::new(s6))
+            .expect("could not create fifo.");
 
         println!("New UsTar");
         let s6 = ustar::UsTar::new();
