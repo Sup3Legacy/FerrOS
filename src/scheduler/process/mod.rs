@@ -778,6 +778,10 @@ impl ID {
         panic!("no slot available")
     }
 
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
     /// Forges an `ID`, must *not* be used other than to build the first one.
     pub fn forge(index: u64) -> Self {
         Self(index)
@@ -957,6 +961,16 @@ pub unsafe fn set_priority(prio: usize) -> usize {
     }
 }
 
+pub unsafe fn kill(target: usize) -> usize {
+    let mut target_process = ID_TABLE[target];
+    if target_process.priority < ID_TABLE[CURRENT_PROCESS].priority {
+        1
+    } else {
+        target_process.state = State::Zombie(1);
+        0
+    }
+}
+
 fn next_priority_to_run() -> usize {
     let mut ticket = random::random_u8();
     // debug!("Ticket = {:#b}", ticket);
@@ -1048,5 +1062,12 @@ unsafe fn next_pid_to_run() -> ID {
         }
         _ => panic!("{:#?} unsupported in scheduler!", old_state),
     }
-    new_pid
+    match ID_TABLE[new_pid.as_usize()].state {
+        State::Runnable | State::Running => new_pid,
+        State::SlotAvailable | State::Zombie(_) => next_pid_to_run(),
+        State::SleepInterruptible | State::SleepUninterruptible | State::Stopped => {
+            add_idle(new_pid);
+            next_pid_to_run()
+        }
+    }
 }

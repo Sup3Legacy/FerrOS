@@ -27,7 +27,7 @@ use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAd
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 23;
+const SYSCALL_NUMBER: u64 = 24;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -55,6 +55,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_20_debug,
     syscall_21_memrequest,
     syscall_22_listen,
+    syscall_23_kill,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -378,6 +379,10 @@ extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptSt
     let (rax, rdi) = scheduler::process::listen();
     args.rax = rax;
     args.rdi = rdi;
+}
+
+extern "C" fn syscall_23_kill(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    args.rax = unsafe { scheduler::process::kill(args.rdi as usize) as u64 };
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
