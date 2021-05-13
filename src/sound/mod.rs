@@ -5,8 +5,8 @@ use crate::println;
 
 mod sound_queue;
 
-/// Sound driver
 lazy_static! {
+    /// Sound driver
     static ref SOUND_QUEUE: Mutex<sound_queue::SoundQueue> =
         Mutex::new(sound_queue::SoundQueue::new());
 }

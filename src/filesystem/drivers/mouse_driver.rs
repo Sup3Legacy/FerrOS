@@ -49,7 +49,7 @@ impl Partition for MouseDriver {
         _path: &Path,
         _id: usize,
         _buffer: &[u8],
-        offset: usize,
+        _offset: usize,
         _flags: u64,
     ) -> isize {
         warningln!("User-program attempted to write in mouse.");

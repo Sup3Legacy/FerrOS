@@ -803,12 +803,10 @@ impl Partition for UsTar {
         println!("size : {}", size);
         if size == usize::MAX {
             file.data
+        } else if offset + size > file.data.len() {
+            file.data[offset..].to_vec()
         } else {
-            if offset + size > file.data.len() {
-                file.data[offset..].to_vec()
-            } else {
-                file.data[offset..offset + size].to_vec()
-            }
+            file.data[offset..offset + size].to_vec()
         }
     }
 
@@ -818,7 +816,7 @@ impl Partition for UsTar {
         path: &Path,
         _id: usize,
         _buffer: &[u8],
-        offset: usize,
+        _offset: usize,
         flags: u64,
     ) -> isize {
         let flag_set = OpenFlags::parse(flags);
@@ -847,7 +845,7 @@ impl Partition for UsTar {
                 // convert it in a byte array
                 let mut name_arr = [0; 32];
                 name_arr[..name.len()].clone_from_slice(&bytes);
-                let header = Header {
+                let _header = Header {
                     user: UGOID(412),
                     owner: UGOID(666),
                     group: UGOID(007),

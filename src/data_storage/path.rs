@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::println;
+
 
 /// This represents a Path in the kernel.
 /// It is a simple wrapper around a `String`
@@ -62,7 +62,7 @@ impl Path {
                 if first {
                     first = false
                 } else {
-                    res.push_str("/")
+                    res.push('/')
                 }
                 res.push_str(elt);
             }
@@ -73,8 +73,7 @@ impl Path {
     /// Returns the most upper segment.
     pub fn get_name(&self) -> String {
         let sliced = self.slice();
-        sliced
-            .get(sliced.len() - 1)
+        sliced.last()
             .unwrap_or(&String::from(""))
             .clone()
     }
@@ -86,7 +85,7 @@ impl Path {
             if first {
                 first = false;
             } else {
-                path.push_str("/");
+                path.push('/');
             }
             path.push_str(e);
         }

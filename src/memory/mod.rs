@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{debug, print, println};
+use crate::{println};
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -982,7 +982,7 @@ impl BootInfoAllocator {
         remove_flags: PageTableFlags,
         protected: bool,
     ) -> bool {
-        let mut failed = false;
+        let _failed = false;
 
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();

@@ -6,7 +6,6 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use partition::Partition;
 
 use core::todo;
 
@@ -80,7 +79,7 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
-pub fn open_mode_from_flags(flags: u64) -> OpenMode {
+pub fn open_mode_from_flags(_flags: u64) -> OpenMode {
     OpenMode::Read
 }
 
@@ -136,7 +135,7 @@ pub fn read_file_from_path(path: Path) -> Vec<u8> {
 pub fn modify_file(oft: &OpenFileTable, param: usize) -> usize {
     unsafe {
         let path = oft.get_path();
-        let offset = oft.get_offset();
+        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
             vfs.give_param(&path, oft.get_id(), param)
         } else {
@@ -170,7 +169,7 @@ fn test() {
 pub fn close_file(oft: &OpenFileTable) {
     unsafe {
         let path = oft.get_path();
-        let offset = oft.get_offset();
+        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
             vfs.close(path, oft.get_id()).expect("Unexisting file to close");
         } else {

@@ -61,12 +61,10 @@ impl ListNode {
                     next_region.merge_partial(nb - 1);
                 }
             }
-        } else {
-            if nb == 0 {
-                return;
-            } else if let Some(ref mut next_region) = self.next {
-                next_region.merge_partial(nb - 1);
-            }
+        } else if nb == 0 {
+            
+        } else if let Some(ref mut next_region) = self.next {
+            next_region.merge_partial(nb - 1);
         }
     }
 }

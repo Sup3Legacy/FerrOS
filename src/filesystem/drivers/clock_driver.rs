@@ -1,5 +1,7 @@
 use super::super::partition::Partition;
-use crate::{data_storage::path::Path, warningln};
+use crate::{data_storage::path::Path};
+
+use crate::warningln;
 
 use alloc::format;
 use alloc::vec::Vec;
@@ -178,7 +180,7 @@ impl Partition for ClockDriver {
         _offset: usize,
         _flags: u64,
     ) -> isize {
-        panic!("User-program attempted to write in clock.");
+        warningln!("User-program attempted to write in clock.");
         -1
     }
 

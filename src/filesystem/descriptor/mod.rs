@@ -1,5 +1,5 @@
 use crate::data_storage::path::Path;
-use crate::debug;
+
 use crate::scheduler::process;
 use alloc::string::String;
 
@@ -315,10 +315,11 @@ pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
     let current_proccess = unsafe { process::get_current_as_mut() };
     // we try to close the file, and if at any point we fail, raise an error
     match current_proccess.open_files.files[descriptor as usize] {
-        None => return Err(FileDesciptorError()),
+        None => Err(FileDesciptorError()),
         Some(idx) => {
             current_proccess.open_files.files[descriptor as usize] = None;
-            unsafe { Ok(GLOBAL_FILE_TABLE.delete(idx)) }
+            unsafe { GLOBAL_FILE_TABLE.delete(idx);
+            Ok(()) }
         }
     }
 }

@@ -56,8 +56,8 @@ impl Partition for SoundDriver {
         _path: &Path,
         _id: usize,
         _buffer: &[u8],
-        offset: usize,
-        flags: u64,
+        _offset: usize,
+        _flags: u64,
     ) -> isize {
         let sound_number = _buffer.len() / (3 * 8);
         // Each sound packet is 3 u64

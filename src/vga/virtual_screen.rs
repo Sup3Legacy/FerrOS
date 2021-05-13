@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
-use alloc::string::String;
+
 use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
@@ -126,7 +126,6 @@ impl VirtualScreen {
     /// FOR NOW DISABLED
     /// Moves the cursor given the information in the `Screen` struct.
     fn set_cursor(&mut self) {
-        return ();
         let pos = self.row_pos * self.width + self.col_pos;
         let mut port1 = Port::new(0x3D4);
         let mut port2 = Port::new(0x3D5);
@@ -206,7 +205,7 @@ impl VirtualScreen {
                     self.col_pos += 1;
                 }
             };
-            self.set_cursor();
+            //self.set_cursor();
             i += 1;
         }
     }
@@ -393,6 +392,6 @@ impl VirtualScreen {
     }
 
     pub fn delete(&mut self) {
-        return;
+        
     }
 }
