@@ -503,13 +503,15 @@ impl UsTar {
     /// and mutate them on-the-fly to speed-up
     /// future searches even more.
     pub fn find_memfile(&self, path: &Path) -> Result<MemFile, UsTarError> {
-        println!(":(");
+        println!(":( {:#?}", path);
         let parent_dir = self.find_memdir(&path.get_parent())?;
-        println!("wtf man");
+        println!("wtf man {}", parent_dir.files.len());
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
                 println!("Hmhmm");
                 return Ok(self.memfile_from_disk(file_address));
+            } else {
+                println!("{} wasn't good for {}", file_name, &path.get_name())
             }
         }
         Err(UsTarError::FileNotFound)
@@ -674,11 +676,9 @@ impl UsTar {
         println!("{:?}, {}, {:?}", header.name, header.length, header.mode);
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
-            println!("information: {}, {}", header.blocks_number, header.length);
             let mut counter = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
-                println!("data address {:#?}", address);
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
@@ -690,7 +690,6 @@ impl UsTar {
                     counter += 1;
                 }
             }
-            println!("read data : {:?}", file.data);
         } else if header.mode == FileMode::Long {
             //println!("Reading in long mode");
             let mut counter = 0;
@@ -802,7 +801,15 @@ impl Partition for UsTar {
         };
         println!("Got vec of length : {}", file.data.len());
         println!("size : {}", size);
-        file.data[offset..offset + size].to_vec()
+        if size == usize::MAX {
+            file.data
+        } else {
+            if offset + size > file.data.len() {
+                file.data[offset..].to_vec()
+            } else {
+                file.data[offset..offset + size].to_vec()
+            }
+        }
     }
 
     #[allow(unreachable_code)]

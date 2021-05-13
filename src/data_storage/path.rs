@@ -68,7 +68,8 @@ impl Path {
     }
     /// Returns the most upper segment.
     pub fn get_name(&self) -> String {
-        self.slice().get(0).unwrap_or(&String::from("")).clone()
+        let sliced = self.slice();
+        sliced.get(sliced.len() - 1).unwrap_or(&String::from("")).clone()
     }
     /// Builds a `Path` from a slice of `String`
     pub fn from_sliced(sliced: &[String]) -> Self {

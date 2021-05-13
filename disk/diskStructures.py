@@ -85,12 +85,8 @@ class File(UstarFile):
         return len(self.data)  # in bytes
 
     def get_data(self):
-        
-        data2 = []
-        for i in range(256):
-            data2.append(self.data[2 * i + 1])
-            data2.append(self.data[2 * i])
-        return data2
+        print(self.header.name, sum(self.data))
+        return perm(self.data)
 
     def mode(self):
         if len(self) < SHORT_MODE_LIMIT * BLOCK_SIZE:
@@ -273,8 +269,10 @@ def build_ustar(tree, parent = Address(0, 1)):
             USTAR.set_sector_data(addresses[0].lba, addresses[0].index, tree.header.get_data())
             # Put data into the sectors
             file_data = tree.get_data()
+            print(len(file_data))
             for i in range(sector_number):
                 current_add = addresses[i + 1]
+                print(tree.header.name, i,sum(file_data[i*512:(i+1)*512]))
                 USTAR.set_sector_data(current_add.lba, current_add.index, file_data[i*512:(i+1)*512])
             # return the address of the file header
             return addresses[0]
