@@ -673,7 +673,7 @@ impl UsTar {
             header,
             data: Vec::new(),
         };
-        println!("{:?}, {}, {:?}", header.name, header.length, header.mode);
+        //println!("{:?}, {}, {:?}", header.name, header.length, header.mode);
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
             let mut counter = 0;
@@ -715,7 +715,7 @@ impl UsTar {
                     counter += 1;
                 }
             }
-            println!("LEL {:?}", data_addresses);
+            //println!("LEL {:?}", data_addresses);
             // Read these data blocks
             counter = 0;
             for i in 0..header.blocks_number {
@@ -750,7 +750,7 @@ impl UsTar {
         let mut files: BTreeMap<String, Address> = BTreeMap::new();
         println!("#0");
         let number = len / 32; // number of sub_items of the dir
-        println!("Number : {} {}", number, len);
+                               //println!("Number : {} {}", number, len);
         for i in 0..(len / 2) {
             let mut name_vec = Vec::new();
             let mut itter = 0;
@@ -790,7 +790,7 @@ impl UsTar {
 
 impl Partition for UsTar {
     fn open(&mut self, _path: &Path) -> Option<usize> {
-        todo!()
+        Some(1)
     }
 
     fn read(&mut self, path: &Path, _id: usize, offset: usize, size: usize) -> Vec<u8> {
