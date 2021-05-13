@@ -14,7 +14,7 @@ use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
 
-use crate::{scheduler};
+use crate::scheduler;
 use crate::{debug, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;

@@ -226,11 +226,7 @@ impl ProcessDescriptorTable {
 
     /// self.dup(1, 4) redirects fd 1 to the OpenFileTable
     /// fd 4 points to.
-    pub fn dup(
-        &mut self,
-        target: FileDescriptor,
-        operand: FileDescriptor,
-    ) -> usize {
+    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> usize {
         // TO DO check the bounds and validity of the given data!
         match self.files[target.into_usize()] {
             None => (),
@@ -318,8 +314,10 @@ pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
         None => Err(FileDesciptorError()),
         Some(idx) => {
             current_proccess.open_files.files[descriptor as usize] = None;
-            unsafe { GLOBAL_FILE_TABLE.delete(idx);
-            Ok(()) }
+            unsafe {
+                GLOBAL_FILE_TABLE.delete(idx);
+                Ok(())
+            }
         }
     }
 }

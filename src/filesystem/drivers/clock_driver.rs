@@ -1,5 +1,5 @@
 use super::super::partition::Partition;
-use crate::{data_storage::path::Path};
+use crate::data_storage::path::Path;
 
 use crate::warningln;
 

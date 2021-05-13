@@ -1,8 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-
-
 /// This represents a Path in the kernel.
 /// It is a simple wrapper around a `String`
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -73,9 +71,7 @@ impl Path {
     /// Returns the most upper segment.
     pub fn get_name(&self) -> String {
         let sliced = self.slice();
-        sliced.last()
-            .unwrap_or(&String::from(""))
-            .clone()
+        sliced.last().unwrap_or(&String::from("")).clone()
     }
     /// Builds a `Path` from a slice of `String`
     pub fn from_sliced(sliced: &[String]) -> Self {

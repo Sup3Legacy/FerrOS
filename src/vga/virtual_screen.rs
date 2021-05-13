@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
-
 use alloc::vec::Vec;
 use x86_64::instructions::port::Port;
 
@@ -391,7 +390,5 @@ impl VirtualScreen {
         self.col_pos = old_col;
     }
 
-    pub fn delete(&mut self) {
-        
-    }
+    pub fn delete(&mut self) {}
 }

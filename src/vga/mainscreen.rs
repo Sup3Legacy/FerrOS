@@ -8,8 +8,6 @@ use priority_queue::PriorityQueue;
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
 use crate::data_storage::screen::Coord;
 
-
-
 pub static mut MAIN_SCREEN: Option<MainScreen> = None;
 
 /// Height of the screen

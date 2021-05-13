@@ -15,14 +15,12 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
+use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
 use crate::hardware;
 use crate::memory;
-use crate::{
-    alloc::collections::{BTreeMap, BTreeSet},
-};
 use crate::{debug, errorln, println};
 use alloc::string::String;
 
@@ -658,7 +656,7 @@ pub struct Process {
     pub cr3f: Cr3Flags,
     pub rsp: u64, // every registers are saved on the stack
     pub stack_base: u64,
-    state: State,
+    pub state: State,
     owner: u64,
     pub heap_address: u64,
     pub heap_size: u64,
@@ -931,7 +929,7 @@ pub unsafe fn fork() -> ID {
     pid
 }
 
-pub fn dup2(fd_target: usize, fd_from: usize) -> usize{
+pub fn dup2(fd_target: usize, fd_from: usize) -> usize {
     unsafe {
         ID_TABLE[CURRENT_PROCESS]
             .open_files

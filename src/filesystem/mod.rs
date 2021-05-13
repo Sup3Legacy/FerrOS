@@ -6,7 +6,6 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-
 use core::todo;
 
 pub mod descriptor;
@@ -171,7 +170,8 @@ pub fn close_file(oft: &OpenFileTable) {
         let path = oft.get_path();
         let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.close(path, oft.get_id()).expect("Unexisting file to close");
+            vfs.close(path, oft.get_id())
+                .expect("Unexisting file to close");
         } else {
             panic!("VFS not initialized in close_file.");
         }

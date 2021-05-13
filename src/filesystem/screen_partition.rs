@@ -64,7 +64,6 @@ impl Partition for ScreenPartition {
                         v_screen_id
                     );
                     panic!("exit");
-                    
                 }
             } else {
                 errorln!("Mainscreen not initialized!");
@@ -115,8 +114,7 @@ impl Partition for ScreenPartition {
                         Coord::new(param & 0xFF, (param >> 32) & 0xFF),
                     )
                 } else {
-                    main_screen
-                        .replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, param >> 32))
+                    main_screen.replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, param >> 32))
                 }
                 0
             } else {

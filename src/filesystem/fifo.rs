@@ -89,7 +89,14 @@ impl Partition for FiFoPartition {
         }
     }
 
-    fn write(&mut self, path: &Path, id: usize, buffer: &[u8], _offset: usize, _flags: u64) -> isize {
+    fn write(
+        &mut self,
+        path: &Path,
+        id: usize,
+        buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         if path.len() != 0 {
             return 0;
         }

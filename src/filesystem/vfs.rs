@@ -11,8 +11,6 @@ use super::drivers::nopart::NoPart;
 
 use crate::data_storage::path::Path;
 
-
-
 #[derive(Debug)]
 pub struct ErrVFS();
 

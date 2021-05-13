@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{println};
+use crate::println;
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -994,11 +994,8 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    let flags_level_3 = self.deallocate_level_3_page(
-                        &mut *page_table_ptr,
-                        remove_flags,
-                        protected,
-                    );
+                    let flags_level_3 =
+                        self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags, protected);
                     if flags_level_3.is_empty() {
                         table_4[i].set_flags(PageTableFlags::empty());
                         self.deallocate_4k_frame(table_4[i].addr());
@@ -1029,11 +1026,8 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    let flags_level_2 = self.deallocate_level_2_page(
-                        &mut *page_table_ptr,
-                        remove_flags,
-                        protected,
-                    );
+                    let flags_level_2 =
+                        self.deallocate_level_2_page(&mut *page_table_ptr, remove_flags, protected);
                     if flags_level_2.is_empty() {
                         table_3[i].set_flags(PageTableFlags::empty());
                         self.deallocate_4k_frame(table_3[i].addr())
@@ -1063,11 +1057,8 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    let flags_level_1 =  self.deallocate_level_1_page(
-                        &mut *page_table_ptr,
-                        remove_flags,
-                        protected,
-                    );
+                    let flags_level_1 =
+                        self.deallocate_level_1_page(&mut *page_table_ptr, remove_flags, protected);
                     if flags_level_1.is_empty() {
                         table_2[i].set_flags(PageTableFlags::empty());
                         self.deallocate_4k_frame(table_2[i].addr())
