@@ -1,6 +1,6 @@
 use crate::data_storage::path::Path;
-use crate::scheduler::process;
 use crate::debug;
+use crate::scheduler::process;
 use alloc::string::String;
 
 pub struct FileDesciptorError();
@@ -75,7 +75,7 @@ impl GeneralFileTable {
                     super::close_file(&file);
                     self.tables[index] = None;
                 }
-            },
+            }
             None => return Err(FileDesciptorError()),
         }
         Ok(())
@@ -107,7 +107,7 @@ pub struct OpenFileTable {
     flags: u64,
     offset: usize,
     id: usize,
-    nb: usize
+    nb: usize,
 }
 impl OpenFileTable {
     pub fn new(path: Path, flags: u64, id: usize) -> Self {
@@ -235,28 +235,21 @@ impl ProcessDescriptorTable {
         // TO DO check the bounds and validity of the given data!
         match self.files[target.into_usize()] {
             None => (),
-            Some(fd) => {
-                unsafe {
-                    GLOBAL_FILE_TABLE.delete(fd);
-                }
-            }
+            Some(fd) => unsafe {
+                GLOBAL_FILE_TABLE.delete(fd);
+            },
         }
         self.files[target.into_usize()] = self.files[operand.into_usize()];
         match self.files[operand.into_usize()] {
             None => (),
-            Some(fd) => {
-                unsafe {
-                    GLOBAL_FILE_TABLE.duplicate(fd);
-                }
-            }
+            Some(fd) => unsafe {
+                GLOBAL_FILE_TABLE.duplicate(fd);
+            },
         }
         Ok(())
     }
 
-    pub fn copy(
-        &mut self,
-        father : ProcessDescriptorTable,
-    ) {
+    pub fn copy(&mut self, father: ProcessDescriptorTable) {
         for i in 0..MAX_TOTAL_OPEN_FILES_BY_PROCESS {
             match father.files[i] {
                 None => self.files[i] = None,
@@ -311,7 +304,7 @@ pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
                     )));
                 }
                 current_process.open_files = new_pfdt;
-                return FileDescriptor::new(current_process.open_files.index)
+                return FileDescriptor::new(current_process.open_files.index);
             }
         };
     }
