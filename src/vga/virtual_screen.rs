@@ -126,6 +126,7 @@ impl VirtualScreen {
     /// FOR NOW DISABLED
     /// Moves the cursor given the information in the `Screen` struct.
     fn set_cursor(&mut self) {
+        return ();
         let pos = self.row_pos * self.width + self.col_pos;
         let mut port1 = Port::new(0x3D4);
         let mut port2 = Port::new(0x3D5);

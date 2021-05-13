@@ -935,11 +935,11 @@ pub unsafe fn fork() -> ID {
     pid
 }
 
-pub fn dup2(fd_target: usize, fd_from: usize) {
+pub fn dup2(fd_target: usize, fd_from: usize) -> usize{
     unsafe {
         ID_TABLE[CURRENT_PROCESS]
             .open_files
-            .dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from));
+            .dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from))
     }
 }
 

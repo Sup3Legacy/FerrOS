@@ -172,7 +172,7 @@ pub fn close_file(oft: &OpenFileTable) {
         let path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.close(path, oft.get_id());
+            vfs.close(path, oft.get_id()).expect("Unexisting file to close");
         } else {
             panic!("VFS not initialized in close_file.");
         }

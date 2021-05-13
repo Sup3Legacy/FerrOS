@@ -108,8 +108,7 @@ pub fn init(_boot_info: &'static BootInfo) {
                     level_4_frame.start_address(),
                     PageTableFlags::BIT_9,
                     false,
-                )
-                .expect("Didn't manage to clean bootloader data");
+                );
             frame_allocator
                 .add_forced_entry_to_table(
                     level_4_frame,

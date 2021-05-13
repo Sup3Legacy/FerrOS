@@ -56,28 +56,18 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
         let current = super::get_current();
 
         // deallocate precedent file
-        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
-            Ok(b) => {
-                if !b {
-                    debug!("page table is not empty")
-                } else {
-                    debug!("page table is empty")
-                }
-            }
-            Err(_) => panic!("failed at deallocation"),
-        };
+        if !frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
+            debug!("page table is not empty")
+        } else {
+            debug!("page table is empty")
+        }
 
         // deallocate precedent heap
-        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP, true) {
-            Ok(b) => {
-                if !b {
-                    debug!("page table is not empty")
-                } else {
-                    debug!("page table is empty")
-                }
-            }
-            Err(_) => panic!("failed at deallocation"),
-        };
+        if !frame_allocator.deallocate_level_4_page(current.cr3, HEAP, true) {
+            debug!("page table is not empty")
+        } else {
+            debug!("page table is empty")
+        }
 
         super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false);
     } else {
@@ -107,28 +97,19 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         let mut current = super::get_current_as_mut();
 
         // deallocate precedent file
-        match frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
-            Ok(b) => {
-                if !b {
-                    debug!("page table is not empty")
-                } else {
-                    debug!("page table is empty")
-                }
-            }
-            Err(_) => panic!("failed at deallocation"),
-        };
+        if !frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
+            debug!("page table is not empty")
+        } else {
+            debug!("page table is empty")
+        }
 
         // deallocate precedent heap
-        match frame_allocator.deallocate_level_4_page(current.cr3, HEAP_ADDED, true) {
-            Ok(b) => {
-                if !b {
-                    debug!("page table is not empty")
-                } else {
-                    debug!("page table is empty")
-                }
-            }
-            Err(_) => panic!("failed at deallocation"),
-        };
+        let b = frame_allocator.deallocate_level_4_page(current.cr3, HEAP_ADDED, true);
+        if !b {
+            debug!("page table is not empty")
+        } else {
+            debug!("page table is empty")
+        }
 
         let mut maximum_address = 0;
 

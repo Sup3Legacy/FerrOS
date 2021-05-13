@@ -217,7 +217,7 @@ extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_4_dup2(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    process::dup2(args.rdi as usize, args.rsi as usize);
+    args.rax = process::dup2(args.rdi as usize, args.rsi as usize) as u64;
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

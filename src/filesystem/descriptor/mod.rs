@@ -68,7 +68,7 @@ impl GeneralFileTable {
 
     /// Deletes an entry in the table files.
     /// Should close be added ?
-    pub fn delete(&mut self, index: usize) -> Result<(), FileDesciptorError> {
+    pub fn delete(&mut self, index: usize) {
         match &mut self.tables[index] {
             Some(file) => {
                 if file.close() {
@@ -76,9 +76,8 @@ impl GeneralFileTable {
                     self.tables[index] = None;
                 }
             }
-            None => return Err(FileDesciptorError()),
+            None => panic!("Unexisting file was closed"),
         }
-        Ok(())
     }
 
     pub fn duplicate(&mut self, fd: usize) -> usize {
@@ -231,7 +230,7 @@ impl ProcessDescriptorTable {
         &mut self,
         target: FileDescriptor,
         operand: FileDescriptor,
-    ) -> Result<(), FileDesciptorError> {
+    ) -> usize {
         // TO DO check the bounds and validity of the given data!
         match self.files[target.into_usize()] {
             None => (),
@@ -246,7 +245,7 @@ impl ProcessDescriptorTable {
                 GLOBAL_FILE_TABLE.duplicate(fd);
             },
         }
-        Ok(())
+        0
     }
 
     pub fn copy(&mut self, father: ProcessDescriptorTable) {
@@ -319,7 +318,7 @@ pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
         None => return Err(FileDesciptorError()),
         Some(idx) => {
             current_proccess.open_files.files[descriptor as usize] = None;
-            unsafe { GLOBAL_FILE_TABLE.delete(idx) }
+            unsafe { Ok(GLOBAL_FILE_TABLE.delete(idx)) }
         }
     }
 }
