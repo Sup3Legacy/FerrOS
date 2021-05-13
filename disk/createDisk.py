@@ -5,17 +5,17 @@ import os
 
 # Path to filesystem directory
 directory = "./filesystem/"
-disk_img = "./disk.img.test"
+disk_img = "./disk/disk2.img"
 
 def construct_filesystem_tree(path):
     files = []
-    name = ""
+    name = "root" # give a name
     for child in os.listdir(path):
+        print(child)
         child_path = os.path.join(path, child)
         if os.path.isfile(child_path):
-            name = child
             data = open(child_path, "rb")
-            files.append(File(data, name))
+            files.append(File(list(data.read()), child))
             data.close()
         else:
             # if the child is a directory
@@ -36,6 +36,7 @@ def build_filesystem(fs_path, disk_img_path):
     tree = construct_filesystem_tree(fs_path)
     build_ustar(tree)
     data = USTAR.get_data()
+    print(sum(data), 512 * 32)
     write_ustar(data, disk_img_path)
 
 if __name__ == "__main__":

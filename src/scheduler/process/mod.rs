@@ -17,14 +17,14 @@ use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
-use crate::filesystem::descriptor::ProcessDescriptorTable;
+use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
 use crate::hardware;
 use crate::memory;
 use crate::{
     alloc::collections::{BTreeMap, BTreeSet},
     vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
 };
-use crate::{errorln, println};
+use crate::{debug, errorln, println};
 use alloc::string::String;
 
 /// Default allocated heap size (in number of pages)
@@ -429,6 +429,7 @@ pub unsafe fn disassemble_and_launch(
         get_current().stack_base
     };
     // We get the `ElfFile` from the raw slice
+    println!("Code len : {}", code.len());
     let elf = ElfFile::new(code).unwrap();
     // We get the main entry point and mmake sure it is
     // a 64-bit ELF file
@@ -620,6 +621,9 @@ pub unsafe fn disassemble_and_launch(
     Cr3::write(level_4_table_addr, cr3f);
     println!("good luck user ;) {} {}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
+    for i in 0..10 {
+        debug!("{} {}", i, get_current().open_files.is_none(i));
+    }
     towards_user_give_heap_args(
         heap_address_normalized,
         heap_size,
@@ -660,7 +664,7 @@ pub struct Process {
     pub heap_address: u64,
     pub heap_size: u64,
     pub open_files: ProcessDescriptorTable,
-    pub screen: VirtualScreenID,
+    //pub screen: VirtualScreenID,
 }
 
 impl Process {
@@ -683,7 +687,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
-            screen: VirtualScreenID::new(),
+            //screen: VirtualScreenID::new(),
         }
     }
 
@@ -702,7 +706,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
-            screen: VirtualScreenID::null(),
+            //screen: VirtualScreenID::null(),
         }
     }
 
@@ -794,11 +798,11 @@ pub fn spawn_first_process() {
     let cr3 = x86_64::registers::control::Cr3::read();
     proc.cr3 = cr3.0.start_address();
     proc.cr3f = cr3.1;
-    if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
+    /*if let Some(mainscreen) = unsafe { &mut mainscreen::MAIN_SCREEN } {
         proc.screen = mainscreen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
     } else {
         errorln!("could not find mainscreen in first process");
-    }
+    }*/
     let screen_file_name = "screen/screenfull";
     proc.open_files
         .create_file_table(Path::from(&screen_file_name), 0_u64);
@@ -832,7 +836,7 @@ pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process 
     // Change parentality
     ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
     for i in 0..(PROCESS_MAX_NUMBER as usize) {
-        if (ID_TABLE[i].ppid == ID_TABLE[old_pid].pid) {
+        if ID_TABLE[i].ppid == ID_TABLE[old_pid].pid {
             ID_TABLE[i].ppid = ID_TABLE[old_pid].ppid;
         }
     }
@@ -851,10 +855,7 @@ pub fn listen() -> (u64, u64) {
                 match ID_TABLE[pid].state {
                     State::Zombie(return_value) => {
                         ID_TABLE[pid].state = State::SlotAvailable;
-                        let save_screen = ID_TABLE[CURRENT_PROCESS].screen;
-                        ID_TABLE[CURRENT_PROCESS].screen = ID_TABLE[pid].screen;
                         ID_TABLE[pid].open_files.close();
-                        ID_TABLE[CURRENT_PROCESS].screen = save_screen;
                         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                             frame_allocator.deallocate_level_4_page(
                                 ID_TABLE[pid].cr3,
@@ -918,23 +919,24 @@ pub unsafe fn fork() -> ID {
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
     son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
-    if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-        // Child process is spaned with a null-screen.
-        son.screen = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+    son.open_files.copy(ID_TABLE[CURRENT_PROCESS].open_files);
+    for i in 0..10 {
+        println!("{} is {}", i, son.open_files.is_none(i))
     }
-    let screen_file_name = "screen/screenfull";
-    son.open_files
-        .create_file_table(Path::from(&screen_file_name), 0_u64);
-    let shell_file_name = "screen/host_shell";
-    son.open_files
-        .create_file_table(Path::from(&shell_file_name), 0_u64);
-
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)
         .expect("Could not push son process into the queue");
     // TODO
     pid
+}
+
+pub fn dup2(fd_target: usize, fd_from: usize) {
+    unsafe {
+        ID_TABLE[CURRENT_PROCESS]
+            .open_files
+            .dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from));
+    }
 }
 
 /// # Safety

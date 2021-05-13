@@ -1,5 +1,4 @@
 use crate::data_storage::path::Path;
-use crate::debug;
 use crate::scheduler::process;
 use alloc::string::String;
 
@@ -69,24 +68,12 @@ impl GeneralFileTable {
     /// Deletes an entry in the table files.
     /// Should close be added ?
     pub fn delete(&mut self, index: usize) -> Result<(), FileDesciptorError> {
-        match &mut self.tables[index] {
-            Some(file) => {
-                if file.close() {
-                    super::close_file(&file);
-                    self.tables[index] = None;
-                }
-            }
+        match &self.tables[index] {
+            Some(file) => super::close_file(&file),
             None => return Err(FileDesciptorError()),
         }
+        self.tables[index] = None;
         Ok(())
-    }
-
-    pub fn duplicate(&mut self, fd: usize) -> usize {
-        match &mut self.tables[fd] {
-            None => panic!("should not happend"),
-            Some(oft) => oft.duplicate(),
-        }
-        fd
     }
 
     /// Returns mutable copy of a given entry
@@ -106,17 +93,13 @@ pub struct OpenFileTable {
     path: Path,
     flags: u64,
     offset: usize,
-    id: usize,
-    nb: usize,
 }
 impl OpenFileTable {
-    pub fn new(path: Path, flags: u64, id: usize) -> Self {
+    pub fn new(path: Path, flags: u64) -> Self {
         Self {
             path,
             flags,
             offset: 0,
-            id,
-            nb: 1,
         }
     }
     pub fn get_path(&self) -> Path {
@@ -124,19 +107,6 @@ impl OpenFileTable {
     }
     pub fn get_offset(&self) -> usize {
         self.offset
-    }
-
-    pub fn get_id(&self) -> usize {
-        self.id
-    }
-
-    pub fn duplicate(&mut self) {
-        self.nb += 1;
-    }
-
-    pub fn close(&mut self) -> bool {
-        self.nb -= 1;
-        self.nb == 0
     }
 }
 
@@ -160,8 +130,8 @@ impl FileDescriptor {
 pub struct ProcessDescriptorTable {
     /// Associates a file descriptor to the index of the open file table
     /// in the [`GLOBAL_FILE_TABLE`]
-    files: [Option<usize>; MAX_TOTAL_OPEN_FILES_BY_PROCESS],
-    index: usize,
+    pub files: [Option<usize>; MAX_TOTAL_OPEN_FILES_BY_PROCESS],
+    pub index: usize,
 }
 
 impl ProcessDescriptorTable {
@@ -182,10 +152,6 @@ impl ProcessDescriptorTable {
         } else {
             Err(FileDesciptorError())
         }
-    }
-
-    pub fn is_none(&self, i: usize) -> bool {
-        self.files[i].is_none()
     }
 
     pub fn add_file_table(&mut self, open_file_table: OpenFileTable) -> FileDescriptor {
@@ -217,15 +183,11 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
-        let id = match super::open_file(&path, super::open_mode_from_flags(flags)) {
-            Ok(i) => i,
-            Err(_) => return FileDescriptor::new(usize::MAX),
-        };
-        let open_file_table = OpenFileTable::new(path, flags, id);
+        let open_file_table = OpenFileTable::new(path, flags);
         self.add_file_table(open_file_table)
     }
 
-    /// self.dup(1, 4) redirects fd 1 to the OpenFileTable
+    /// self.dup(4, 1) redirects fd 1 to the OpenFileTable
     /// fd 4 points to.
     pub fn dup(
         &mut self,
@@ -233,34 +195,8 @@ impl ProcessDescriptorTable {
         operand: FileDescriptor,
     ) -> Result<(), FileDesciptorError> {
         // TO DO check the bounds and validity of the given data!
-        match self.files[target.into_usize()] {
-            None => (),
-            Some(fd) => unsafe {
-                GLOBAL_FILE_TABLE.delete(fd);
-            },
-        }
-        self.files[target.into_usize()] = self.files[operand.into_usize()];
-        match self.files[operand.into_usize()] {
-            None => (),
-            Some(fd) => unsafe {
-                GLOBAL_FILE_TABLE.duplicate(fd);
-            },
-        }
+        self.files[operand.into_usize()] = self.files[target.into_usize()];
         Ok(())
-    }
-
-    pub fn copy(&mut self, father: ProcessDescriptorTable) {
-        for i in 0..MAX_TOTAL_OPEN_FILES_BY_PROCESS {
-            match father.files[i] {
-                None => self.files[i] = None,
-                Some(fd) => {
-                    unsafe {
-                        GLOBAL_FILE_TABLE.duplicate(fd);
-                    }
-                    self.files[i] = Some(fd);
-                }
-            }
-        }
     }
 
     pub unsafe fn close(&mut self) {
@@ -275,14 +211,11 @@ impl ProcessDescriptorTable {
     }
 }
 
-pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
+pub fn open(filename: String) -> FileDescriptor {
     let current_process = unsafe { process::get_current_as_mut() };
     // look for a place to put the next file in the process file descriptor table
     let mut new_pfdt = current_process.open_files;
     for i in 0..(MAX_TOTAL_OPEN_FILES_BY_PROCESS - 1) {
-        if new_pfdt.index == 0 {
-            new_pfdt.index = 1;
-        }
         match new_pfdt.files[new_pfdt.index] {
             Some(_) => {
                 new_pfdt.index = (new_pfdt.index + 1) % MAX_TOTAL_OPEN_FILES_BY_PROCESS;
@@ -292,19 +225,12 @@ pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
             }
             None => {
                 new_pfdt.index = i;
-                let id = match super::open_file(&Path::from(&filename), mode) {
-                    Ok(i) => i,
-                    Err(_) => return FileDescriptor::new(usize::MAX),
-                };
                 unsafe {
-                    new_pfdt.files[i] = Some(GLOBAL_FILE_TABLE.insert(OpenFileTable::new(
-                        Path::from(filename.as_str()),
-                        0,
-                        id,
-                    )));
+                    new_pfdt.files[i] = Some(
+                        GLOBAL_FILE_TABLE
+                            .insert(OpenFileTable::new(Path::from(filename.as_str()), 0)),
+                    );
                 }
-                current_process.open_files = new_pfdt;
-                return FileDescriptor::new(current_process.open_files.index);
             }
         };
     }
