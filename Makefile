@@ -1,7 +1,7 @@
 all: disk run
 
 disk:
-	./disk/createDisk.py
+	python3 ./disk/createDisk.py
 
 ferros_release: fmt
 	cargo build --release

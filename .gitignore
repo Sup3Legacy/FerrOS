@@ -10,6 +10,10 @@ Cargo.lock
 **/*.rs.bk
 
 
+disk/*.img
+
+disk/__pycache__
+
 #Added by cargo
 
 /target
