@@ -15,7 +15,7 @@ pub trait HardwareInterface {
 pub struct HardWarePartition;
 
 impl Partition for HardWarePartition {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
         todo!()
     }
 

@@ -1,8 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::println;
-
 /// This represents a Path in the kernel.
 /// It is a simple wrapper around a `String`
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -29,6 +27,10 @@ impl Path {
     /// Create an identical path
     pub fn duplicate(&self) -> Self {
         Path::from(&self.0.clone())
+    }
+
+    pub fn len(&self) -> usize {
+        self.slice().len()
     }
 
     /// Slices the `Path` and returns a `Vec<String>`
@@ -58,7 +60,7 @@ impl Path {
                 if first {
                     first = false
                 } else {
-                    res.push_str("/")
+                    res.push('/')
                 }
                 res.push_str(elt);
             }
@@ -69,10 +71,7 @@ impl Path {
     /// Returns the most upper segment.
     pub fn get_name(&self) -> String {
         let sliced = self.slice();
-        sliced
-            .get(sliced.len() - 1)
-            .unwrap_or(&String::from(""))
-            .clone()
+        sliced.last().unwrap_or(&String::from("")).clone()
     }
     /// Builds a `Path` from a slice of `String`
     pub fn from_sliced(sliced: &[String]) -> Self {
@@ -82,7 +81,7 @@ impl Path {
             if first {
                 first = false;
             } else {
-                path.push_str("/");
+                path.push('/');
             }
             path.push_str(e);
         }

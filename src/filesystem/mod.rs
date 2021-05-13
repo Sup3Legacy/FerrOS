@@ -6,12 +6,11 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use partition::Partition;
-
 use core::todo;
 
 pub mod descriptor;
 pub mod drivers;
+pub mod fifo;
 pub mod fsflags;
 pub mod host_shell;
 pub mod partition;
@@ -52,6 +51,10 @@ pub unsafe fn init_vfs() {
         vfs.add_file(Path::from("screen/host_shell"), Box::new(s5))
             .expect("could not create shell printer.");
 
+        let s6 = fifo::FiFoPartition::new();
+        vfs.add_file(Path::from("communication/fifo"), Box::new(s6))
+            .expect("could not create fifo.");
+
         println!("New UsTar");
         let s6 = ustar::UsTar::new();
         println!("UsTar created");
@@ -75,7 +78,7 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
-pub fn open_mode_from_flags(flags: u64) -> OpenMode {
+pub fn open_mode_from_flags(_flags: u64) -> OpenMode {
     OpenMode::Read
 }
 
@@ -131,7 +134,7 @@ pub fn read_file_from_path(path: Path) -> Vec<u8> {
 pub fn modify_file(oft: &OpenFileTable, param: usize) -> usize {
     unsafe {
         let path = oft.get_path();
-        let offset = oft.get_offset();
+        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
             vfs.give_param(&path, oft.get_id(), param)
         } else {
@@ -165,9 +168,10 @@ fn test() {
 pub fn close_file(oft: &OpenFileTable) {
     unsafe {
         let path = oft.get_path();
-        let offset = oft.get_offset();
+        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.close(path, oft.get_id());
+            vfs.close(path, oft.get_id())
+                .expect("Unexisting file to close");
         } else {
             panic!("VFS not initialized in close_file.");
         }

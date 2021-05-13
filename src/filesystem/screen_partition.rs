@@ -1,8 +1,8 @@
 use super::partition::Partition;
 use crate::data_storage::screen::Coord;
-use crate::scheduler::process;
+
 use crate::{data_storage::path::Path, errorln};
-use crate::{debug, vga::mainscreen, vga::virtual_screen::VirtualScreenLayer, warningln};
+use crate::{vga::mainscreen, vga::virtual_screen::VirtualScreenLayer, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -24,13 +24,16 @@ impl ScreenPartition {
 }
 
 impl Partition for ScreenPartition {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            return None;
+        }
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let s = main_screen.new_screen(0, 0, 25, 80, VirtualScreenLayer::new(0));
-                s.as_usize()
+                Some(s.as_usize())
             } else {
-                panic!("Mainscreen uninitialised")
+                None
             }
         }
     }
@@ -44,8 +47,8 @@ impl Partition for ScreenPartition {
         _path: &Path,
         id: usize,
         buffer: &[u8],
-        offset: usize,
-        flags: u64,
+        _offset: usize,
+        _flags: u64,
     ) -> isize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
@@ -61,7 +64,6 @@ impl Partition for ScreenPartition {
                         v_screen_id
                     );
                     panic!("exit");
-                    0
                 }
             } else {
                 errorln!("Mainscreen not initialized!");
@@ -81,7 +83,7 @@ impl Partition for ScreenPartition {
         }
     }
 
-    fn duplicate(&mut self, path: &Path, id: usize) -> Option<usize> {
+    fn duplicate(&mut self, _path: &Path, id: usize) -> Option<usize> {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 main_screen.duplicated(mainscreen::VirtualScreenID::forge(id))
@@ -112,8 +114,7 @@ impl Partition for ScreenPartition {
                         Coord::new(param & 0xFF, (param >> 32) & 0xFF),
                     )
                 } else {
-                    main_screen
-                        .replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, (param >> 32)))
+                    main_screen.replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, param >> 32))
                 }
                 0
             } else {

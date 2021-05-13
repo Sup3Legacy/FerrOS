@@ -19,8 +19,12 @@ impl Default for MouseDriver {
 }
 
 impl Partition for MouseDriver {
-    fn open(&mut self, _path: &Path) -> usize {
-        0
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            None
+        } else {
+            Some(0)
+        }
     }
 
     fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
@@ -45,7 +49,7 @@ impl Partition for MouseDriver {
         _path: &Path,
         _id: usize,
         _buffer: &[u8],
-        offset: usize,
+        _offset: usize,
         _flags: u64,
     ) -> isize {
         warningln!("User-program attempted to write in mouse.");

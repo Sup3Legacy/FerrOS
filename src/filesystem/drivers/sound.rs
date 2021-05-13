@@ -38,8 +38,12 @@ fn u8slice_to_u64(slice: &[u8]) -> u64 {
 }
 
 impl Partition for SoundDriver {
-    fn open(&mut self, _path: &Path) -> usize {
-        0
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            None
+        } else {
+            Some(0)
+        }
     }
 
     fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
@@ -52,8 +56,8 @@ impl Partition for SoundDriver {
         _path: &Path,
         _id: usize,
         _buffer: &[u8],
-        offset: usize,
-        flags: u64,
+        _offset: usize,
+        _flags: u64,
     ) -> isize {
         let sound_number = _buffer.len() / (3 * 8);
         // Each sound packet is 3 u64

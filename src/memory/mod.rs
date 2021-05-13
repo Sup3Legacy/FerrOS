@@ -1,5 +1,5 @@
 //! Crate for managing the paging: allocating and desallocating pages and editing page tables
-use crate::{debug, print, println};
+use crate::println;
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use core::cmp::{max, min};
@@ -981,8 +981,8 @@ impl BootInfoAllocator {
         table_4_addr: PhysAddr,
         remove_flags: PageTableFlags,
         protected: bool,
-    ) -> Result<bool, MemoryError> {
-        let mut failed = false;
+    ) -> bool {
+        let _failed = false;
 
         let virt = VirtAddr::new(table_4_addr.as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
@@ -994,24 +994,14 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_3_page(
-                        &mut *page_table_ptr,
-                        remove_flags,
-                        protected,
-                    ) {
-                        Ok(flags_level_3) => {
-                            if flags_level_3.is_empty() {
-                                table_4[i].set_flags(PageTableFlags::empty());
-                                if self.deallocate_4k_frame(table_4[i].addr()).is_err() {
-                                    failed = true;
-                                }
-                            } else {
-                                is_empty = false;
-                                table_4[i].set_flags(flags & flags_level_3);
-                            }
-                        }
-
-                        Err(MemoryError(_)) => failed = true,
+                    let flags_level_3 =
+                        self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags, protected);
+                    if flags_level_3.is_empty() {
+                        table_4[i].set_flags(PageTableFlags::empty());
+                        self.deallocate_4k_frame(table_4[i].addr());
+                    } else {
+                        is_empty = false;
+                        table_4[i].set_flags(flags & flags_level_3);
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
                     is_empty = false;
@@ -1019,13 +1009,7 @@ impl BootInfoAllocator {
             }
         }
 
-        if failed {
-            Err(MemoryError(String::from(
-                "Could not deallocate level 4 page",
-            )))
-        } else {
-            Ok(is_empty)
-        }
+        is_empty
     }
 
     /// Inner function of deallocate_level_4_page
@@ -1034,8 +1018,7 @@ impl BootInfoAllocator {
         table_3: &'static mut PageTable,
         remove_flags: PageTableFlags,
         protected: bool,
-    ) -> Result<PageTableFlags, MemoryError> {
-        let mut failed = false;
+    ) -> PageTableFlags {
         let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
             if !table_3[i].is_unused() {
@@ -1043,37 +1026,21 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_2_page(
-                        &mut *page_table_ptr,
-                        remove_flags,
-                        protected,
-                    ) {
-                        Ok(flags_level_2) => {
-                            if flags_level_2.is_empty() {
-                                table_3[i].set_flags(PageTableFlags::empty());
-                                if self.deallocate_4k_frame(table_3[i].addr()).is_err() {
-                                    failed = true;
-                                }
-                            } else {
-                                table_3[i].set_flags(flags & flags_level_2);
-                                flags_left |= flags & flags_level_2;
-                            }
-                        }
-
-                        Err(MemoryError(_)) => failed = true,
+                    let flags_level_2 =
+                        self.deallocate_level_2_page(&mut *page_table_ptr, remove_flags, protected);
+                    if flags_level_2.is_empty() {
+                        table_3[i].set_flags(PageTableFlags::empty());
+                        self.deallocate_4k_frame(table_3[i].addr())
+                    } else {
+                        table_3[i].set_flags(flags & flags_level_2);
+                        flags_left |= flags & flags_level_2;
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
                     flags_left |= flags;
                 }
             }
         }
-        if failed {
-            Err(MemoryError(String::from(
-                "Could not deallocate level 3 page",
-            )))
-        } else {
-            Ok(flags_left)
-        }
+        flags_left
     }
 
     /// Inner function of deallocate_level_4_page
@@ -1082,8 +1049,7 @@ impl BootInfoAllocator {
         table_2: &'static mut PageTable,
         remove_flags: PageTableFlags,
         protected: bool,
-    ) -> Result<PageTableFlags, MemoryError> {
-        let mut failed = false;
+    ) -> PageTableFlags {
         let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
             if !table_2[i].is_unused() {
@@ -1091,37 +1057,21 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    match self.deallocate_level_1_page(
-                        &mut *page_table_ptr,
-                        remove_flags,
-                        protected,
-                    ) {
-                        Ok(flags_level_1) => {
-                            if flags_level_1.is_empty() {
-                                table_2[i].set_flags(PageTableFlags::empty());
-                                if self.deallocate_4k_frame(table_2[i].addr()).is_err() {
-                                    failed = true;
-                                }
-                            } else {
-                                table_2[i].set_flags(flags & flags_level_1);
-                                flags_left |= flags & flags_level_1;
-                            }
-                        }
-
-                        Err(MemoryError(_)) => failed = true,
+                    let flags_level_1 =
+                        self.deallocate_level_1_page(&mut *page_table_ptr, remove_flags, protected);
+                    if flags_level_1.is_empty() {
+                        table_2[i].set_flags(PageTableFlags::empty());
+                        self.deallocate_4k_frame(table_2[i].addr())
+                    } else {
+                        table_2[i].set_flags(flags & flags_level_1);
+                        flags_left |= flags & flags_level_1;
                     }
                 } else if flags.contains(PageTableFlags::PRESENT) {
                     flags_left |= flags;
                 }
             }
         }
-        if failed {
-            Err(MemoryError(String::from(
-                "Could not deallocate level 2 page",
-            )))
-        } else {
-            Ok(flags_left)
-        }
+        flags_left
     }
 
     /// Inner function of deallocate_level_4_page
@@ -1130,36 +1080,28 @@ impl BootInfoAllocator {
         table_1: &'static mut PageTable,
         remove_flags: PageTableFlags,
         protected: bool,
-    ) -> Result<PageTableFlags, MemoryError> {
-        let mut failed = false;
+    ) -> PageTableFlags {
         let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
             if !table_1[i].is_unused() {
                 let flags = table_1[i].flags();
                 if flags.contains(remove_flags) {
                     table_1[i].set_flags(PageTableFlags::empty());
-                    if protected && self.deallocate_4k_frame(table_1[i].addr()).is_err() {
-                        failed = protected;
+                    if protected {
+                        self.deallocate_4k_frame(table_1[i].addr())
                     }
                 } else {
                     flags_left |= flags
                 }
             }
         }
-        if failed {
-            Err(MemoryError(String::from(
-                "Could not deallocate level 1 page",
-            )))
-        } else {
-            Ok(flags_left)
-        }
+        flags_left
     }
 
     /// Can be used to deallocate a specific 4Ki frame
-    pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) -> Result<(), MemoryError> {
+    pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) {
         let table_index = addr.as_u64() >> 12;
         self.pages_available[table_index as usize] = true;
-        Ok(())
     }
 }
 

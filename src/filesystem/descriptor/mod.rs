@@ -1,5 +1,5 @@
 use crate::data_storage::path::Path;
-use crate::debug;
+
 use crate::scheduler::process;
 use alloc::string::String;
 
@@ -68,7 +68,7 @@ impl GeneralFileTable {
 
     /// Deletes an entry in the table files.
     /// Should close be added ?
-    pub fn delete(&mut self, index: usize) -> Result<(), FileDesciptorError> {
+    pub fn delete(&mut self, index: usize) {
         match &mut self.tables[index] {
             Some(file) => {
                 if file.close() {
@@ -76,9 +76,8 @@ impl GeneralFileTable {
                     self.tables[index] = None;
                 }
             }
-            None => return Err(FileDesciptorError()),
+            None => panic!("Unexisting file was closed"),
         }
-        Ok(())
     }
 
     pub fn duplicate(&mut self, fd: usize) -> usize {
@@ -227,11 +226,7 @@ impl ProcessDescriptorTable {
 
     /// self.dup(1, 4) redirects fd 1 to the OpenFileTable
     /// fd 4 points to.
-    pub fn dup(
-        &mut self,
-        target: FileDescriptor,
-        operand: FileDescriptor,
-    ) -> Result<(), FileDesciptorError> {
+    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> usize {
         // TO DO check the bounds and validity of the given data!
         match self.files[target.into_usize()] {
             None => (),
@@ -246,7 +241,7 @@ impl ProcessDescriptorTable {
                 GLOBAL_FILE_TABLE.duplicate(fd);
             },
         }
-        Ok(())
+        0
     }
 
     pub fn copy(&mut self, father: ProcessDescriptorTable) {
@@ -316,10 +311,13 @@ pub fn close(descriptor: u64) -> Result<(), FileDesciptorError> {
     let current_proccess = unsafe { process::get_current_as_mut() };
     // we try to close the file, and if at any point we fail, raise an error
     match current_proccess.open_files.files[descriptor as usize] {
-        None => return Err(FileDesciptorError()),
+        None => Err(FileDesciptorError()),
         Some(idx) => {
             current_proccess.open_files.files[descriptor as usize] = None;
-            unsafe { GLOBAL_FILE_TABLE.delete(idx) }
+            unsafe {
+                GLOBAL_FILE_TABLE.delete(idx);
+                Ok(())
+            }
         }
     }
 }

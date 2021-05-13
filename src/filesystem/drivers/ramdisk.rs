@@ -33,7 +33,7 @@ pub struct RamDisk {
 
 /// This interfaces enables a RAM-Disk to get used alongside every other device.
 impl Partition for RamDisk {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
         todo!()
     }
 

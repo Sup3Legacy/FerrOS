@@ -1,5 +1,7 @@
 use super::super::partition::Partition;
-use crate::{data_storage::path::Path, warningln};
+use crate::data_storage::path::Path;
+
+use crate::warningln;
 
 use alloc::format;
 use alloc::vec::Vec;
@@ -145,8 +147,12 @@ impl Default for ClockDriver {
 }
 
 impl Partition for ClockDriver {
-    fn open(&mut self, _path: &Path) -> usize {
-        0
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            None
+        } else {
+            Some(0)
+        }
     }
 
     fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
@@ -174,7 +180,7 @@ impl Partition for ClockDriver {
         _offset: usize,
         _flags: u64,
     ) -> isize {
-        panic!("User-program attempted to write in clock.");
+        warningln!("User-program attempted to write in clock.");
         -1
     }
 

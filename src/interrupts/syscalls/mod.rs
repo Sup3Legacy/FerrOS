@@ -6,7 +6,6 @@ use super::idt::InterruptStackFrame;
 use crate::data_storage::{
     path,
     registers::{Registers, RegistersMini},
-    screen::Coord,
 };
 use crate::filesystem;
 use crate::filesystem::{descriptor, open_mode_from_flags};
@@ -14,9 +13,9 @@ use crate::hardware;
 use crate::interrupts;
 use crate::memory;
 use crate::scheduler::process;
-use crate::vga;
-use crate::{data_storage::path::Path, scheduler};
-use crate::{debug, errorln, warningln};
+
+use crate::scheduler;
+use crate::{debug, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::char;
@@ -27,7 +26,7 @@ use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAd
 pub type SyscallFunc = extern "C" fn();
 
 /// total number of syscalls
-const SYSCALL_NUMBER: u64 = 23;
+const SYSCALL_NUMBER: u64 = 24;
 
 /// table containing every syscall functions
 const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame);
@@ -55,6 +54,7 @@ const SYSCALL_TABLE: [extern "C" fn(&mut RegistersMini, &mut InterruptStackFrame
     syscall_20_debug,
     syscall_21_memrequest,
     syscall_22_listen,
+    syscall_23_kill,
 ];
 
 /// highly dangerous function should use only when knowing what you are doing
@@ -93,7 +93,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             VirtAddr::new(args.rsi + size),
             PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
         ) {
-            size = 0xFFF - args.rsi & 0xFFF;
+            size = (0xFFF - args.rsi) & 0xFFF;
         }
         if args.rdi == 0 {
             args.rax = 0;
@@ -151,7 +151,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             VirtAddr::new(args.rsi + size),
             PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
         ) {
-            size = 0x1000 - args.rsi & 0xFFF;
+            size = (0x1000 - args.rsi) & 0xFFF;
         }
         let mut address = args.rsi;
         let mut t = Vec::new();
@@ -174,8 +174,8 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             args.rax = res as u64;
         } else {
             warningln!("Could not get OpenFileTable");
-            for i in 0..10 {
-                let oft_res = process
+            for _i in 0..10 {
+                let _oft_res = process
                     .open_files
                     .get_file_table(descriptor::FileDescriptor::new(fd as usize));
             }
@@ -216,7 +216,7 @@ extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_4_dup2(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    process::dup2(args.rdi as usize, args.rsi as usize);
+    args.rax = process::dup2(args.rdi as usize, args.rsi as usize) as u64;
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
@@ -238,7 +238,7 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// arg0 : address of file name
 extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("exec");
-    let addr: *const String = VirtAddr::new(args.rdi).as_ptr();
+    let _addr: *const String = VirtAddr::new(args.rdi).as_ptr();
     let path = unsafe {
         String::from_raw_parts(args.rdi as *mut u8, args.rsi as usize, args.rsi as usize)
     };
@@ -378,6 +378,10 @@ extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptSt
     let (rax, rdi) = scheduler::process::listen();
     args.rax = rax;
     args.rdi = rdi;
+}
+
+extern "C" fn syscall_23_kill(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    args.rax = unsafe { scheduler::process::kill(args.rdi as usize) as u64 };
 }
 
 extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

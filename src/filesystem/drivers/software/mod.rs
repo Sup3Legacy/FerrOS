@@ -11,7 +11,7 @@ pub trait SoftWareInterface {
 pub struct SoftwarePartition;
 
 impl Partition for SoftwarePartition {
-    fn open(&mut self, _path: &Path) -> usize {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
         todo!()
     }
 

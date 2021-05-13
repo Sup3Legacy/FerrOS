@@ -15,15 +15,12 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
+use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
 use crate::hardware;
 use crate::memory;
-use crate::{
-    alloc::collections::{BTreeMap, BTreeSet},
-    vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
-};
 use crate::{debug, errorln, println};
 use alloc::string::String;
 
@@ -659,7 +656,7 @@ pub struct Process {
     pub cr3f: Cr3Flags,
     pub rsp: u64, // every registers are saved on the stack
     pub stack_base: u64,
-    state: State,
+    pub state: State,
     owner: u64,
     pub heap_address: u64,
     pub heap_size: u64,
@@ -778,6 +775,10 @@ impl ID {
         panic!("no slot available")
     }
 
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
     /// Forges an `ID`, must *not* be used other than to build the first one.
     pub fn forge(index: u64) -> Self {
         Self(index)
@@ -835,9 +836,9 @@ pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process 
     let old_pid = CURRENT_PROCESS;
     // Change parentality
     ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
-    for i in 0..(PROCESS_MAX_NUMBER as usize) {
-        if ID_TABLE[i].ppid == ID_TABLE[old_pid].pid {
-            ID_TABLE[i].ppid = ID_TABLE[old_pid].ppid;
+    for process in ID_TABLE.iter_mut() {
+        if process.ppid == ID_TABLE[old_pid].pid {
+            process.ppid = ID_TABLE[old_pid].ppid;
         }
     }
 
@@ -850,23 +851,20 @@ pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process 
 pub fn listen() -> (u64, u64) {
     unsafe {
         let ppid = ID::forge(CURRENT_PROCESS as u64);
-        for pid in 0..(PROCESS_MAX_NUMBER as usize) {
-            if ID_TABLE[pid].ppid == ppid {
-                match ID_TABLE[pid].state {
-                    State::Zombie(return_value) => {
-                        ID_TABLE[pid].state = State::SlotAvailable;
-                        ID_TABLE[pid].open_files.close();
-                        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
-                            frame_allocator.deallocate_level_4_page(
-                                ID_TABLE[pid].cr3,
-                                PageTableFlags::USER_ACCESSIBLE,
-                                true,
-                            );
-                            frame_allocator.deallocate_4k_frame(ID_TABLE[pid].cr3);
-                        }
-                        return (pid as u64, return_value as u64);
+        for (pid, process) in ID_TABLE.iter_mut().enumerate() {
+            if process.ppid == ppid {
+                if let State::Zombie(return_value) = process.state {
+                    process.state = State::SlotAvailable;
+                    process.open_files.close();
+                    if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+                        frame_allocator.deallocate_level_4_page(
+                            process.cr3,
+                            PageTableFlags::USER_ACCESSIBLE,
+                            true,
+                        );
+                        frame_allocator.deallocate_4k_frame(process.cr3);
                     }
-                    _ => (),
+                    return (pid as u64, return_value as u64);
                 }
             }
         }
@@ -931,11 +929,11 @@ pub unsafe fn fork() -> ID {
     pid
 }
 
-pub fn dup2(fd_target: usize, fd_from: usize) {
+pub fn dup2(fd_target: usize, fd_from: usize) -> usize {
     unsafe {
         ID_TABLE[CURRENT_PROCESS]
             .open_files
-            .dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from));
+            .dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from))
     }
 }
 
@@ -954,6 +952,18 @@ pub unsafe fn set_priority(prio: usize) -> usize {
         prio
     } else {
         usize::MAX
+    }
+}
+
+/// # Safety
+/// Need to add more security to prevent killing random processes
+pub unsafe fn kill(target: usize) -> usize {
+    let mut target_process = ID_TABLE[target];
+    if target_process.priority < ID_TABLE[CURRENT_PROCESS].priority {
+        1
+    } else {
+        target_process.state = State::Zombie(1);
+        0
     }
 }
 
@@ -1046,7 +1056,13 @@ unsafe fn next_pid_to_run() -> ID {
         State::SleepInterruptible | State::SleepUninterruptible | State::Stopped => {
             add_idle(old_pid)
         }
-        _ => panic!("{:#?} unsupported in scheduler!", old_state),
     }
-    new_pid
+    match ID_TABLE[new_pid.as_usize()].state {
+        State::Runnable | State::Running => new_pid,
+        State::SlotAvailable | State::Zombie(_) => next_pid_to_run(),
+        State::SleepInterruptible | State::SleepUninterruptible | State::Stopped => {
+            add_idle(new_pid);
+            next_pid_to_run()
+        }
+    }
 }

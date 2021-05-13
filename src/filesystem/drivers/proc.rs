@@ -36,8 +36,12 @@ impl Default for ProcDriver {
 }
 
 impl Partition for ProcDriver {
-    fn open(&mut self, _path: &Path) -> usize {
-        0
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            None
+        } else {
+            Some(0)
+        }
     }
 
     #[allow(clippy::if_same_then_else)]
@@ -48,15 +52,54 @@ impl Partition for ProcDriver {
             if let Ok(proc) = sliced[0].parse::<usize>() {
                 if let Ok(pi) = self.get_info(&sliced[1]) {
                     let func = pi.function;
-                    return func(proc);
+                    let mut res = func(proc);
+                    // this utter mess makes sure what we hand away complies to the requested offset and size
+                    res.truncate(_offset + _size);
+                    res.reverse();
+                    res.truncate(core::cmp::max(res.len() - _offset, 0));
+                    res.reverse();
+                    return res;
                 } else {
                     return Vec::new();
                 }
             }
         } else if sliced.len() == 1 {
             // Means we access the directory of a process
+            let keys = self.infos.keys();
+            let mut res_array = Vec::new();
+            for s in keys {
+                let info_bytes = s.bytes();
+                for b in info_bytes {
+                    res_array.push(b)
+                }
+                res_array.push(b' ');
+            }
+            res_array.truncate(_offset + _size);
+            res_array.reverse();
+            res_array.truncate(core::cmp::max(res_array.len() - _offset, 0));
+            res_array.reverse();
+            return res_array;
         } else if sliced.len() == 0 {
             // Means we access the main proc directory
+            // We want to build the array of all alive processes
+            let mut res_array = Vec::new();
+            for (id, proc) in unsafe { scheduler::process::ID_TABLE.as_ref().iter().enumerate() } {
+                match proc.state {
+                    process::State::SlotAvailable => (),
+                    _ => {
+                        let id = format!("{}", id);
+                        for b in id.bytes() {
+                            res_array.push(b)
+                        }
+                        res_array.push(b' ');
+                    }
+                }
+            }
+            res_array.truncate(_offset + _size);
+            res_array.reverse();
+            res_array.truncate(core::cmp::max(res_array.len() - _offset, 0));
+            res_array.reverse();
+            return res_array;
         } else {
             panic!("Oscoure");
         }

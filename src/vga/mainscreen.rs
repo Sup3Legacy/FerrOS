@@ -8,8 +8,6 @@ use priority_queue::PriorityQueue;
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
 use crate::data_storage::screen::Coord;
 
-use crate::println;
-
 pub static mut MAIN_SCREEN: Option<MainScreen> = None;
 
 /// Height of the screen
@@ -175,25 +173,19 @@ impl MainScreen {
     }
 
     pub fn delete_screen(&mut self, vs_id: VirtualScreenID) -> bool {
-        match self.map.remove(&vs_id) {
-            Some((amount, mut screen)) => {
-                if amount == 1 {
-                    screen.delete();
-                } else {
-                    self.map.insert(vs_id, (amount - 1, screen));
-                }
+        if let Some((amount, mut screen)) = self.map.remove(&vs_id) {
+            if amount == 1 {
+                screen.delete();
+            } else {
+                self.map.insert(vs_id, (amount - 1, screen));
             }
-            None => (),
-        };
+        }
         false
     }
 
     pub fn duplicated(&mut self, vs_id: VirtualScreenID) {
-        match self.map.remove(&vs_id) {
-            Some((amount, mut screen)) => {
-                self.map.insert(vs_id, (amount + 1, screen));
-            }
-            None => (),
+        if let Some((amount, screen)) = self.map.remove(&vs_id) {
+            self.map.insert(vs_id, (amount + 1, screen));
         }
     }
 

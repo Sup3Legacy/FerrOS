@@ -11,8 +11,6 @@ use super::drivers::nopart::NoPart;
 
 use crate::data_storage::path::Path;
 
-use crate::debug;
-
 #[derive(Debug)]
 pub struct ErrVFS();
 
@@ -69,19 +67,19 @@ impl PartitionNode {
 
     pub fn remove_entry(
         &mut self,
-        sliced_path: &Vec<String>,
+        sliced_path: &[String],
         index: usize,
         id: usize,
-    ) -> Result<bool, ()> {
+    ) -> Result<bool, ErrVFS> {
         match self {
             PartitionNode::Node(next) => {
                 if index >= sliced_path.len() {
-                    return Err(());
+                    return Err(ErrVFS());
                 }
 
                 if let Some(next_part) = next.get_mut(&sliced_path[index]) {
                     match next_part.remove_entry(&sliced_path, index + 1, id) {
-                        Err(()) => Err(()),
+                        Err(ErrVFS()) => Err(ErrVFS()),
                         Ok(is_empty) => {
                             if is_empty {
                                 next.remove_entry(&sliced_path[index]);
@@ -92,7 +90,7 @@ impl PartitionNode {
                         }
                     }
                 } else {
-                    Err(())
+                    Err(ErrVFS())
                 }
             }
             PartitionNode::Leaf(part) => {
@@ -169,7 +167,7 @@ impl PartitionNode {
 /// as we need to implement all structures of file descriptors, etc.
 impl VFS {
     /// Returns the index of file descriptor. -1 if error
-    pub fn open(&'static mut self, path: &Path, mode: super::OpenMode) -> Result<usize, ErrVFS> {
+    pub fn open(&'static mut self, path: &Path, _mode: super::OpenMode) -> Result<usize, ErrVFS> {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // If the VFS couldn't find the corresponding partition, return -1
@@ -177,7 +175,10 @@ impl VFS {
             return Err(ErrVFS());
         }
         let (partition, remaining_path) = res_partition.unwrap();
-        Ok(partition.open(&remaining_path))
+        match partition.open(&remaining_path) {
+            None => Err(ErrVFS()),
+            Some(d) => Ok(d),
+        }
     }
 
     pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
@@ -185,7 +186,7 @@ impl VFS {
         self.partitions.root.add_entry(sliced, 0, data)
     }
 
-    pub fn close(&mut self, path: Path, id: usize) -> Result<bool, ()> {
+    pub fn close(&mut self, path: Path, id: usize) -> Result<bool, ErrVFS> {
         self.partitions.root.remove_entry(&path.slice(), 0, id)
     }
 
@@ -198,8 +199,7 @@ impl VFS {
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
         let (partition, remaining_path) = res_partition.unwrap();
-        let file = partition.read(&remaining_path, id, offset, length);
-        file
+        partition.read(&remaining_path, id, offset, length)
     }
 
     /// TODO use offset and flag information
