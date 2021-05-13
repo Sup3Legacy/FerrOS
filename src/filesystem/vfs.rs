@@ -199,7 +199,6 @@ impl VFS {
         // TODO check it actuallye returned something
         let (partition, remaining_path) = res_partition.unwrap();
         let file = partition.read(&remaining_path, id, offset, length);
-        debug!("{} <- len in vfs.read", file.len());
         file
     }
 

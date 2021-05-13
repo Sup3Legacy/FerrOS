@@ -174,7 +174,7 @@ impl Partition for ClockDriver {
         _offset: usize,
         _flags: u64,
     ) -> isize {
-        warningln!("User-program attempted to write in clock.");
+        panic!("User-program attempted to write in clock.");
         -1
     }
 

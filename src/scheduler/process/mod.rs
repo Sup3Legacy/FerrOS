@@ -17,14 +17,14 @@ use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
-use crate::filesystem::descriptor::ProcessDescriptorTable;
+use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
 use crate::hardware;
 use crate::memory;
 use crate::{
     alloc::collections::{BTreeMap, BTreeSet},
     vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
 };
-use crate::{errorln, println};
+use crate::{errorln, println, debug};
 use alloc::string::String;
 
 /// Default allocated heap size (in number of pages)
@@ -621,6 +621,9 @@ pub unsafe fn disassemble_and_launch(
     Cr3::write(level_4_table_addr, cr3f);
     println!("good luck user ;) {} {}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
+    for i in 0..10 {
+        debug!("{} {}", i, get_current().open_files.is_none(i));
+    }
     towards_user_give_heap_args(
         heap_address_normalized,
         heap_size,
@@ -916,13 +919,10 @@ pub unsafe fn fork() -> ID {
     son.state = State::Runnable;
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
     son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
-    let screen_file_name = "screen/screenfull";
-    son.open_files
-        .create_file_table(Path::from(&screen_file_name), 0_u64);
-    let shell_file_name = "screen/host_shell";
-    son.open_files
-        .create_file_table(Path::from(&shell_file_name), 0_u64);
-
+    son.open_files.copy(ID_TABLE[CURRENT_PROCESS].open_files);
+    for i in 0..10 {
+        println!("{} is {}", i, son.open_files.is_none(i))
+    }
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)
@@ -930,6 +930,13 @@ pub unsafe fn fork() -> ID {
     // TODO
     pid
 }
+
+pub fn dup2(fd_target: usize, fd_from: usize) {
+    unsafe {
+        ID_TABLE[CURRENT_PROCESS].open_files.dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from));
+    }
+}
+
 
 /// # Safety
 /// It is irreversible, you just can't improve the priority of a process

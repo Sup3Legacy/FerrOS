@@ -112,8 +112,6 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             }
         } else {
             let fd = args.rdi;
-            warningln!("fd is {} for read", fd);
-            warningln!("{:#?}", args);
             args.rax = 0;
             let process = process::get_current();
             let oft_res = process
@@ -156,34 +154,15 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             size = 0x1000 - args.rsi & 0xFFF;
         }
         let mut address = args.rsi;
-        //let mut data_addr = VirtAddr::new(address);
         let mut t = Vec::new();
         let mut index = 0_u64;
         unsafe {
             while index < size && index < 1024 {
-                // ! && *(address as *const u8) != 0
                 t.push(*(address as *const u8));
                 address += 1_u64;
                 index += 1;
             }
         }
-        /*if false && args.rdi == 1 {
-            unsafe {
-                if let Some(vfs) = &mut filesystem::VFS {
-                    vfs.write(Path::from("screen/screenfull"), t, 0, 0);
-                } else {
-                    errorln!("Could not find VFS");
-                }
-            }
-            args.rax = index;
-        } else if false && args.rdi == 2 {
-            let mut t2 = String::new();
-            for i in t {
-                t2.push(i as char);
-            }
-            debug!("on shell : {}", t2);
-            args.rax = index;
-        } else {*/
         let fd = args.rdi;
         args.rax = 0;
         let process = process::get_current();
@@ -199,12 +178,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
                 let oft_res = process
                     .open_files
                     .get_file_table(descriptor::FileDescriptor::new(fd as usize));
-                match process.open_files.files[i] {
-                    Some(_) => warningln!("{} -> is one", i),
-                    None => warningln!("{} -> none", i),
-                };
             }
-            panic!("{}", fd);
         }
         //}
     } else {
@@ -215,7 +189,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("syscall open");
+    debug!("open");
     let filename = unsafe { read_string_from_pointer(args.rdi) };
     let fd = descriptor::open(filename, open_mode_from_flags(args.rsi));
     args.rax = fd.into_u64();
@@ -227,7 +201,6 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
         .create_file_table(path::Path::from(&path), 0_u64)
         .into_u64();
 
-    debug!("open {} as {}", unsafe { read_string_from_pointer(args.rdi) }, fd);
     // Puts the fd into rax
     args.rax = fd;
 }
@@ -242,8 +215,8 @@ extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStac
     };
 }
 
-extern "C" fn syscall_4_dup2(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    warningln!("dup2 not implemented");
+extern "C" fn syscall_4_dup2(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    process::dup2(args.rdi as usize, args.rsi as usize);
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
