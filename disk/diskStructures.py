@@ -4,6 +4,13 @@ LBA_SIZE = 510
 LBA_NUMBER = 32
 
 
+def perm(l):
+    l2 = []
+    assert(len(l)%2 == 0)
+    for i in range(len(l)//2):
+        l2.append(l[2*i+1])
+        l2.append(l[2*i])
+    return l2
 class UstarException(Exception):
     def __init__(self, message="Error in ustar"):
         self.message = message
@@ -17,9 +24,9 @@ class Address:
         
     def part(self, i):
         if i < 2:
-            return (self.lba >> (8 * i)) & 255
+            return (self.lba >> (8 * (1-i))) & 255
         else:
-            return ((self.index + 1) >> (8 * (i-2))) & 255
+            return ((self.index + 1) >> (8 * (3-i))) & 255
         
 
 
@@ -49,10 +56,10 @@ class Header:
         data[ 0: 8] = [0, 0, 0, 0, 0, 0, 0, 0] # user
         data[ 8:16] = [0, 0, 0, 0, 0, 0, 0, 0] # owner
         data[16:24] = [0, 0, 0, 0, 0, 0, 0, 0] # group
-        data[24:28] = [self.parent.part(i) for i in range(0, 4)] # parent address
+        data[24:28] = [self.parent.part(1), self.parent.part(0), self.parent.part(3), self.parent.part(2)] # parent address
         data[28:32] = [(self.size >> (i * 8)) & 255 for i in range(0, 4)] # length
         data[32:36] = [(self.nb_bloc >> (i * 8)) & 255 for i in range(0, 4)] # nb blocs
-        data[36:36+SHORT_MODE_LIMIT*4] = self.block_addresses
+        data[36:36+SHORT_MODE_LIMIT*4] = perm(self.block_addresses)
         assert(SHORT_MODE_LIMIT == 100)
         data[436:438] = [0, 0] # flags
         data[438:439] = [int(self.nb_bloc > SHORT_MODE_LIMIT)] # mode
@@ -78,7 +85,12 @@ class File(UstarFile):
         return len(self.data)  # in bytes
 
     def get_data(self):
-        return self.data[:]
+        
+        data2 = []
+        for i in range(256):
+            data2.append(self.data[2 * i + 1])
+            data2.append(self.data[2 * i])
+        return data2
 
     def mode(self):
         if len(self) < SHORT_MODE_LIMIT * BLOCK_SIZE:
@@ -112,7 +124,8 @@ class Dir(UstarFile):
             data.append(address.part(1))
             data.append(address.part(2))
             data.append(address.part(3))
-        return data
+            
+        return perm(data)
 
     # Length without header
     def __len__(self):
@@ -168,11 +181,13 @@ class Lba:
         # length : 512 bytes
         # The double 0 represents the index. Not used here
         data = [0, 0]
-        for i in range(510):
-            if self.available[i]:
+        for i in range(255):
+            if self.available[2*i] and self.available[2*i + 1]:
                 # TODO check the value that must be taken by True and False
                 data.append(1)
+                data.append(1)
             else:
+                data.append(0)
                 data.append(0)
         return data
     
@@ -325,8 +340,10 @@ def build_ustar(tree, parent = Address(0, 1)):
             assert(len(header_data) == 512)
             USTAR.set_sector_data(header_address.lba, header_address.index, header_data)
             dir_data = tree.get_data()
+            print("Header data", dir_data)
             for i in range(sector_number):
                 current_add = block_addresses[i]
+                print(current_add.lba, current_add.index)
                 USTAR.set_sector_data(current_add.lba, current_add.index, dir_data[i*512:(i+1)*512])
             print("Header nb_bloc ", int(tree.header.nb_bloc > SHORT_MODE_LIMIT))
             return header_address

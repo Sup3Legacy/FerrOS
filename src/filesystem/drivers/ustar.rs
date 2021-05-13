@@ -678,6 +678,7 @@ impl UsTar {
             let mut counter = 0;
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
+                println!("data address {:#?}", address);
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {
@@ -732,7 +733,7 @@ impl UsTar {
                 }
             }
         } else {
-            panic!("No mode selected in file");
+            panic!("No mode selected in file {}", header.mode as usize);
         }
         println!("Finished that file");
         file
