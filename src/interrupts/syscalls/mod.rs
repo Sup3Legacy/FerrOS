@@ -112,6 +112,8 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             }
         } else {
             let fd = args.rdi;
+            warningln!("fd is {} for read", fd);
+            warningln!("{:#?}", args);
             args.rax = 0;
             let process = process::get_current();
             let oft_res = process
@@ -213,6 +215,7 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    debug!("syscall open");
     let filename = unsafe { read_string_from_pointer(args.rdi) };
     let fd = descriptor::open(filename, open_mode_from_flags(args.rsi));
     args.rax = fd.into_u64();
@@ -223,6 +226,8 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
         .open_files
         .create_file_table(path::Path::from(&path), 0_u64)
         .into_u64();
+
+    debug!("open {} as {}", unsafe { read_string_from_pointer(args.rdi) }, fd);
     // Puts the fd into rax
     args.rax = fd;
 }

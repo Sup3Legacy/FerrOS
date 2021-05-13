@@ -5,7 +5,7 @@ import os
 
 # Path to filesystem directory
 directory = "./filesystem/"
-disk_img = "./disk.img.test"
+disk_img = "./disk/disk2.img"
 
 def construct_filesystem_tree(path):
     files = []
