@@ -85,7 +85,6 @@ class File(UstarFile):
         return len(self.data)  # in bytes
 
     def get_data(self):
-        print(self.header.name, sum(self.data))
         return perm(self.data)
 
     def mode(self):
@@ -269,10 +268,8 @@ def build_ustar(tree, parent = Address(0, 1)):
             USTAR.set_sector_data(addresses[0].lba, addresses[0].index, tree.header.get_data())
             # Put data into the sectors
             file_data = tree.get_data()
-            print(len(file_data))
             for i in range(sector_number):
                 current_add = addresses[i + 1]
-                print(tree.header.name, i,sum(file_data[i*512:(i+1)*512]))
                 USTAR.set_sector_data(current_add.lba, current_add.index, file_data[i*512:(i+1)*512])
             # return the address of the file header
             return addresses[0]
@@ -314,13 +311,11 @@ def build_ustar(tree, parent = Address(0, 1)):
         else:
             raise UstarException("Undefined mode")
     elif isinstance(tree, Dir):
-        print("added dir")
         length = len(tree)
         sector_number = length >> 9 # We can put 16 children per sector
         if length % 512 > 0:
             sector_number += 1
         mode = tree.mode()
-        print("Dir ", tree.header.name, " nb_bloc ", sector_number)
         if mode == 0:
             header_address = USTAR.get_address()
             block_addresses = [USTAR.get_address() for _ in range(sector_number)]
@@ -338,12 +333,9 @@ def build_ustar(tree, parent = Address(0, 1)):
             assert(len(header_data) == 512)
             USTAR.set_sector_data(header_address.lba, header_address.index, header_data)
             dir_data = tree.get_data()
-            print("Header data", dir_data)
             for i in range(sector_number):
                 current_add = block_addresses[i]
-                print(current_add.lba, current_add.index)
                 USTAR.set_sector_data(current_add.lba, current_add.index, dir_data[i*512:(i+1)*512])
-            print("Header nb_bloc ", int(tree.header.nb_bloc > SHORT_MODE_LIMIT))
             return header_address
 
         elif mode == 1:

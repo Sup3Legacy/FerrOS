@@ -24,7 +24,7 @@ use crate::{
     alloc::collections::{BTreeMap, BTreeSet},
     vga::{mainscreen, mainscreen::VirtualScreenID, virtual_screen::VirtualScreenLayer},
 };
-use crate::{errorln, println, debug};
+use crate::{debug, errorln, println};
 use alloc::string::String;
 
 /// Default allocated heap size (in number of pages)
@@ -933,10 +933,11 @@ pub unsafe fn fork() -> ID {
 
 pub fn dup2(fd_target: usize, fd_from: usize) {
     unsafe {
-        ID_TABLE[CURRENT_PROCESS].open_files.dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from));
+        ID_TABLE[CURRENT_PROCESS]
+            .open_files
+            .dup(FileDescriptor::new(fd_target), FileDescriptor::new(fd_from));
     }
 }
-
 
 /// # Safety
 /// It is irreversible, you just can't improve the priority of a process

@@ -1,4 +1,7 @@
-all: ferros_release
+all: disk run
+
+disk:
+	./disk/createDisk.py
 
 ferros_release: fmt
 	cargo build --release
@@ -30,4 +33,4 @@ memory: fmt
 memory2: fmt
 	qemu-system-x86_64 -drive format=raw,file=target/x86_64-ferros/debug/bootimage-ferr_os.bin	-drive format=raw,file=disk/disk.disk,index=2 -boot c
 
-.PHONY: all run fmt doc clean count sound memory memory2
+.PHONY: all run fmt doc clean count sound memory memory2 disk
