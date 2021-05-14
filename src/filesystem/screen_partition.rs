@@ -113,10 +113,7 @@ impl Partition for ScreenPartition {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;
                     crate::debug!("resize {} {}", x, y);
-                    main_screen.resize_vscreen(
-                        &v_screen_id,
-                        Coord::new(x, y),
-                    )
+                    main_screen.resize_vscreen(&v_screen_id, Coord::new(x, y))
                 } else {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;

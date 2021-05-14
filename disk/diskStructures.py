@@ -62,7 +62,7 @@ class Header:
         data[36:36+SHORT_MODE_LIMIT*4] = perm(self.block_addresses)
         assert(SHORT_MODE_LIMIT == 100)
         data[436:438] = [0, 0] # flags
-        data[438:439] = [int(self.nb_bloc > SHORT_MODE_LIMIT)] # mode
+        data[438:439] = [int(self.size > BLOCK_SIZE * SHORT_MODE_LIMIT)] # mode
         data[439:471] = [ord(i) for i in self.name] + [0] * (32 - len(self.name)) # name
         data[471:472] = [self.type] # file type
         data[472:512] = [0 for i in range(40)] # padding
@@ -274,6 +274,8 @@ def build_ustar(tree, parent = Address(0, 1)):
             # return the address of the file header
             return addresses[0]
         elif mode == 1:
+            
+            print(tree.header.name, "is long")
             # Long-mode
             # We first need to allocate additionnal blocks
             supersector_numer = sector_number // 128
@@ -285,6 +287,10 @@ def build_ustar(tree, parent = Address(0, 1)):
             addresses = [USTAR.get_address() for _ in range(sector_number)]
             # Input all addresses into header
             tree.header.set_block_addresses(supersector_addresses)
+            
+            tree.header.address = header_address
+            tree.header.parent = parent
+            
             # Write the header
             USTAR.set_sector_data(header_address.lba, header_address.index, tree.header.get_data())
             # Write all superblocks
@@ -293,15 +299,20 @@ def build_ustar(tree, parent = Address(0, 1)):
                 superdata = addresses[i * 128: (i + 1) * 128]
                 partial_len = len(superdata)
                 # TODO remove this
-                for i in range(128-partial_len):
+                while len(superdata) < 128:
                     superdata.append(Address(0, 0))
-                assert len(superdata) == 0
+                    
+                data = []
+                for ad in superdata:
+                    data.append(ad.part(1))
+                    data.append(ad.part(0))
+                    data.append(ad.part(3))
+                    data.append(ad.part(2))
 
                 super_address = supersector_addresses[i]
                 # Write the superblock
-                USTAR.set_sector_data(super_address.lba, super_address.index,superdata)
-            tree.header.address = header_address
-            tree.header.parent = parent
+                USTAR.set_sector_data(super_address.lba, super_address.index, data)
+
             file_data = tree.get_data()
             # Write all blocks
             for i in range(sector_number):

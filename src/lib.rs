@@ -33,9 +33,7 @@ pub mod vga;
 
 extern crate alloc;
 
-pub static _TEST_PROGRAM: &[u8] = include_bytes!("user_program/test_io");
-
-pub static _TEST_PROGRAM2: &[u8] = include_bytes!("user_program/ferr_shell");
+pub static FIRST_PROGRAM: &[u8] = include_bytes!("user_program/launcher");
 
 pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 

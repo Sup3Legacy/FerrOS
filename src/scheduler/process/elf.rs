@@ -1,7 +1,6 @@
 use crate::data_storage::path::Path;
 use crate::filesystem::read_file_from_path;
 use crate::memory;
-use crate::_TEST_PROGRAM;
 use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -75,6 +74,7 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
     }
 }
 
+/*
 /// # Safety
 /// Never safe ! You just need to know what you are doing before calling it
 pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
@@ -82,7 +82,6 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
     };
-    let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
 
     let elf = ElfFile::new(code).unwrap();
 
@@ -217,3 +216,4 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         panic!("could not launch process")
     }
 }
+*/

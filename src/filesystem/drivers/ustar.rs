@@ -691,7 +691,7 @@ impl UsTar {
                 }
             }
         } else if header.mode == FileMode::Long {
-            //println!("Reading in long mode");
+            println!("Reading in long mode");
             let mut counter = 0;
             let number_address_block = header.blocks_number / 128 + {
                 if header.blocks_number % 128 == 0 {
@@ -703,12 +703,20 @@ impl UsTar {
 
             let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
+            let nb_bloc = length / 512 + {
+                if length % 512 == 0 {
+                    0
+                } else {
+                    1
+                }
+            };
             for i in 0..number_address_block {
                 let address = header.blocks[i as usize];
+                println!("addresse : {:#?}", address);
                 let sector: LongFile =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..128 {
-                    if counter >= length {
+                    if counter >= nb_bloc {
                         break;
                     }
                     data_addresses.push(sector.addresses[j]);
@@ -718,8 +726,10 @@ impl UsTar {
             //println!("LEL {:?}", data_addresses);
             // Read these data blocks
             counter = 0;
-            for i in 0..header.blocks_number {
+            println!("{} for {}", nb_bloc, header.blocks_number);
+            for i in 0..nb_bloc {
                 let address = data_addresses[i as usize];
+                println!("{:#?}", address);
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {

@@ -239,11 +239,11 @@ extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStack
 
 /// arg0 : address of file name
 extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("exec");
     let _addr: *const String = VirtAddr::new(args.rdi).as_ptr();
     let path = unsafe {
         String::from_raw_parts(args.rdi as *mut u8, args.rsi as usize, args.rsi as usize)
     };
+    debug!("exec {}", path);
     unsafe {
         process::elf::load_elf_for_exec(&path);
     }

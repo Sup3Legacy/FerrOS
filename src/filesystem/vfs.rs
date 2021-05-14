@@ -176,9 +176,7 @@ impl VFS {
         }
         let (partition, remaining_path) = res_partition.unwrap();
         match partition.open(&remaining_path) {
-            None => {
-                Err(ErrVFS())
-            },
+            None => Err(ErrVFS()),
             Some(d) => Ok(d),
         }
     }
