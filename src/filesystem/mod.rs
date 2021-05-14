@@ -1,3 +1,5 @@
+//! All the logic of the filesystem, ranging from the drivers to the `VFS` pipeline
+
 #![allow(dead_code)]
 
 use crate::data_storage::path::Path;
@@ -10,6 +12,7 @@ use core::todo;
 
 pub mod descriptor;
 pub mod drivers;
+pub mod fifo;
 pub mod fsflags;
 pub mod host_shell;
 pub mod partition;
@@ -49,6 +52,16 @@ pub unsafe fn init_vfs() {
         let s5 = host_shell::HostShellPartition::new();
         vfs.add_file(Path::from("screen/host_shell"), Box::new(s5))
             .expect("could not create shell printer.");
+
+        let s6 = fifo::FiFoPartition::new();
+        vfs.add_file(Path::from("communication/fifo"), Box::new(s6))
+            .expect("could not create fifo.");
+
+        println!("New UsTar");
+        let s6 = ustar::UsTar::new();
+        println!("UsTar created");
+        vfs.add_file(Path::from("User"), Box::new(s6))
+            .expect("could not create disk driver.");
     } else {
         panic!("should not happen")
     }
@@ -67,19 +80,29 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
+pub fn open_mode_from_flags(_flags: u64) -> OpenMode {
+    OpenMode::Read
+}
+
 /// Main interface of the filesystem.
 ///
 /// Every interaction of a user-program with hardware and/or
 /// its stdin/stdout/stderr goes through this abstracted interface.
-pub fn open_file(_path: Path, _mode: OpenMode) -> &'static [u8] {
-    todo!();
+pub fn open_file(path: &Path, mode: OpenMode) -> Result<usize, vfs::ErrVFS> {
+    unsafe {
+        if let Some(ref mut vfs) = VFS {
+            vfs.open(path, mode)
+        } else {
+            panic!("VFS not initialized in open_file. {}", path.to());
+        }
+    }
 }
 
 pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
         let path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
-            vfs.write(path, data, oft.get_offset(), 0) as usize
+            vfs.write(path, oft.get_id(), data, oft.get_offset(), 0) as usize
         } else {
             panic!("VFS not initialized in write_file.");
         }
@@ -91,9 +114,44 @@ pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
         let path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.read(path, offset, length)
+            vfs.read(path, oft.get_id(), offset, length)
         } else {
             panic!("VFS not initialized in read_file.");
+        }
+    }
+}
+
+pub fn read_file_from_path(path: Path) -> Vec<u8> {
+    unsafe {
+        if let Some(ref mut vfs) = VFS {
+            let file = vfs.read(path, usize::MAX, 0, usize::MAX);
+            println!("{} <- len in read_file_from_path", file.len());
+            file
+        } else {
+            panic!("VFS not initialized in read_file.");
+        }
+    }
+}
+
+pub fn modify_file(oft: &OpenFileTable, param: usize) -> usize {
+    unsafe {
+        let path = oft.get_path();
+        let _offset = oft.get_offset();
+        if let Some(ref mut vfs) = VFS {
+            vfs.give_param(&path, oft.get_id(), param)
+        } else {
+            panic!("VFS not initialized in read_file.");
+        }
+    }
+}
+
+pub fn duplicate_file(oft: &OpenFileTable) -> Option<usize> {
+    unsafe {
+        let path = oft.get_path();
+        if let Some(ref mut vfs) = VFS {
+            vfs.duplicate(path, oft.get_id())
+        } else {
+            panic!("VFS not initialized in duplicate_file")
         }
     }
 }
@@ -105,16 +163,17 @@ pub fn get_data(_path: Path) -> &'static [u8] {
 fn test() {
     println!(
         "{:?}",
-        open_file(Path::from(&String::from("test")), OpenMode::Read)
+        open_file(&Path::from(&String::from("test")), OpenMode::Read)
     );
 }
 
 pub fn close_file(oft: &OpenFileTable) {
     unsafe {
         let path = oft.get_path();
-        let offset = oft.get_offset();
+        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.close(path);
+            vfs.close(path, oft.get_id())
+                .expect("Unexisting file to close");
         } else {
             panic!("VFS not initialized in close_file.");
         }

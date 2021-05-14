@@ -103,13 +103,11 @@ pub fn init(_boot_info: &'static BootInfo) {
         memory::BootInfoAllocator::init(&_boot_info.memory_map, phys_mem_offset);
         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
             let (level_4_frame, _) = Cr3::read();
-            frame_allocator
-                .deallocate_level_4_page(
-                    level_4_frame.start_address(),
-                    PageTableFlags::BIT_9,
-                    false,
-                )
-                .expect("Didn't manage to clean bootloader data");
+            frame_allocator.deallocate_level_4_page(
+                level_4_frame.start_address(),
+                PageTableFlags::BIT_9,
+                false,
+            );
             frame_allocator
                 .add_forced_entry_to_table(
                     level_4_frame,
@@ -151,12 +149,11 @@ pub fn init(_boot_info: &'static BootInfo) {
     // Needs to be before `spawn_first_process`
     vga::init();
 
-    scheduler::process::spawn_first_process();
     unsafe {
         filesystem::init_vfs();
     }
-
-    //filesystem::init();
+    debug!("vfs initialised");
+    scheduler::process::spawn_first_process();
 }
 
 entry_point!(kernel_main);

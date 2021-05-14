@@ -19,7 +19,15 @@ impl Default for MouseDriver {
 }
 
 impl Partition for MouseDriver {
-    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn open(&mut self, path: &Path) -> Option<usize> {
+        if path.len() != 0 {
+            None
+        } else {
+            Some(0)
+        }
+    }
+
+    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         // The number of packets to be written into the buffer
         let packet_number = _size / 3;
         let mut res = Vec::new();
@@ -36,13 +44,24 @@ impl Partition for MouseDriver {
         res
     }
 
-    fn write(&mut self, _path: &Path, _buffer: &[u8], offset: usize, _flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         warningln!("User-program attempted to write in mouse.");
         -1
     }
 
-    fn close(&mut self, _path: &Path) -> bool {
-        todo!()
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+        false
+    }
+
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+        Some(0)
     }
 
     fn lseek(&self) {
@@ -55,5 +74,9 @@ impl Partition for MouseDriver {
 
     fn read_raw(&self) {
         todo!()
+    }
+
+    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+        usize::MAX
     }
 }

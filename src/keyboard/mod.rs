@@ -1,3 +1,5 @@
+//! Kernel keyboard logic.
+
 use crate::println;
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::{ArrayQueue, PopError, PushError};

@@ -1,3 +1,5 @@
+//! Sound driver and logic. Used by the VFS.
+
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -5,8 +7,8 @@ use crate::println;
 
 mod sound_queue;
 
-/// Sound driver
 lazy_static! {
+    /// Sound driver
     static ref SOUND_QUEUE: Mutex<sound_queue::SoundQueue> =
         Mutex::new(sound_queue::SoundQueue::new());
 }

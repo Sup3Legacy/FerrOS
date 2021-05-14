@@ -1,3 +1,5 @@
+//! Kernelspace representation of paths.
+
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -23,6 +25,16 @@ impl Path {
     pub fn owned_to(self) -> String {
         self.0
     }
+
+    /// Create an identical path
+    pub fn duplicate(&self) -> Self {
+        Path::from(&self.0.clone())
+    }
+
+    pub fn len(&self) -> usize {
+        self.slice().len()
+    }
+
     /// Slices the `Path` and returns a `Vec<String>`
     pub fn slice(&self) -> Vec<String> {
         let sliced = self
@@ -44,24 +56,38 @@ impl Path {
             Self::from(&self.to())
         } else {
             sliced.pop();
+            let mut first = true;
             let mut res = String::new();
             for elt in sliced.iter() {
+                if first {
+                    first = false
+                } else {
+                    res.push('/')
+                }
                 res.push_str(elt);
             }
+
             Self::from(&res)
         }
     }
     /// Returns the most upper segment.
     pub fn get_name(&self) -> String {
-        self.slice().get(0).unwrap_or(&String::from("")).clone()
+        let sliced = self.slice();
+        sliced.last().unwrap_or(&String::from("")).clone()
     }
     /// Builds a `Path` from a slice of `String`
     pub fn from_sliced(sliced: &[String]) -> Self {
-        let mut path = Self::new();
+        let mut path = String::new();
+        let mut first = true;
         for e in sliced {
+            if first {
+                first = false;
+            } else {
+                path.push('/');
+            }
             path.push_str(e);
         }
-        path
+        Self::from(&path)
     }
 }
 impl Default for Path {

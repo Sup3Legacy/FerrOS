@@ -1,3 +1,5 @@
+//! Drivers that can be attached to the `VFS`
+
 pub mod clock_driver;
 pub mod disk_operations;
 pub mod hardware;

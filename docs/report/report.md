@@ -6,15 +6,21 @@ toc: true
 numbersections: true
 ---
 
+# Preliminaries
+
+Any reader is strongly encouraged to have the code of the kernel available when reading this report. Rust also provides a **very** well-done documentation tool. The command `make doc` at the root of the repo should build the documentation and open it in the browser. We have put some effort into making a documentation clear and explicit!
+
 # Motivation
 
 ## Language
 
 One of the first considerations that had to be made for this project was the language. We chose to use the Rust language, as using a language with more abstraction capabilities than the commonly used C language could be interesting when writing an OS, as abstracting some structures and methods would be beneficial in terms of ease of development.
 
-When we were first thinking about that language, someone (which asked to remain anonymous) told us :
+When we were first thinking about that language, someone (who asked to remain anonymous) told us :
 
-> But why would you want to use Rust instead of the all-mighty C? Rust's safeness comes with a great amount of limitations and those who give up their liberty for the sake of winning some temporary safety get neith#(IAç]/l5Q¦Bmçtl¿(Fx **Segmentation fault (core dumped)**
+> But why would you want to use Rust instead of the all-mighty C? Rust's "safeness" comes with a great amount of limitations and those who give up their liberty for the sake of winning some temporary safety get neith#(IAç]/l5Q¦Bmçtl¿(Fx **Segmentation fault (core dumped)**
+
+This sums up pretty well the pros and cons of Rust. A very advanced and experienced user could do certain things a lot simpler using C because they wouldn't have to worry about data lifetime, cursed memory mutations and data races detection. But they would probably still encounter more segfaults than we did when developping the kernel. Aside from the developpment of the bootloader (raw ASM, so very prompt to crashes) and memory/page allcoator, we really encountered a very reasonnable amout of segfaults and pagefaults, and all of them were caused by mistakes in our page allocating routines. This meant that, when we had all the very technical bases in place, we almost didn't have to worry about any crash.
 
 We were aware that this language, however, has a lot less documentations when it comes to system programing, as it is very young (the first stable version was released only 6 years ago) and only a few such projects have been written using it.
 
@@ -126,7 +132,7 @@ The `librust` contains a few main modules that helps us build software for our t
 
 One of the most important module is the one containing all the very-low-level code responsible for all interactions with the kernel, through the syscalls. It only contains a few lines of inline-ASM and has been tested to ensure there as little risk of register/memory corruption.
 
-On top of this code are build a few abstraction layers for easy handling of files, I/O data, etc. We decided to not go as overkill as the std-lib regarding this abstraction, as we did not have a lot of time, and because ouf interactions are a lot simpler than most *Nix systems, so there is no need for such very-high-level abstraction.
+On top of this code are built a few abstraction layers for easy handling of files, I/O data, etc. We decided to not go as overkill as the std-lib regarding this abstraction, as we did not have a lot of time, and because ouf interactions are a lot simpler than most *Nix systems, so there is no need for such very-high-level abstraction.
 
 ##### Memory allocator
 
@@ -183,3 +189,21 @@ We have a straight-forward (using OSdev) driver that reads the CMOS RTC and outp
 ## UsTar
 
 We really wanted to have a way to load and store data in a persistent way, using Qemu's disk emulation. Therefore we had to choose a filesystem format, so we took whatever the most simple one was : Tar. It went through some modifications and simplifications as we didn't need all features the original Tar format offers.
+
+First, we wrote a simple ATA-disk driver. It required extensive testing and debugging because of some mistakes in integers casts that lead to incorrect addresses to be read/written to. Once we got this driver working, we moved onto the definition of our file format. The disk is divided in 512 bytes long sectors. Each group of 512 sectors form an LBA, sort of a meta-sector : in each LBA, the first sector hold an integer : index of the first sector in that LBA that is available as well as a table of the remaining 510 (and not 511 because the index takes up 2 bytes. So, basically, the 511-th sector of each LBA is wasted in the sake of simplicity of implementation) which indicates whether each sector is free. When the driver initializes, it reads the disk's length, deduce from it the number of LBA and then parses all LBA-allocation tables into memory.
+
+Then, a super-allocation table is created, indicating whether each LBA has an available sector. Thanks to these tables, the allocation of sectors can be pretty quick because it is not needed to scan the whole disk to find available sectors.
+
+On disk, a file (be it strictly speaking a file of a drectory. We do not support other types of data e.g. symlinks) is composed of a header and an arbitrary number of data blocks. Both the header and data blocks take up exatly one sector. The header contains various informations : id of the creator, some flags, the file's name, its parent's address and, most importantly, the addresses of its data blocks (a header can contain up to 100 of them). This means that a file's blocks (be it header or data) do not need to be contiguous. This is in our humble opinion, a very important property of our filesystem.
+
+But one could argue : a file can only have a size of $100 \times 512$ bytes. This is pretty small. To tackle this problem, we introduced different modes. If a file is small enough, it gets stored in `SMALL_MODE`, as described. In the other case, in gets stored in `LONG_MODE`. The address table in the header gets daisy-chained : the addresses (up to 100) in the header point to blocks that contains the addresses of the actual data blocks! That way, a file can have a size of up to $100 \times 128 \times 512 ~= 6.4$ MB. As Rust programs compiled with the `release` flag tend to be pretty small, we decided this was enough (the kernel itself is only a few megabytes long).
+
+This mode, as well as the file type, is stored inside the header. A directory is stored in a pretty straightforward way : its data blocks contain tuples `(name, address)` of their children.
+
+# Reliability
+
+This is sort of the elephant in the room. From the very beginning, we built FerrOS to be a proof of concept of a feature-rich OS that, the code of which remains understandable. The goal was not for it to be reliable in any way. This means that it should work fine as long as the user follows the guidelines but will panic (i.e. crash on purpose) on multiple occasions. The ustar driver is a great example of that : each step of the ustar pipeline has a lot of data checks that cause the OS to crahs if something invalid gets detected. A real OS would obviously catch this error and returns it to the userprogram, possibly killing it.
+
+# Conclusion
+
+This project has been a lot of fun and taught us a lot about operating systems, ranging from paging to userspace and standard libraries. Using Rust for this project has been, in our humble opinion, a success, as it enabled us to build some complex structures relatively easily (such as the VFS).

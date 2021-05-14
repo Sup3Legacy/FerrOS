@@ -13,19 +13,30 @@ impl NoPart {
 }
 
 impl Partition for NoPart {
-    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
         todo!()
     }
 
-    fn write(&mut self, _path: &Path, _buffer: &[u8], _offset: usize, _flags: u64) -> isize {
+    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         todo!()
     }
 
-    fn close(&mut self, _path: &Path) -> bool {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        _buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         todo!()
     }
 
-    fn lseek(&self) {
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+        todo!()
+    }
+
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
         todo!()
     }
 
@@ -33,7 +44,15 @@ impl Partition for NoPart {
         todo!()
     }
 
+    fn lseek(&self) {
+        todo!()
+    }
+
     fn read_raw(&self) {
         todo!()
+    }
+
+    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+        usize::MAX
     }
 }

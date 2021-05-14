@@ -14,7 +14,7 @@ edition = "2018"
 bootloader = { git = "https://github.com/samsa1/bootloader.git", features = ["map_physical_memory", "sse"]}
 spin = "0.5.2"
 x86_64 = ">=0.14.1"
-pic8259_simple = {git="https://github.com/Pollux3737/pic8259_simple.git"}
+pic8259_simple = {git="https://github.com/samsa1/pic8259_simple.git"}
 pc-keyboard = "*"
 linked_list_allocator = "*"
 uart_16550 = "*"
@@ -51,7 +51,7 @@ features = ["alloc"]
 [package.metadata.bootimage]
 test-timeout = 60  # Number of seconds before timeout.
 run-args = [
-    "-drive", "format=raw,file=disk/disk.img,index=2",
+    "-drive", "format=raw,file=disk/disk2.img,index=2",
     "-boot", "c",
     #"-soundhw", "pcspk",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.

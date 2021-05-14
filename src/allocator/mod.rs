@@ -1,3 +1,5 @@
+//! Heap allocator. This is a clone of the one inside the `librust`
+
 //use alloc::alloc::{GlobalAlloc, Layout};
 use linked_list::LinkedListAllocator;
 use x86_64::{
@@ -55,6 +57,7 @@ pub fn init(
     Ok(())
 }
 
+/// Contains locked data
 pub struct Locked<A> {
     inner: spin::Mutex<A>,
 }

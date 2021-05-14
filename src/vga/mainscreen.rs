@@ -8,8 +8,6 @@ use priority_queue::PriorityQueue;
 use super::virtual_screen::{ColorCode, VirtualScreen, VirtualScreenLayer, CHAR};
 use crate::data_storage::screen::Coord;
 
-use crate::println;
-
 pub static mut MAIN_SCREEN: Option<MainScreen> = None;
 
 /// Height of the screen
@@ -27,8 +25,17 @@ impl VirtualScreenID {
         let new = NEXT_ID.fetch_add(1, Ordering::Relaxed); // Maybe better to reallow previous numbers
         Self(new)
     }
+
+    pub fn forge(id: usize) -> Self {
+        Self(id as u64)
+    }
+
     pub const fn null() -> Self {
         Self(0)
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
     }
 }
 impl Default for VirtualScreenID {
@@ -40,7 +47,7 @@ impl Default for VirtualScreenID {
 #[derive(Debug)]
 pub struct MainScreen {
     /// Conversion id -> screen
-    map: BTreeMap<VirtualScreenID, VirtualScreen>,
+    map: BTreeMap<VirtualScreenID, (usize, VirtualScreen)>,
     /// queue on id based on layer priority
     queue: PriorityQueue<VirtualScreenID, VirtualScreenLayer, DefaultHashBuilder>,
     /// back-up queue
@@ -65,21 +72,24 @@ impl MainScreen {
     }
     pub fn get_vscreen_mut(&mut self, id: &VirtualScreenID) -> Option<&mut VirtualScreen> {
         if let Some((res0, _res1)) = self.queue.get(id) {
-            self.map.get_mut(&res0)
+            match self.map.get_mut(&res0) {
+                Some((_amount, vs)) => Some(vs),
+                None => None,
+            }
         } else {
             None
         }
     }
     pub fn resize_vscreen(&mut self, id: &VirtualScreenID, size: Coord) {
         if let Some((res0, _res1)) = self.queue.get(id) {
-            if let Some(vscreen) = self.map.get_mut(&res0) {
+            if let Some((_amount, vscreen)) = self.map.get_mut(&res0) {
                 vscreen.resize(size);
             }
         }
     }
     pub fn replace_vscreen(&mut self, id: &VirtualScreenID, place: Coord) {
         if let Some((res0, _res1)) = self.queue.get(id) {
-            if let Some(vscreen) = self.map.get_mut(&res0) {
+            if let Some((_amount, vscreen)) = self.map.get_mut(&res0) {
                 vscreen.replace(place);
             }
         }
@@ -90,7 +100,7 @@ impl MainScreen {
     pub fn draw(&mut self) {
         self.reset_alpha();
         while let Some((v_screen_id, _layer)) = self.queue.pop() {
-            if let Some(v_screen) = self.map.get(&v_screen_id) {
+            if let Some((_amount, v_screen)) = self.map.get(&v_screen_id) {
                 let position = v_screen.get_position();
                 let size = v_screen.get_size();
                 let row_origin = position.get_row();
@@ -157,21 +167,34 @@ impl MainScreen {
             Coord::new(width, height),
             layer,
         );
-        self.map.insert(vs_id, screen);
+        self.map.insert(vs_id, (1, screen));
         self.queue.push(vs_id, layer);
         vs_id
     }
 
-    pub fn delete_screen(&mut self, vs_id: VirtualScreenID) {
-        match self.map.remove(&vs_id) {
-            Some(mut screen) => screen.delete(),
-            None => (),
-        };
+    pub fn delete_screen(&mut self, vs_id: VirtualScreenID) -> bool {
+        if let Some((amount, mut screen)) = self.map.remove(&vs_id) {
+            if amount == 1 {
+                screen.delete();
+            } else {
+                self.map.insert(vs_id, (amount - 1, screen));
+            }
+        }
+        false
     }
 
-    pub fn get_screen(&mut self, id: &VirtualScreenID) -> Option<&mut VirtualScreen> {
-        self.map.get_mut(id)
+    pub fn duplicated(&mut self, vs_id: VirtualScreenID) {
+        if let Some((amount, screen)) = self.map.remove(&vs_id) {
+            self.map.insert(vs_id, (amount + 1, screen));
+        }
     }
+
+    /*pub fn get_screen(&mut self, id: &VirtualScreenID) -> Option<&'static mut VirtualScreen> {
+        match self.map.get_mut(id) {
+            Some((_amount, screen)) => Some(screen),
+            None => None,
+        }
+    }*/
 }
 
 impl Default for MainScreen {

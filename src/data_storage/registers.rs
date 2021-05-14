@@ -1,3 +1,5 @@
+//! Data-structures holdign registers states
+
 /// Holds the value of a complete set of the `x86-64` GP registers.
 /// It is used to read from/write into a process' registers during a syscall.
 #[repr(C)]

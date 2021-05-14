@@ -1,3 +1,5 @@
+//! Heart of the kernel-user interraction. Defines the logic used by the `VFS`
+
 #![allow(clippy::upper_case_acronyms)]
 
 use alloc::boxed::Box;
@@ -65,16 +67,21 @@ impl PartitionNode {
         }
     }
 
-    pub fn remove_entry(&mut self, sliced_path: &Vec<String>, index: usize) -> Result<bool, ()> {
+    pub fn remove_entry(
+        &mut self,
+        sliced_path: &[String],
+        index: usize,
+        id: usize,
+    ) -> Result<bool, ErrVFS> {
         match self {
             PartitionNode::Node(next) => {
                 if index >= sliced_path.len() {
-                    return Err(());
+                    return Err(ErrVFS());
                 }
 
                 if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                    match next_part.remove_entry(&sliced_path, index + 1) {
-                        Err(()) => Err(()),
+                    match next_part.remove_entry(&sliced_path, index + 1, id) {
+                        Err(ErrVFS()) => Err(ErrVFS()),
                         Ok(is_empty) => {
                             if is_empty {
                                 next.remove_entry(&sliced_path[index]);
@@ -85,10 +92,12 @@ impl PartitionNode {
                         }
                     }
                 } else {
-                    Err(())
+                    Err(ErrVFS())
                 }
             }
-            PartitionNode::Leaf(part) => Ok(part.close(&Path::from_sliced(&sliced_path[index..]))),
+            PartitionNode::Leaf(part) => {
+                Ok(part.close(&Path::from_sliced(&sliced_path[index..]), id))
+            }
         }
     }
 
@@ -125,6 +134,34 @@ impl PartitionNode {
             PartitionNode::Leaf(_) => Err(ErrVFS()),
         }
     }
+
+    pub fn give_param(
+        &mut self,
+        sliced_path: Vec<String>,
+        index: usize,
+        id: usize,
+        param: usize,
+    ) -> usize {
+        match self {
+            PartitionNode::Node(next) => {
+                if index == sliced_path.len() {
+                    return usize::MAX;
+                }
+                if next.get(&sliced_path[index]).is_some() {
+                    if let Some(next_part) = next.get_mut(&sliced_path[index]) {
+                        next_part.give_param(sliced_path, index + 1, id, param)
+                    } else {
+                        panic!("should not happen")
+                    }
+                } else {
+                    panic!("should not happen")
+                }
+            }
+            PartitionNode::Leaf(part) => {
+                part.give_param(&Path::from_sliced(&sliced_path[index..]), id, param)
+            }
+        }
+    }
 }
 
 /// This should be the main interface of the filesystem.
@@ -132,15 +169,18 @@ impl PartitionNode {
 /// as we need to implement all structures of file descriptors, etc.
 impl VFS {
     /// Returns the index of file descriptor. -1 if error
-    pub fn open(&'static mut self, path: Path) -> Result<(), ErrVFS> {
+    pub fn open(&'static mut self, path: &Path, _mode: super::OpenMode) -> Result<usize, ErrVFS> {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // If the VFS couldn't find the corresponding partition, return -1
         if res_partition.is_err() {
             return Err(ErrVFS());
         }
-        let _partition = res_partition.unwrap();
-        todo!()
+        let (partition, remaining_path) = res_partition.unwrap();
+        match partition.open(&remaining_path) {
+            None => Err(ErrVFS()),
+            Some(d) => Ok(d),
+        }
     }
 
     pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
@@ -148,25 +188,43 @@ impl VFS {
         self.partitions.root.add_entry(sliced, 0, data)
     }
 
-    pub fn close(&mut self, path: Path) -> Result<bool, ()> {
-        self.partitions.root.remove_entry(&path.slice(), 0)
+    pub fn close(&mut self, path: Path, id: usize) -> Result<bool, ErrVFS> {
+        self.partitions.root.remove_entry(&path.slice(), 0, id)
     }
 
-    pub fn read(&'static mut self, path: Path, offset: usize, length: usize) -> Vec<u8> {
-        let sliced = path.slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
-        // TODO check it actuallye returned something
-        let (partition, _remaining_path) = res_partition.unwrap();
-        partition.read(&path, offset, length)
+    pub fn give_param(&mut self, path: &Path, id: usize, param: usize) -> usize {
+        self.partitions.root.give_param(path.slice(), 0, id, param)
     }
 
-    /// TODO use offset and flag information
-    pub fn write(&'static mut self, path: Path, data: Vec<u8>, offset: usize, flags: u64) -> isize {
+    pub fn read(&'static mut self, path: Path, id: usize, offset: usize, length: usize) -> Vec<u8> {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
         let (partition, remaining_path) = res_partition.unwrap();
-        partition.write(&remaining_path, &data, offset, flags)
+        partition.read(&remaining_path, id, offset, length)
+    }
+
+    /// TODO use offset and flag information
+    pub fn write(
+        &'static mut self,
+        path: Path,
+        id: usize,
+        data: Vec<u8>,
+        offset: usize,
+        flags: u64,
+    ) -> isize {
+        let sliced = path.slice();
+        let res_partition = self.partitions.root.get_partition(sliced, 0);
+        // TODO check it actuallye returned something
+        let (partition, remaining_path) = res_partition.unwrap();
+        partition.write(&remaining_path, id, &data, offset, flags)
+    }
+
+    pub fn duplicate(&'static mut self, path: Path, id: usize) -> Option<usize> {
+        let sliced = path.slice();
+        let res_partition = self.partitions.root.get_partition(sliced, 0);
+        let (partition, remaining_path) = res_partition.unwrap();
+        partition.duplicate(&remaining_path, id)
     }
 
     pub fn lseek(&self) {

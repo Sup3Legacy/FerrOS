@@ -1,3 +1,5 @@
+//! host shell accessed by the serial interface
+
 use super::partition::Partition;
 
 use crate::{data_storage::path::Path, print};
@@ -11,23 +13,44 @@ impl HostShellPartition {
     }
 }
 
+impl Default for HostShellPartition {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Partition for HostShellPartition {
-    fn read(&self, _path: &Path, _offset: usize, _size: usize) -> Vec<u8> {
+    fn open(&mut self, _path: &Path) -> Option<usize> {
+        Some(0)
+    }
+
+    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(&mut self, _path: &Path, buffer: &[u8], offset: usize, flags: u64) -> isize {
+    fn write(
+        &mut self,
+        _path: &Path,
+        _id: usize,
+        buffer: &[u8],
+        _offset: usize,
+        _flags: u64,
+    ) -> isize {
         let mut sortie = String::new();
         let size = buffer.len();
-        for i in 0..size {
-            sortie.push(buffer[i] as char);
+        for item in buffer.iter() {
+            sortie.push(*item as char);
         }
         print!("{}", sortie);
         size as isize
     }
 
-    fn close(&mut self, path: &Path) -> bool {
+    fn close(&mut self, _path: &Path, _id: usize) -> bool {
         false
+    }
+
+    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+        Some(0)
     }
 
     fn lseek(&self) {
@@ -40,5 +63,9 @@ impl Partition for HostShellPartition {
 
     fn read_raw(&self) {
         panic!("not allowed");
+    }
+
+    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+        usize::MAX
     }
 }
