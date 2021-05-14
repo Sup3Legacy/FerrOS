@@ -173,12 +173,13 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             let res = filesystem::write_file(oft, t);
             args.rax = res as u64;
         } else {
-            warningln!("Could not get OpenFileTable");
+            warningln!("Could not get OpenFileTable {}", fd);
             for _i in 0..10 {
                 let _oft_res = process
                     .open_files
                     .get_file_table(descriptor::FileDescriptor::new(fd as usize));
             }
+            panic!("Failure");
         }
         //}
     } else {
@@ -189,15 +190,16 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    /*crate::debug!("syscall open");
     let filename = unsafe { read_string_from_pointer(args.rdi) };
     let fd = descriptor::open(filename, open_mode_from_flags(args.rsi));
-    args.rax = fd.into_u64();
+    args.rax = fd.into_u64();*/
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };
-
+    crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path), 0_u64)
+        .create_file_table(path::Path::from(&path), args.rsi)
         .into_u64();
     // Puts the fd into rax
     args.rax = fd;
