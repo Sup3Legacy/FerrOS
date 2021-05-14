@@ -1,3 +1,5 @@
+//! Flags
+
 #![allow(clippy::upper_case_acronyms)]
 
 use alloc::collections::BTreeSet;

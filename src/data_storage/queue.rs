@@ -1,5 +1,6 @@
 //! Here we define a basic bounded queue (fixed size) supporting creation, push and pop
 
+/// Maximam size of a queue
 const MAX_SIZE: usize = 32;
 
 /// Queue error.

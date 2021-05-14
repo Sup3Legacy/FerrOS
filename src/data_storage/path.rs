@@ -1,3 +1,5 @@
+//! Kernelspace representation of paths.
+
 use alloc::string::String;
 use alloc::vec::Vec;
 

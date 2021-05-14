@@ -1,3 +1,5 @@
+//! ATA test routines
+
 use crate::{print, println};
 use x86_64::instructions::interrupts::{disable, enable};
 use x86_64::instructions::port::Port;

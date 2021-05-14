@@ -1,3 +1,5 @@
+//! All the logic around file descriptors and `OpenFileTable`s
+
 use crate::data_storage::path::Path;
 
 use crate::scheduler::process;

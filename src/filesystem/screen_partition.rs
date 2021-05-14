@@ -1,3 +1,5 @@
+//! Give a process access to a screen.
+
 use super::partition::Partition;
 use crate::data_storage::screen::Coord;
 

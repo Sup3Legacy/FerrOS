@@ -1,3 +1,5 @@
+//! Contains all the logic used to create, manage, switch and kill processes.
+
 pub mod process;
 
 /// Maximum number of co-existing processes.

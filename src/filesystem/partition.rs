@@ -1,3 +1,5 @@
+//! Defines the `Partition` trait, implemented by all drivers and uniting them into a `VFS`!
+
 use crate::data_storage::path::Path;
 use alloc::vec::Vec;
 

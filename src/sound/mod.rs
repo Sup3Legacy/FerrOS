@@ -1,3 +1,5 @@
+//! Sound driver and logic. Used by the VFS.
+
 use lazy_static::lazy_static;
 use spin::Mutex;
 

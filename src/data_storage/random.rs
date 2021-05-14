@@ -1,3 +1,6 @@
+//! A very basic pseudo-RNG
+
+/// Initital seed
 static mut RAND_SEED: u8 = 42_u8;
 
 /// Returns a pseudo-random `u8`, using a simple and naive algorihm.

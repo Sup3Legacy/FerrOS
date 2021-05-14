@@ -1,3 +1,5 @@
+//! Serial communication with the host shell. The way the kernel debugs informations.
+
 use lazy_static::lazy_static;
 use spin::Mutex;
 use uart_16550::SerialPort;

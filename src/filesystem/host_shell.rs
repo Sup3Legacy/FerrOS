@@ -1,3 +1,5 @@
+//! host shell accessed by the serial interface
+
 use super::partition::Partition;
 
 use crate::{data_storage::path::Path, print};

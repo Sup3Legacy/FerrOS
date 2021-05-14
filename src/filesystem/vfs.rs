@@ -1,3 +1,5 @@
+//! Heart of the kernel-user interraction. Defines the logic used by the `VFS`
+
 #![allow(clippy::upper_case_acronyms)]
 
 use alloc::boxed::Box;

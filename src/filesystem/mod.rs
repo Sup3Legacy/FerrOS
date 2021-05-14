@@ -1,3 +1,5 @@
+//! All the logic of the filesystem, ranging from the drivers to the `VFS` pipeline
+
 #![allow(dead_code)]
 
 use crate::data_storage::path::Path;

@@ -1,3 +1,5 @@
+//! Linked-list logic
+
 use super::{align_up, Locked};
 
 use crate::errorln;

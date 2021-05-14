@@ -1,3 +1,5 @@
+//! FIFO used for inter-process communication
+
 use super::partition::Partition;
 
 use crate::data_storage::path::Path;

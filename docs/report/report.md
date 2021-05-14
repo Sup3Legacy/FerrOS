@@ -6,6 +6,10 @@ toc: true
 numbersections: true
 ---
 
+# Preliminaries
+
+Any reader is strongly encouraged to have the code of the kernel available when reading this report. Rust also provides a **very** well-done documentation tool. The command `make doc` at the root of the repo should build the documentation and open it in the browser. We have put some effort into making a documentation clear and explicit!
+
 # Motivation
 
 ## Language
@@ -198,4 +202,8 @@ This mode, as well as the file type, is stored inside the header. A directory is
 
 # Reliability
 
-This is sort of the elephant in the room. From the very beginning, we built FerrOS to be a proof of concept of a feature-rich OS that, the code of which remains understandable. In any case we wanted it to be reliable in any way. This means that it should work fine as long as the user follows the guidelines but will panic (i.e. crash on purpose) on multiple occasions. The ustar driver is a great example of that : each step of the ustar pipeline has a lot of data checks that cause the OS to crahs if something invalid gets detected. A real OS would obviously catch this error and returns it to the userprogram, possibly killing it.
+This is sort of the elephant in the room. From the very beginning, we built FerrOS to be a proof of concept of a feature-rich OS that, the code of which remains understandable. The goal was not for it to be reliable in any way. This means that it should work fine as long as the user follows the guidelines but will panic (i.e. crash on purpose) on multiple occasions. The ustar driver is a great example of that : each step of the ustar pipeline has a lot of data checks that cause the OS to crahs if something invalid gets detected. A real OS would obviously catch this error and returns it to the userprogram, possibly killing it.
+
+# Conclusion
+
+This project has been a lot of fun and taught us a lot about operating systems, ranging from paging to userspace and standard libraries. Using Rust for this project has been, in our humble opinion, a success, as it enabled us to build some complex structures relatively easily (such as the VFS).
