@@ -710,7 +710,7 @@ impl UsTar {
                     1
                 }
             };
-            for i in 0..number_address_block {
+            for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
                 println!("addresse : {:#?}", address);
                 let sector: LongFile =
