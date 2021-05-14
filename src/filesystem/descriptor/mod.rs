@@ -218,7 +218,9 @@ impl ProcessDescriptorTable {
         // We then return the associated FileDescriptor
         let id = match super::open_file(&path, super::open_mode_from_flags(flags)) {
             Ok(i) => i,
-            Err(_) => return FileDescriptor::new(usize::MAX),
+            Err(_) => {
+                return FileDescriptor::new(usize::MAX)
+            },
         };
         let open_file_table = OpenFileTable::new(path, flags, id);
         self.add_file_table(open_file_table)

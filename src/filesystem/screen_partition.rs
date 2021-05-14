@@ -33,6 +33,7 @@ impl Partition for ScreenPartition {
                 let s = main_screen.new_screen(0, 0, 25, 80, VirtualScreenLayer::new(0));
                 Some(s.as_usize())
             } else {
+                crate::debug!("no main screen");
                 None
             }
         }

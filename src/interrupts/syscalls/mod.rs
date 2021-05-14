@@ -189,7 +189,6 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    debug!("open");
     let filename = unsafe { read_string_from_pointer(args.rdi) };
     let fd = descriptor::open(filename, open_mode_from_flags(args.rsi));
     args.rax = fd.into_u64();
@@ -200,7 +199,6 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
         .open_files
         .create_file_table(path::Path::from(&path), 0_u64)
         .into_u64();
-
     // Puts the fd into rax
     args.rax = fd;
 }
@@ -216,7 +214,9 @@ extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStac
 }
 
 extern "C" fn syscall_4_dup2(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    debug!("dup in {:#?}", args);
     args.rax = process::dup2(args.rdi as usize, args.rsi as usize) as u64;
+    debug!("dup out");
 }
 
 extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
