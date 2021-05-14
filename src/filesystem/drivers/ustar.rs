@@ -712,7 +712,6 @@ impl UsTar {
             };
             for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
-                println!("addresse : {:#?}", address);
                 let sector: LongFile =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..128 {
@@ -729,7 +728,6 @@ impl UsTar {
             println!("{} for {}", nb_bloc, header.blocks_number);
             for i in 0..nb_bloc {
                 let address = data_addresses[i as usize];
-                println!("{:#?}", address);
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..256 {

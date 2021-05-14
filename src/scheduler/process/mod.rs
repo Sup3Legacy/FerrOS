@@ -240,7 +240,8 @@ pub unsafe fn allocate_additional_heap_pages(
     start: u64,
     number: u64,
     process: &Process,
-) {
+) -> u64 {
+    let mut maxi = 0;
     for i in 0..number {
         match frame_allocator.add_entry_to_table(
             PhysFrame::containing_address(process.cr3),
@@ -251,7 +252,17 @@ pub unsafe fn allocate_additional_heap_pages(
                 | elf::HEAP,
             false,
         ) {
-            Ok(()) => (),
+            Ok(()) => {
+                maxi = i;
+                match memory::write_into_virtual_memory(
+                    PhysFrame::containing_address(process.cr3),
+                    VirtAddr::new(start + i * 0x1000),
+                    &[0_u8; 0x1000],
+                ) {
+                    Ok(()) => (),
+                    Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
+                };
+            }
             Err(memory::MemoryError(err)) => {
                 errorln!(
                     "Could not allocate the {}-th additional part of the heap. Error : {:?}",
@@ -260,15 +271,8 @@ pub unsafe fn allocate_additional_heap_pages(
                 );
             }
         }
-        match memory::write_into_virtual_memory(
-            PhysFrame::containing_address(process.cr3),
-            VirtAddr::new(start + i * 0x1000),
-            &[0_u8; 0x1000],
-        ) {
-            Ok(()) => (),
-            Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
-        };
     }
+    maxi
 }
 
 /// Function to launch the first process !
@@ -425,6 +429,14 @@ pub unsafe fn disassemble_and_launch(
     } else {
         get_current().stack_base
     };
+    println!(
+        "0x219000 was allocated ? {}",
+        memory::check_if_has_flags(
+            Cr3::read().0,
+            VirtAddr::new(0x219000),
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+        )
+    );
     // We get the `ElfFile` from the raw slice
     println!("Code len : {}", code.len());
     let elf = ElfFile::new(code).unwrap();
@@ -456,6 +468,12 @@ pub unsafe fn disassemble_and_launch(
         let offset = program.offset();
         let size = program.mem_size();
         let file_size = program.file_size();
+        println!(
+            " code at {:x} {:x} {:x}",
+            address,
+            address + size,
+            address + file_size
+        );
         maximum_address = max(maximum_address, address + size);
         match program.get_type() {
             Ok(Type::Phdr) | Err(_) => continue,
@@ -479,7 +497,7 @@ pub unsafe fn disassemble_and_launch(
                 &zeroed_data[..]
             }
         };
-        let num_blocks = (size + offset) / 0x1000 + 1;
+        let num_blocks = (file_size + 0xFFF) / 0x1000 + 1;
         let mut flags =
             PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | elf::MODIFY_WITH_EXEC;
         if program.flags().is_write() {
@@ -553,6 +571,7 @@ pub unsafe fn disassemble_and_launch(
     let heap_address = maximum_address + 0x8000_u64;
     let heap_address_normalized = heap_address - (heap_address % 0x1000);
     let heap_size = DEFAULT_HEAP_SIZE;
+
     for i in 0..heap_size {
         match frame_allocator.add_entry_to_table(
             level_4_table_addr,
@@ -563,7 +582,7 @@ pub unsafe fn disassemble_and_launch(
                 | elf::HEAP,
             false,
         ) {
-            Ok(()) => (),
+            Ok(()) => println!("Allocated {:x}", heap_address_normalized + i * 0x1000),
             Err(memory::MemoryError(err)) => {
                 errorln!(
                     "Could not allocate the {}-th part of the heap. Error : {:?}",
@@ -616,11 +635,8 @@ pub unsafe fn disassemble_and_launch(
 
     let (_cr3, cr3f) = Cr3::read();
     Cr3::write(level_4_table_addr, cr3f);
-    println!("good luck user ;) {} {}", addr_stack, prog_entry);
+    println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
-    for i in 0..10 {
-        debug!("{} {}", i, get_current().open_files.is_none(i));
-    }
     towards_user_give_heap_args(
         heap_address_normalized,
         heap_size,
@@ -918,9 +934,6 @@ pub unsafe fn fork() -> ID {
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
     son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
     son.open_files.copy(ID_TABLE[CURRENT_PROCESS].open_files);
-    for i in 0..10 {
-        println!("{} is {}", i, son.open_files.is_none(i))
-    }
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)

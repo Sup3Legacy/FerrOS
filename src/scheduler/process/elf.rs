@@ -8,6 +8,7 @@ use core::cmp::max;
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::VirtAddr;
 use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
+
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;
 pub const STACK: PageTableFlags = PageTableFlags::BIT_10;
 pub const HEAP: PageTableFlags = PageTableFlags::BIT_11;
@@ -56,16 +57,16 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
 
         // deallocate precedent file
         if !frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
-            debug!("page table is not empty")
+            debug!("mod_with_exec page table is not empty")
         } else {
-            debug!("page table is empty")
+            debug!("mod_with_exec page table is empty")
         }
 
         // deallocate precedent heap
         if !frame_allocator.deallocate_level_4_page(current.cr3, HEAP, true) {
-            debug!("page table is not empty")
+            debug!("heap page table is not empty")
         } else {
-            debug!("page table is empty")
+            debug!("heap page table is empty")
         }
 
         super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false);

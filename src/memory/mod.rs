@@ -382,7 +382,7 @@ impl BootInfoAllocator {
                 table_1[p_1].set_flags(flag_union(entry, flags));
                 Ok(())
             } else {
-                warningln!("already here, l.301 {:#?}", virt_1);
+                warningln!("already here, l.301 {:#?} {:#?}", virt_1, entry);
                 Err(MemoryError(String::from(
                     "Level 1 entry is already present",
                 )))

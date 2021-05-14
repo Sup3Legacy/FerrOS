@@ -352,6 +352,7 @@ extern "C" fn syscall_20_debug(args: &mut RegistersMini, _isf: &mut InterruptSta
 /// We might want to change the maximum
 extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     // Number of requested frames
+    debug!("starts memrequest");
     let additional = core::cmp::max(args.rdi, 256);
     let current_process = unsafe { scheduler::process::get_current_as_mut() };
     let current_heap_size = current_process.heap_size;
@@ -361,19 +362,22 @@ extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut Interru
         args.rax = 0;
         return;
     }
+    let given;
     unsafe {
         if let Some(ref mut frame_allocator) = crate::memory::FRAME_ALLOCATOR {
-            scheduler::process::allocate_additional_heap_pages(
+            given = scheduler::process::allocate_additional_heap_pages(
                 frame_allocator,
                 current_process.heap_address + current_heap_size * 0x1000,
                 additional,
                 &current_process,
             );
+        } else {
+            given = 0;
         }
     }
-    debug!("Fullfilled memrequest");
-    current_process.heap_size += additional;
-    args.rax = additional
+    debug!("Fullfilled memrequest {}", given);
+    current_process.heap_size += given;
+    args.rax = given
 }
 
 extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
