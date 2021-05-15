@@ -55,6 +55,14 @@ pub unsafe fn load_elf_for_exec(file_name: &str, args: &Vec<String>) -> Result<!
         return Err(ProcessError::InvalidExec);
     }
 
+    let mut args2 = Vec::new();
+    debug!("Copy of the data {}", args.len());
+    for i in args {
+        debug!("{}", i.len());
+        debug!("{}", i);
+        args2.push(String::from(i))
+    }
+
     warningln!("Code len 1 => {}", code.len());
 
     if let Ok(_level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
@@ -74,7 +82,7 @@ pub unsafe fn load_elf_for_exec(file_name: &str, args: &Vec<String>) -> Result<!
             debug!("heap page table is empty")
         }
 
-        super::disassemble_and_launch(code, frame_allocator, 0, 0, args, false)
+        super::disassemble_and_launch(code, frame_allocator, 0, 0, &args2, false)
     } else {
         Err(ProcessError::AllocatorError)
     }

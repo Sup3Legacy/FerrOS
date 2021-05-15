@@ -243,8 +243,13 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
     let path = unsafe {
         String::from_raw_parts(args.rdi as *mut u8, args.rsi as usize, args.rsi as usize)
     };
+    debug!("args 2 : {:?}", args);
     let args = unsafe { &*(args.rdx as *mut Vec<String>) };
     debug!("exec {}", path);
+    debug!("args : {}", args.len());
+    if args.len() > 0 {
+        debug!("{}", args[0].len());
+    }
     unsafe {
         match process::elf::load_elf_for_exec(&path, args) {
             Ok(_) => (),
