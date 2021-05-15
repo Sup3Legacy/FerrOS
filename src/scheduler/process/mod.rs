@@ -18,6 +18,7 @@ use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
+use crate::filesystem;
 use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
 use crate::hardware;
 use crate::memory;
@@ -986,6 +987,15 @@ pub unsafe fn kill(target: usize) -> usize {
     } else {
         target_process.state = State::Zombie(1);
         0
+    }
+}
+
+pub unsafe fn write_to_stdout(message: String) {
+    if let Ok(res) = &ID_TABLE[CURRENT_PROCESS]
+        .open_files
+        .get_file_table(FileDescriptor::new(1))
+    {
+        filesystem::write_file(res, message.as_bytes().to_vec());
     }
 }
 
