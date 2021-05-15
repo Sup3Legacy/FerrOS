@@ -9,7 +9,7 @@ use super::partition::Partition;
 
 use super::drivers::nopart::NoPart;
 
-use crate::data_storage::path::Path;
+use crate::{data_storage::path::Path, warningln};
 
 #[derive(Debug)]
 pub struct ErrVFS();
@@ -198,8 +198,12 @@ impl VFS {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
-        let (partition, remaining_path) = res_partition.unwrap();
-        partition.read(&remaining_path, id, offset, length)
+        if let Ok((partition, remaining_path)) = res_partition {
+            partition.read(&remaining_path, id, offset, length)
+        } else {
+            warningln!("Could not find partition for {:?}", path);
+            Vec::new()
+        }
     }
 
     /// TODO use offset and flag information
