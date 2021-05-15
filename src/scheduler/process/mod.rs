@@ -196,19 +196,18 @@ pub unsafe extern "C" fn towards_user_give_heap(
     )
 }
 
-#[naked]
 /// # Safety
 /// TODO
 ///
 /// Goes towards the userland with a stack- and an instruction-pointer.
 /// It is also given a heap and arguments.
 pub unsafe extern "C" fn towards_user_give_heap_args(
-    _heap_addr: u64,
-    _heap_size: u64,
-    _args: u64,
-    _args_number: u64,
-    _rsp: u64,
-    _rip: u64,
+    heap_addr: u64,
+    heap_size: u64,
+    args: u64,
+    args_number: u64,
+    rsp: u64,
+    rip: u64,
 ) -> ! {
     asm!(
         // Ceci n'est pas exécuté
@@ -221,7 +220,7 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
         "add rsp, 8",
         "push 0x42",
         "push rax",  // stack segment
-        "push rcx",  // stack pointer
+        "push r8",  // stack pointer
         "push 518",  // cpu flags
         "push 0x08", // code segment
         "push r9",   // instruction pointer
@@ -239,8 +238,15 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
         "mov r14, 0",
         "mov r15, 0",
         "iretq",
-        options(noreturn,),
-    )
+        in("rdi") heap_addr,
+        in("rsi") heap_size,
+        in("rdx") args,
+        in("rcx") args_number,
+        in("r8") rsp,
+        in("r9") rip,
+        //options(noreturn,),
+    );
+    loop {}
 }
 
 /// # Safety
@@ -906,7 +912,6 @@ pub fn listen(id: usize) -> (usize, usize) {
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
                     process.open_files.close();
-                    return (id, return_value);
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                         frame_allocator.deallocate_level_4_page(
                             process.cr3,
