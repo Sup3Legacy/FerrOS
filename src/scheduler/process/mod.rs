@@ -646,6 +646,7 @@ pub unsafe fn disassemble_and_launch(
         }
     };
     debug!("Gonna flatten arguments : {:?}", args.len());
+    debug!("args : {:?}", args);
     let (args_number, args_data) = flatten_arguments(args);
     // Write the arguments onto the process's memory
     debug!("Gonna write arguments");
