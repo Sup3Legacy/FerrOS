@@ -402,10 +402,15 @@ pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
 }
 
 /// Flattens arguments into a pages. Strings are NULL-ended
-pub fn flatten_arguments(args: Vec<String>) -> [u8; 0x1000] {
+pub fn flatten_arguments(args: Vec<String>) -> (u64, [u8; 0x1000]) {
     let mut res = [0_u8; 0x1000];
     let mut index = 0;
+    let mut args_number = 0;
     for arg in args {
+        if index >= 0x1000 {
+            res[0x1000 - 1] = 0;
+            break;
+        }
         let bytes = arg.as_bytes();
         let length = bytes.len();
         for i in 0..length {
@@ -419,8 +424,9 @@ pub fn flatten_arguments(args: Vec<String>) -> [u8; 0x1000] {
         }
         res[length + index] = 0;
         index += length + 1;
+        args_number += 1;
     }
-    res
+    (args_number, res)
 }
 
 /// Takes in a slice containing an ELF file,
@@ -637,11 +643,12 @@ pub unsafe fn disassemble_and_launch(
             errorln!("Could not allocate the args page. Error : {:?}", err);
         }
     };
+    let (args_number, args_data) = flatten_arguments(args);
     // Write the arguments onto the process's memory
     match memory::write_into_virtual_memory(
         level_4_table_addr,
         VirtAddr::new(args_address),
-        &flatten_arguments(args),
+        &args_data,
     ) {
         Ok(()) => (),
         Err(a) => errorln!("Error when writing arguments : {:?}", a),
@@ -661,7 +668,7 @@ pub unsafe fn disassemble_and_launch(
         heap_address_normalized,
         heap_size,
         args_address,
-        args_len as u64,
+        args_number,
         addr_stack,
         prog_entry,
     ))
