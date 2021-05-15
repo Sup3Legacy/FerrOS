@@ -13,7 +13,7 @@ const MAX_TOTAL_OPEN_FILES: usize = 256;
 /// Max number of openable files by a process
 const MAX_TOTAL_OPEN_FILES_BY_PROCESS: usize = 16;
 
-static mut GLOBAL_FILE_TABLE: GeneralFileTable = GeneralFileTable::new();
+pub static mut GLOBAL_FILE_TABLE: GeneralFileTable = GeneralFileTable::new();
 
 /// Contains all the open_file_tables
 #[derive(Clone, Debug)]
@@ -74,8 +74,11 @@ impl GeneralFileTable {
         match &mut self.tables[index] {
             Some(file) => {
                 if file.close() {
+                    crate::debug!("fd was closed");
                     super::close_file(&file);
                     self.tables[index] = None;
+                } else {
+                    crate::debug!("fd wasn't closed");
                 }
             }
             None => panic!("Unexisting file was closed"),
@@ -230,6 +233,11 @@ impl ProcessDescriptorTable {
     /// fd 4 points to.
     pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> usize {
         // TO DO check the bounds and validity of the given data!
+        crate::debug!(
+            "Dup from descriptor {} -> {}",
+            target.into_usize(),
+            self.files[target.into_usize()].is_none()
+        );
         match self.files[target.into_usize()] {
             None => (),
             Some(fd) => unsafe {

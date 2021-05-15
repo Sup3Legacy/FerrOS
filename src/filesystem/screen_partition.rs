@@ -32,9 +32,10 @@ impl Partition for ScreenPartition {
         }
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let s = main_screen.new_screen(0, 0, 25, 80, VirtualScreenLayer::new(0));
+                let s = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
                 Some(s.as_usize())
             } else {
+                crate::debug!("no main screen");
                 None
             }
         }
@@ -111,12 +112,15 @@ impl Partition for ScreenPartition {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(id);
                 if param >> 63 == 1 {
-                    main_screen.resize_vscreen(
-                        &v_screen_id,
-                        Coord::new(param & 0xFF, (param >> 32) & 0xFF),
-                    )
+                    let x = param & 0xFF;
+                    let y = (param >> 32) & 0xFF;
+                    crate::debug!("resize {} {}", x, y);
+                    main_screen.resize_vscreen(&v_screen_id, Coord::new(x, y))
                 } else {
-                    main_screen.replace_vscreen(&v_screen_id, Coord::new(param & 0xFF, param >> 32))
+                    let x = param & 0xFF;
+                    let y = (param >> 32) & 0xFF;
+                    crate::debug!("move {} {}", x, y);
+                    main_screen.replace_vscreen(&v_screen_id, Coord::new(x, y))
                 }
                 0
             } else {

@@ -81,6 +81,7 @@ impl MainScreen {
         }
     }
     pub fn resize_vscreen(&mut self, id: &VirtualScreenID, size: Coord) {
+        crate::debug!("nb screen = {}", self.map.len());
         if let Some((res0, _res1)) = self.queue.get(id) {
             if let Some((_amount, vscreen)) = self.map.get_mut(&res0) {
                 vscreen.resize(size);
@@ -160,6 +161,7 @@ impl MainScreen {
         width: usize,
         layer: VirtualScreenLayer,
     ) -> VirtualScreenID {
+        crate::debug!("New screen");
         let vs_id = VirtualScreenID::new();
         let screen = VirtualScreen::new(
             ColorCode(15),
@@ -173,6 +175,7 @@ impl MainScreen {
     }
 
     pub fn delete_screen(&mut self, vs_id: VirtualScreenID) -> bool {
+        crate::debug!("deleted screen");
         if let Some((amount, mut screen)) = self.map.remove(&vs_id) {
             if amount == 1 {
                 screen.delete();

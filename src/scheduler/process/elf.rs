@@ -1,7 +1,7 @@
+use super::ProcessError;
 use crate::data_storage::path::Path;
 use crate::filesystem::read_file_from_path;
 use crate::memory;
-use crate::_TEST_PROGRAM;
 use crate::{debug, errorln, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -9,6 +9,7 @@ use core::cmp::max;
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::VirtAddr;
 use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
+
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;
 pub const STACK: PageTableFlags = PageTableFlags::BIT_10;
 pub const HEAP: PageTableFlags = PageTableFlags::BIT_11;
@@ -43,12 +44,24 @@ pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
 /// # Safety
 /// TODO
-pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
+pub unsafe fn load_elf_for_exec(file_name: &str, args: &Vec<String>) -> Result<!, ProcessError> {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
     };
     let code: &[u8] = &read_file_from_path(Path::from(file_name));
+    if code.len() == 0 {
+        debug!("tries to return");
+        return Err(ProcessError::InvalidExec);
+    }
+
+    let mut args2 = Vec::new();
+    debug!("Copy of the data {}", args.len());
+    for i in args {
+        debug!("{}", i.len());
+        debug!("{}", i);
+        args2.push(String::from(i))
+    }
 
     warningln!("Code len 1 => {}", code.len());
 
@@ -57,24 +70,25 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
 
         // deallocate precedent file
         if !frame_allocator.deallocate_level_4_page(current.cr3, MODIFY_WITH_EXEC, true) {
-            debug!("page table is not empty")
+            debug!("mod_with_exec page table is not empty")
         } else {
-            debug!("page table is empty")
+            debug!("mod_with_exec page table is empty")
         }
 
         // deallocate precedent heap
         if !frame_allocator.deallocate_level_4_page(current.cr3, HEAP, true) {
-            debug!("page table is not empty")
+            debug!("heap page table is not empty")
         } else {
-            debug!("page table is empty")
+            debug!("heap page table is empty")
         }
 
-        super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false);
+        super::disassemble_and_launch(code, frame_allocator, 0, 0, &args2, false)
     } else {
-        panic!("should never happen")
+        Err(ProcessError::AllocatorError)
     }
 }
 
+/*
 /// # Safety
 /// Never safe ! You just need to know what you are doing before calling it
 pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
@@ -82,7 +96,6 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
     };
-    let code: &[u8] = _TEST_PROGRAM; // /!\ need to be implemented in the filesystem
 
     let elf = ElfFile::new(code).unwrap();
 
@@ -217,3 +230,4 @@ pub unsafe fn _load_elf_for_exec(_file_name: &str) -> ! {
         panic!("could not launch process")
     }
 }
+*/

@@ -13,6 +13,7 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(slice_as_chunks)]
 #![feature(vec_into_raw_parts)]
+#![feature(never_type)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;
@@ -33,9 +34,7 @@ pub mod vga;
 
 extern crate alloc;
 
-pub static _TEST_PROGRAM: &[u8] = include_bytes!("user_program/test_io");
-
-pub static _TEST_PROGRAM2: &[u8] = include_bytes!("user_program/test_open_text");
+pub static FIRST_PROGRAM: &[u8] = include_bytes!("user_program/launcher");
 
 pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 

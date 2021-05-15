@@ -18,6 +18,7 @@ use xmas_elf::{program::SegmentData, program::Type, ElfFile};
 use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
+use crate::filesystem;
 use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
 use crate::hardware;
 use crate::memory;
@@ -28,6 +29,16 @@ use alloc::string::String;
 const DEFAULT_HEAP_SIZE: u64 = 2;
 
 pub mod elf;
+
+#[derive(Debug)]
+pub enum ProcessError {
+    InvalidELFHeader,
+    AllocatorError,
+    WriteError,
+    StackError,
+    HeapError,
+    InvalidExec,
+}
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -185,18 +196,18 @@ pub unsafe extern "C" fn towards_user_give_heap(
     )
 }
 
-#[naked]
 /// # Safety
 /// TODO
 ///
 /// Goes towards the userland with a stack- and an instruction-pointer.
 /// It is also given a heap and arguments.
 pub unsafe extern "C" fn towards_user_give_heap_args(
-    _heap_addr: u64,
-    _heap_size: u64,
-    _args: u64,
-    _rsp: u64,
-    _rip: u64,
+    heap_addr: u64,
+    heap_size: u64,
+    args: u64,
+    args_number: u64,
+    rsp: u64,
+    rip: u64,
 ) -> ! {
     asm!(
         // Ceci n'est pas exécuté
@@ -205,17 +216,17 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
         "mov es, eax",
         "mov fs, eax",
         "mov gs, eax",
-        "mov rsp, rcx",
+        "mov rsp, r8",
         "add rsp, 8",
         "push 0x42",
         "push rax",  // stack segment
-        "push rcx",  // stack pointer
+        "push r8",  // stack pointer
         "push 518",  // cpu flags
         "push 0x08", // code segment
-        "push r8",   // instruction pointer
+        "push r9",   // instruction pointer
         "mov rax, 0",
         "mov rbx, 0",
-        "mov rcx, 0",
+        //"mov rcx, 0", number of arguments
         //"mov rdx, 0", In this register we pass the pointer to the arguments
         "mov rbp, 0",
         "mov r8, 0",
@@ -227,8 +238,15 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
         "mov r14, 0",
         "mov r15, 0",
         "iretq",
-        options(noreturn,),
-    )
+        in("rdi") heap_addr,
+        in("rsi") heap_size,
+        in("rdx") args,
+        in("rcx") args_number,
+        in("r8") rsp,
+        in("r9") rip,
+        //options(noreturn,),
+    );
+    loop {}
 }
 
 /// # Safety
@@ -240,7 +258,8 @@ pub unsafe fn allocate_additional_heap_pages(
     start: u64,
     number: u64,
     process: &Process,
-) {
+) -> u64 {
+    let mut maxi = 0;
     for i in 0..number {
         match frame_allocator.add_entry_to_table(
             PhysFrame::containing_address(process.cr3),
@@ -251,7 +270,17 @@ pub unsafe fn allocate_additional_heap_pages(
                 | elf::HEAP,
             false,
         ) {
-            Ok(()) => (),
+            Ok(()) => {
+                maxi = i;
+                match memory::write_into_virtual_memory(
+                    PhysFrame::containing_address(process.cr3),
+                    VirtAddr::new(start + i * 0x1000),
+                    &[0_u8; 0x1000],
+                ) {
+                    Ok(()) => (),
+                    Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
+                };
+            }
             Err(memory::MemoryError(err)) => {
                 errorln!(
                     "Could not allocate the {}-th additional part of the heap. Error : {:?}",
@@ -260,15 +289,8 @@ pub unsafe fn allocate_additional_heap_pages(
                 );
             }
         }
-        match memory::write_into_virtual_memory(
-            PhysFrame::containing_address(process.cr3),
-            VirtAddr::new(start + i * 0x1000),
-            &[0_u8; 0x1000],
-        ) {
-            Ok(()) => (),
-            Err(a) => errorln!("{:?} at additional heap-section : {:?}", a, i),
-        };
     }
+    maxi
 }
 
 /// Function to launch the first process !
@@ -380,10 +402,15 @@ pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
 }
 
 /// Flattens arguments into a pages. Strings are NULL-ended
-pub fn flatten_arguments(args: Vec<String>) -> [u8; 0x1000] {
+pub fn flatten_arguments(args: &Vec<String>) -> (u64, [u8; 0x1000]) {
     let mut res = [0_u8; 0x1000];
     let mut index = 0;
+    let mut args_number = 0;
     for arg in args {
+        if index >= 0x1000 {
+            res[0x1000 - 1] = 0;
+            break;
+        }
         let bytes = arg.as_bytes();
         let length = bytes.len();
         for i in 0..length {
@@ -393,12 +420,15 @@ pub fn flatten_arguments(args: Vec<String>) -> [u8; 0x1000] {
                 res[i + index - 1] = 0;
                 break;
             }
+            debug!("Hi");
             res[i + index] = bytes[i];
+            debug!("Ha");
         }
         res[length + index] = 0;
         index += length + 1;
+        args_number += 1;
     }
-    res
+    (args_number, res)
 }
 
 /// Takes in a slice containing an ELF file,
@@ -416,18 +446,26 @@ pub unsafe fn disassemble_and_launch(
     frame_allocator: &mut memory::BootInfoAllocator,
     _number_of_block: u64,
     stack_size: u64,
-    args: Vec<String>,
+    args: &Vec<String>,
     new_process: bool,
-) -> ! {
+) -> Result<!, ProcessError> {
     // TODO maybe consider changing this
     let addr_stack: u64 = if new_process {
-        0x1ffff8
+        0x00007ffffffffff8
     } else {
         get_current().stack_base
     };
+    println!(
+        "0x219000 was allocated ? {}",
+        memory::check_if_has_flags(
+            Cr3::read().0,
+            VirtAddr::new(0x219000),
+            PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE,
+        )
+    );
     // We get the `ElfFile` from the raw slice
     println!("Code len : {}", code.len());
-    let elf = ElfFile::new(code).unwrap();
+    let elf = ElfFile::new(code).map_err(|_| ProcessError::InvalidELFHeader)?;
     // We get the main entry point and mmake sure it is
     // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
@@ -449,6 +487,7 @@ pub unsafe fn disassemble_and_launch(
     ID_TABLE[0].state = State::Runnable;
     // This represents the very end of all loaded segments
     let mut maximum_address = 0;
+    let args_len = args.len();
     // Loop over each section
     for program in elf.program_iter() {
         // Characteristics of the section
@@ -456,6 +495,13 @@ pub unsafe fn disassemble_and_launch(
         let offset = program.offset();
         let size = program.mem_size();
         let file_size = program.file_size();
+
+        println!(
+            " code at {:x} {:x} {:x}",
+            address,
+            address + size,
+            address + file_size
+        );
         maximum_address = max(maximum_address, address + size);
         match program.get_type() {
             Ok(Type::Phdr) | Err(_) => continue,
@@ -479,7 +525,7 @@ pub unsafe fn disassemble_and_launch(
                 &zeroed_data[..]
             }
         };
-        let num_blocks = (size + offset) / 0x1000 + 1;
+        let num_blocks = (file_size + 0xFFF) / 0x1000 + 1;
         let mut flags =
             PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | elf::MODIFY_WITH_EXEC;
         if program.flags().is_write() {
@@ -522,7 +568,7 @@ pub unsafe fn disassemble_and_launch(
                 VirtAddr::new(address + size),
                 &padding[..],
             )
-            .unwrap();
+            .map_err(|_| ProcessError::WriteError)?;
         }
     }
     // Allocate frames for the stack
@@ -544,7 +590,7 @@ pub unsafe fn disassemble_and_launch(
                     i,
                     err
                 );
-                hardware::power::shutdown();
+                return Err(ProcessError::StackError);
             }
         }
     }
@@ -553,6 +599,7 @@ pub unsafe fn disassemble_and_launch(
     let heap_address = maximum_address + 0x8000_u64;
     let heap_address_normalized = heap_address - (heap_address % 0x1000);
     let heap_size = DEFAULT_HEAP_SIZE;
+
     for i in 0..heap_size {
         match frame_allocator.add_entry_to_table(
             level_4_table_addr,
@@ -563,7 +610,7 @@ pub unsafe fn disassemble_and_launch(
                 | elf::HEAP,
             false,
         ) {
-            Ok(()) => (),
+            Ok(()) => println!("Allocated {:x}", heap_address_normalized + i * 0x1000),
             Err(memory::MemoryError(err)) => {
                 errorln!(
                     "Could not allocate the {}-th part of the heap. Error : {:?}",
@@ -598,11 +645,14 @@ pub unsafe fn disassemble_and_launch(
             errorln!("Could not allocate the args page. Error : {:?}", err);
         }
     };
+    debug!("Gonna flatten arguments : {:?}", args.len());
+    let (args_number, args_data) = flatten_arguments(args);
     // Write the arguments onto the process's memory
+    debug!("Gonna write arguments");
     match memory::write_into_virtual_memory(
         level_4_table_addr,
         VirtAddr::new(args_address),
-        &flatten_arguments(args),
+        &args_data,
     ) {
         Ok(()) => (),
         Err(a) => errorln!("Error when writing arguments : {:?}", a),
@@ -616,18 +666,16 @@ pub unsafe fn disassemble_and_launch(
 
     let (_cr3, cr3f) = Cr3::read();
     Cr3::write(level_4_table_addr, cr3f);
-    println!("good luck user ;) {} {}", addr_stack, prog_entry);
+    println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
-    for i in 0..10 {
-        debug!("{} {}", i, get_current().open_files.is_none(i));
-    }
-    towards_user_give_heap_args(
+    Ok(towards_user_give_heap_args(
         heap_address_normalized,
         heap_size,
         args_address,
+        args_number,
         addr_stack,
         prog_entry,
-    );
+    ))
 }
 
 /// Main structure of a process.
@@ -848,10 +896,29 @@ pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process 
     &ID_TABLE[new_pid]
 }
 
-pub fn listen() -> (u64, u64) {
+pub fn listen(id: usize) -> (usize, usize) {
     unsafe {
         let ppid = ID::forge(CURRENT_PROCESS as u64);
-        for (pid, process) in ID_TABLE.iter_mut().enumerate() {
+        if id == 0 {
+            for (pid, process) in ID_TABLE.iter_mut().enumerate() {
+                if process.ppid == ppid {
+                    if let State::Zombie(return_value) = process.state {
+                        process.state = State::SlotAvailable;
+                        process.open_files.close();
+                        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+                            frame_allocator.deallocate_level_4_page(
+                                process.cr3,
+                                PageTableFlags::USER_ACCESSIBLE,
+                                true,
+                            );
+                            frame_allocator.deallocate_4k_frame(process.cr3);
+                        }
+                        return (pid, return_value);
+                    }
+                }
+            }
+        } else {
+            let mut process = ID_TABLE[id];
             if process.ppid == ppid {
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
@@ -859,12 +926,12 @@ pub fn listen() -> (u64, u64) {
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                         frame_allocator.deallocate_level_4_page(
                             process.cr3,
-                            PageTableFlags::USER_ACCESSIBLE,
+                            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                             true,
                         );
                         frame_allocator.deallocate_4k_frame(process.cr3);
                     }
-                    return (pid as u64, return_value as u64);
+                    return (id, return_value);
                 }
             }
         }
@@ -918,9 +985,6 @@ pub unsafe fn fork() -> ID {
     son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
     son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
     son.open_files.copy(ID_TABLE[CURRENT_PROCESS].open_files);
-    for i in 0..10 {
-        println!("{} is {}", i, son.open_files.is_none(i))
-    }
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)
@@ -964,6 +1028,15 @@ pub unsafe fn kill(target: usize) -> usize {
     } else {
         target_process.state = State::Zombie(1);
         0
+    }
+}
+
+pub unsafe fn write_to_stdout(message: String) {
+    if let Ok(res) = &ID_TABLE[CURRENT_PROCESS]
+        .open_files
+        .get_file_table(FileDescriptor::new(1))
+    {
+        filesystem::write_file(res, message.as_bytes().to_vec());
     }
 }
 

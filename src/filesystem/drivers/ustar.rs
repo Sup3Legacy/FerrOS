@@ -15,6 +15,9 @@ use core::{mem::transmute, todo};
 pub enum UsTarError {
     GenericError,
     FileNotFound,
+    DirNotFound,
+    InvalidSize,
+    InvalidMode,
 }
 
 /// Main cache for Path -> Adress conversion.
@@ -427,59 +430,66 @@ impl UsTar {
         unsafe {
             DIR_CACHE.0.insert(
                 Path::from("root"),
-                res.memdir_from_address(Address { lba: 0, block: 1 }),
+                res.memdir_from_address(Address { lba: 0, block: 1 })
+                    .expect("Could not read root"),
             )
         };
         unsafe { println!("DIR_CACHE : {:?}", DIR_CACHE.0) };
         res
     }
 
-    fn find_first_uncached(path: &Path) -> PathDecomp {
+    fn find_first_uncached(path: &Path) -> Result<PathDecomp, UsTarError> {
         let mut decomp = path.slice().into_iter();
-        let mut current_path = Path::from("root");
-        let mut current_dir = unsafe { DIR_CACHE.0.get_mut(&current_path).unwrap() };
-        while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
-            current_dir = a;
-            if let Some(next_dir) = decomp.next() {
-                current_path.push_str(&next_dir);
+        let mut current_path = match decomp.next() {
+            Some(start) => Path::from(&start),
+            None => return Err(UsTarError::GenericError),
+        };
+        if let Some(mut current_dir) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
+            while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
+                current_dir = a;
+                println!("{:?} -> {:?}", current_path, current_dir);
+                if let Some(next_dir) = decomp.next() {
+                    current_path.push_str(&next_dir);
+                }
             }
-        }
-        PathDecomp {
-            decomp,
-            current_path,
-            current_dir: current_dir.clone(),
+            println!("Crrt_Path {:?}", current_path);
+            Ok(PathDecomp {
+                decomp,
+                current_path,
+                current_dir: current_dir.clone(),
+            })
+        } else {
+            Err(UsTarError::FileNotFound)
         }
     }
 
     fn add_cache(&self, d: &mut PathDecomp) -> Result<(), UsTarError> {
-        let decomp = d.decomp.clone();
-        for next_dir in decomp {
-            d.current_path.push_str(&next_dir);
-            let next_address = d
-                .current_dir
-                .files
-                .get_mut(&next_dir)
-                .ok_or(UsTarError::FileNotFound)?;
-            let current_dir = self.memdir_from_address(*next_address);
-            unsafe {
-                DIR_CACHE
-                    .0
-                    .insert(Path::from(&d.current_path.to()), current_dir)
-            };
-            unsafe {
-                FILE_ADRESS_CACHE
-                    .0
-                    .insert(Path::from(&d.current_path.to()), *next_address)
-            };
-        }
-        Ok(())
+        println!("{:?} {:?} {:?}", d.decomp, d.current_path, d.current_dir);
+        let name = d.current_path.get_name();
+        let next_address = d
+            .current_dir
+            .files
+            .get_mut(&name)
+            .ok_or(UsTarError::FileNotFound)?;
+        let current_dir = self.memdir_from_address(*next_address)?;
+        unsafe {
+            DIR_CACHE
+                .0
+                .insert(Path::from(&d.current_path.to()), current_dir)
+        };
+        unsafe {
+            FILE_ADRESS_CACHE
+                .0
+                .insert(Path::from(&d.current_path.to()), *next_address)
+        };
+        return Ok(());
     }
 
     pub fn find_address(&self, path: &Path) -> Result<Address, UsTarError> {
         if let Some(addr) = unsafe { FILE_ADRESS_CACHE.0.get(&path) } {
             Ok(*addr)
         } else {
-            let mut path_decomp = UsTar::find_first_uncached(path);
+            let mut path_decomp = UsTar::find_first_uncached(path)?;
             self.add_cache(&mut path_decomp)?;
             self.find_address(path)
         }
@@ -491,8 +501,11 @@ impl UsTar {
         match memdir_res {
             Some(x) => Ok(x.clone()),
             None => {
-                let mut path_decomp = UsTar::find_first_uncached(path);
+                println!("Find first uncached go ->");
+                let mut path_decomp = UsTar::find_first_uncached(path)?;
+                println!("Find first uncached go <-");
                 self.add_cache(&mut path_decomp)?;
+                println!("Find add cache <-");
                 self.find_memdir(path)
             }
         }
@@ -509,7 +522,7 @@ impl UsTar {
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
                 println!("Hmhmm");
-                return Ok(self.memfile_from_disk(file_address));
+                return self.memfile_from_disk(file_address);
             } else {
                 println!("{} wasn't good for {}", file_name, &path.get_name())
             }
@@ -662,7 +675,7 @@ impl UsTar {
         }
     }
 
-    pub fn memfile_from_disk(&self, address: &Address) -> MemFile {
+    pub fn memfile_from_disk(&self, address: &Address) -> Result<MemFile, UsTarError> {
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = match header.file_type {
             Type::File => header.length,
@@ -673,7 +686,7 @@ impl UsTar {
             header,
             data: Vec::new(),
         };
-        println!("{:?}, {}, {:?}", header.name, header.length, header.mode);
+        //println!("{:?}, {}, {:?}", header.name, header.length, header.mode);
         if header.mode == FileMode::Short {
             //println!("Reading in short mode");
             let mut counter = 0;
@@ -691,7 +704,7 @@ impl UsTar {
                 }
             }
         } else if header.mode == FileMode::Long {
-            //println!("Reading in long mode");
+            println!("Reading in long mode");
             let mut counter = 0;
             let number_address_block = header.blocks_number / 128 + {
                 if header.blocks_number % 128 == 0 {
@@ -703,22 +716,30 @@ impl UsTar {
 
             let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
-            for i in 0..number_address_block {
+            let nb_bloc = length / 512 + {
+                if length % 512 == 0 {
+                    0
+                } else {
+                    1
+                }
+            };
+            for i in 0..header.blocks_number {
                 let address = header.blocks[i as usize];
                 let sector: LongFile =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
                 for j in 0..128 {
-                    if counter >= length {
+                    if counter >= nb_bloc {
                         break;
                     }
                     data_addresses.push(sector.addresses[j]);
                     counter += 1;
                 }
             }
-            println!("LEL {:?}", data_addresses);
+            //println!("LEL {:?}", data_addresses);
             // Read these data blocks
             counter = 0;
-            for i in 0..header.blocks_number {
+            println!("{} for {}", nb_bloc, header.blocks_number);
+            for i in 0..nb_bloc {
                 let address = data_addresses[i as usize];
                 let sector: FileBlock =
                     self.read_from_disk((address.lba * 512 + address.block) as u32);
@@ -732,25 +753,29 @@ impl UsTar {
                 }
             }
         } else {
-            panic!("No mode selected in file {}", header.mode as usize);
+            return Err(UsTarError::InvalidMode);
         }
         println!("Finished that file");
-        file
+        Ok(file)
     }
 
-    fn memdir_from_address(&self, address: Address) -> MemDir {
-        let file = self.memfile_from_disk(&address);
+    fn memdir_from_address(&self, address: Address) -> Result<MemDir, UsTarError> {
+        let file = self.memfile_from_disk(&address)?;
         let data = file.data;
         let len = (file.header.length << 1) as usize; // x2 because header.length is in u16... Might change that
 
         // These assert_eq are only here for debugging purposes
         //assert_eq!(len as usize, data.len()); // length in u8 of the data segment of the directory
-        assert_eq!(file.header.file_type, Type::Dir); // Checks whether the blob is really a directory
-                                                      //assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
+        if file.header.file_type != Type::Dir {
+            return Err(UsTarError::InvalidMode);
+        }
+        // Checks whether the blob is really a directory
+        //assert_eq!(len % 32, 0); // Checks whether the data segment has a compatible size
+
         let mut files: BTreeMap<String, Address> = BTreeMap::new();
-        println!("#0");
+        //println!("#0");
         let number = len / 32; // number of sub_items of the dir
-        println!("Number : {} {}", number, len);
+                               //println!("Number : {} {}", number, len);
         for i in 0..(len / 2) {
             let mut name_vec = Vec::new();
             let mut itter = 0;
@@ -772,11 +797,11 @@ impl UsTar {
             name.push(file.header.name[itter] as char);
             itter += 1;
         }
-        MemDir {
+        Ok(MemDir {
             name,
             address,
             files,
-        }
+        })
     }
 
     pub fn write_to_disk(&self, data: impl U16Array, lba: u32) {
@@ -790,7 +815,7 @@ impl UsTar {
 
 impl Partition for UsTar {
     fn open(&mut self, _path: &Path) -> Option<usize> {
-        todo!()
+        Some(1)
     }
 
     fn read(&mut self, path: &Path, _id: usize, offset: usize, size: usize) -> Vec<u8> {

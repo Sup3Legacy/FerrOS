@@ -106,7 +106,7 @@ impl VirtualScreen {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
-            b'\r' => self.row_pos = 0,
+            b'\r' => self.col_pos = 0,
             b'\x1b' => (), // Escape code
             _ => {
                 if self.col_pos == self.width {
@@ -179,7 +179,7 @@ impl VirtualScreen {
             let byte = char_vec[i] as u8;
             match byte as u8 {
                 b'\n' => self.new_line(),
-                b'\r' => self.row_pos = 0,
+                b'\r' => self.col_pos = 0,
                 b'\x1b' => {
                     // Escape code
                     let mut end = i;

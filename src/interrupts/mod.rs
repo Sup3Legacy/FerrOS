@@ -382,6 +382,7 @@ extern "x86-interrupt" fn page_fault_handler(
         // TODO maybe write something into the process' stdout
         warningln!("Process just pagefault.");
         bsod!("TRIED TO READ : {:#?}", Cr2::read());
+        bsod!("PAGE FAULT! {:#?}", stack_frame);
         bsod!("ERROR : {:#?}", error_code);
         panic!("killed")
     }
