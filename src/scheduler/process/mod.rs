@@ -436,7 +436,7 @@ pub unsafe fn disassemble_and_launch(
 ) -> Result<!, ProcessError> {
     // TODO maybe consider changing this
     let addr_stack: u64 = if new_process {
-        0x1ffff8
+        0x00007ffffffffff8
     } else {
         get_current().stack_base
     };

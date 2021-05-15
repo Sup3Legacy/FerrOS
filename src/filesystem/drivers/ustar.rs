@@ -440,14 +440,19 @@ impl UsTar {
 
     fn find_first_uncached(path: &Path) -> Result<PathDecomp, UsTarError> {
         let mut decomp = path.slice().into_iter();
-        let mut current_path = Path::from("root");
+        let mut current_path = match decomp.next() {
+            Some(start) => Path::from(&start),
+            None => return Err(UsTarError::GenericError),
+        };
         if let Some(mut current_dir) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
             while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
                 current_dir = a;
+                println!("{:?} -> {:?}", current_path, current_dir);
                 if let Some(next_dir) = decomp.next() {
                     current_path.push_str(&next_dir);
                 }
             }
+            println!("Crrt_Path {:?}", current_path);
             Ok(PathDecomp {
                 decomp,
                 current_path,
@@ -459,27 +464,25 @@ impl UsTar {
     }
 
     fn add_cache(&self, d: &mut PathDecomp) -> Result<(), UsTarError> {
-        let decomp = d.decomp.clone();
-        for next_dir in decomp {
-            d.current_path.push_str(&next_dir);
-            let next_address = d
-                .current_dir
-                .files
-                .get_mut(&next_dir)
-                .ok_or(UsTarError::FileNotFound)?;
-            let current_dir = self.memdir_from_address(*next_address)?;
-            unsafe {
-                DIR_CACHE
-                    .0
-                    .insert(Path::from(&d.current_path.to()), current_dir)
-            };
-            unsafe {
-                FILE_ADRESS_CACHE
-                    .0
-                    .insert(Path::from(&d.current_path.to()), *next_address)
-            };
-        }
-        Ok(())
+        println!("{:?} {:?} {:?}", d.decomp, d.current_path, d.current_dir);
+        let name = d.current_path.get_name();
+        let next_address = d
+            .current_dir
+            .files
+            .get_mut(&name)
+            .ok_or(UsTarError::FileNotFound)?;
+        let current_dir = self.memdir_from_address(*next_address)?;
+        unsafe {
+            DIR_CACHE
+                .0
+                .insert(Path::from(&d.current_path.to()), current_dir)
+        };
+        unsafe {
+            FILE_ADRESS_CACHE
+                .0
+                .insert(Path::from(&d.current_path.to()), *next_address)
+        };
+        return Ok(());
     }
 
     pub fn find_address(&self, path: &Path) -> Result<Address, UsTarError> {
@@ -498,8 +501,11 @@ impl UsTar {
         match memdir_res {
             Some(x) => Ok(x.clone()),
             None => {
+                println!("Find first uncached go ->");
                 let mut path_decomp = UsTar::find_first_uncached(path)?;
+                println!("Find first uncached go <-");
                 self.add_cache(&mut path_decomp)?;
+                println!("Find add cache <-");
                 self.find_memdir(path)
             }
         }
