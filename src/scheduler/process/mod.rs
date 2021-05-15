@@ -206,6 +206,7 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
     _heap_addr: u64,
     _heap_size: u64,
     _args: u64,
+    _args_number: u64,
     _rsp: u64,
     _rip: u64,
 ) -> ! {
@@ -216,17 +217,17 @@ pub unsafe extern "C" fn towards_user_give_heap_args(
         "mov es, eax",
         "mov fs, eax",
         "mov gs, eax",
-        "mov rsp, rcx",
+        "mov rsp, r8",
         "add rsp, 8",
         "push 0x42",
         "push rax",  // stack segment
         "push rcx",  // stack pointer
         "push 518",  // cpu flags
         "push 0x08", // code segment
-        "push r8",   // instruction pointer
+        "push r9",   // instruction pointer
         "mov rax, 0",
         "mov rbx, 0",
-        "mov rcx, 0",
+        //"mov rcx, 0", number of arguments
         //"mov rdx, 0", In this register we pass the pointer to the arguments
         "mov rbp, 0",
         "mov r8, 0",
@@ -472,6 +473,7 @@ pub unsafe fn disassemble_and_launch(
     ID_TABLE[0].state = State::Runnable;
     // This represents the very end of all loaded segments
     let mut maximum_address = 0;
+    let args_len = args.len();
     // Loop over each section
     for program in elf.program_iter() {
         // Characteristics of the section
@@ -479,6 +481,7 @@ pub unsafe fn disassemble_and_launch(
         let offset = program.offset();
         let size = program.mem_size();
         let file_size = program.file_size();
+
         println!(
             " code at {:x} {:x} {:x}",
             address,
@@ -652,6 +655,7 @@ pub unsafe fn disassemble_and_launch(
         heap_address_normalized,
         heap_size,
         args_address,
+        args_len as u64,
         addr_stack,
         prog_entry,
     ))
