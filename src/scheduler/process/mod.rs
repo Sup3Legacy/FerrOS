@@ -420,7 +420,9 @@ pub fn flatten_arguments(args: &Vec<String>) -> (u64, [u8; 0x1000]) {
                 res[i + index - 1] = 0;
                 break;
             }
+            debug!("Hi");
             res[i + index] = bytes[i];
+            debug!("Ha");
         }
         res[length + index] = 0;
         index += length + 1;
@@ -643,8 +645,10 @@ pub unsafe fn disassemble_and_launch(
             errorln!("Could not allocate the args page. Error : {:?}", err);
         }
     };
+    debug!("Gonna flatten arguments : {:?}", args.len());
     let (args_number, args_data) = flatten_arguments(args);
     // Write the arguments onto the process's memory
+    debug!("Gonna write arguments");
     match memory::write_into_virtual_memory(
         level_4_table_addr,
         VirtAddr::new(args_address),
