@@ -1,3 +1,4 @@
+use super::ProcessError;
 use crate::data_storage::path::Path;
 use crate::filesystem::read_file_from_path;
 use crate::memory;
@@ -43,7 +44,7 @@ pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
 /// # Safety
 /// TODO
-pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
+pub unsafe fn load_elf_for_exec(file_name: &str) -> Result<!, ProcessError> {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
@@ -69,9 +70,9 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> ! {
             debug!("heap page table is empty")
         }
 
-        super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false);
+        super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false)
     } else {
-        panic!("should never happen")
+        Err(ProcessError::AllocatorError)
     }
 }
 

@@ -245,7 +245,16 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
     };
     debug!("exec {}", path);
     unsafe {
-        process::elf::load_elf_for_exec(&path);
+        match process::elf::load_elf_for_exec(&path) {
+            Ok(_) => (),
+            Err(a) => {
+                warningln!("Killed process amid invalid exec : {:?}", a);
+                // Write the error into the process' stdout
+                let new = process::process_died(interrupts::COUNTER, 1); // TODO fetch return code
+                interrupts::COUNTER = 0;
+                process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
+            }
+        }
     }
 }
 

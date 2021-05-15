@@ -29,6 +29,15 @@ const DEFAULT_HEAP_SIZE: u64 = 2;
 
 pub mod elf;
 
+#[derive(Debug)]
+pub enum ProcessError {
+    InvalidELFHeader,
+    AllocatorError,
+    WriteError,
+    StackError,
+    HeapError,
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     fn launch_asm(first_process: fn(), initial_rsp: u64);
@@ -422,7 +431,7 @@ pub unsafe fn disassemble_and_launch(
     stack_size: u64,
     args: Vec<String>,
     new_process: bool,
-) -> ! {
+) -> Result<!, ProcessError> {
     // TODO maybe consider changing this
     let addr_stack: u64 = if new_process {
         0x1ffff8
@@ -439,7 +448,7 @@ pub unsafe fn disassemble_and_launch(
     );
     // We get the `ElfFile` from the raw slice
     println!("Code len : {}", code.len());
-    let elf = ElfFile::new(code).unwrap();
+    let elf = ElfFile::new(code).map_err(|_| ProcessError::InvalidELFHeader)?;
     // We get the main entry point and mmake sure it is
     // a 64-bit ELF file
     let prog_entry = match elf.header.pt2 {
@@ -540,7 +549,7 @@ pub unsafe fn disassemble_and_launch(
                 VirtAddr::new(address + size),
                 &padding[..],
             )
-            .unwrap();
+            .map_err(|_| ProcessError::WriteError)?;
         }
     }
     // Allocate frames for the stack
@@ -562,7 +571,7 @@ pub unsafe fn disassemble_and_launch(
                     i,
                     err
                 );
-                hardware::power::shutdown();
+                return Err(ProcessError::StackError);
             }
         }
     }
@@ -637,13 +646,13 @@ pub unsafe fn disassemble_and_launch(
     Cr3::write(level_4_table_addr, cr3f);
     println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
-    towards_user_give_heap_args(
+    Ok(towards_user_give_heap_args(
         heap_address_normalized,
         heap_size,
         args_address,
         addr_stack,
         prog_entry,
-    );
+    ))
 }
 
 /// Main structure of a process.
