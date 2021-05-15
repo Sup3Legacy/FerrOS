@@ -171,7 +171,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                 frame_allocator,
                 1,
                 10,
-                Vec::new(),
+                &Vec::new(),
                 true,
             );
         }

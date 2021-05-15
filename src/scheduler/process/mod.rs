@@ -402,7 +402,7 @@ pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
 }
 
 /// Flattens arguments into a pages. Strings are NULL-ended
-pub fn flatten_arguments(args: Vec<String>) -> (u64, [u8; 0x1000]) {
+pub fn flatten_arguments(args: &Vec<String>) -> (u64, [u8; 0x1000]) {
     let mut res = [0_u8; 0x1000];
     let mut index = 0;
     let mut args_number = 0;
@@ -444,7 +444,7 @@ pub unsafe fn disassemble_and_launch(
     frame_allocator: &mut memory::BootInfoAllocator,
     _number_of_block: u64,
     stack_size: u64,
-    args: Vec<String>,
+    args: &Vec<String>,
     new_process: bool,
 ) -> Result<!, ProcessError> {
     // TODO maybe consider changing this

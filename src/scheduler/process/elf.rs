@@ -44,7 +44,7 @@ pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
 /// # Safety
 /// TODO
-pub unsafe fn load_elf_for_exec(file_name: &str) -> Result<!, ProcessError> {
+pub unsafe fn load_elf_for_exec(file_name: &str, args: &Vec<String>) -> Result<!, ProcessError> {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
@@ -74,7 +74,7 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> Result<!, ProcessError> {
             debug!("heap page table is empty")
         }
 
-        super::disassemble_and_launch(code, frame_allocator, 0, 0, Vec::<String>::new(), false)
+        super::disassemble_and_launch(code, frame_allocator, 0, 0, args, false)
     } else {
         Err(ProcessError::AllocatorError)
     }
