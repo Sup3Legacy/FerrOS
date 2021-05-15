@@ -37,6 +37,7 @@ pub enum ProcessError {
     WriteError,
     StackError,
     HeapError,
+    InvalidExec,
 }
 
 #[allow(improper_ctypes)]
@@ -874,23 +875,43 @@ pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process 
     &ID_TABLE[new_pid]
 }
 
-pub fn listen() -> (u64, u64) {
+pub fn listen(id: usize) -> (usize, usize) {
     unsafe {
         let ppid = ID::forge(CURRENT_PROCESS as u64);
-        for (pid, process) in ID_TABLE.iter_mut().enumerate() {
+        if id == 0 {
+            for (pid, process) in ID_TABLE.iter_mut().enumerate() {
+                if process.ppid == ppid {
+                    if let State::Zombie(return_value) = process.state {
+                        process.state = State::SlotAvailable;
+                        process.open_files.close();
+                        if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
+                            frame_allocator.deallocate_level_4_page(
+                                process.cr3,
+                                PageTableFlags::USER_ACCESSIBLE,
+                                true,
+                            );
+                            frame_allocator.deallocate_4k_frame(process.cr3);
+                        }
+                        return (pid, return_value);
+                    }
+                }
+            }
+        } else {
+            let mut process = ID_TABLE[id];
             if process.ppid == ppid {
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
                     process.open_files.close();
+                    return (id, return_value);
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                         frame_allocator.deallocate_level_4_page(
                             process.cr3,
-                            PageTableFlags::USER_ACCESSIBLE,
+                            PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
                             true,
                         );
                         frame_allocator.deallocate_4k_frame(process.cr3);
                     }
-                    return (pid as u64, return_value as u64);
+                    return (id, return_value);
                 }
             }
         }

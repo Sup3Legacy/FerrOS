@@ -872,6 +872,7 @@ impl BootInfoAllocator {
                             return Err(MemoryError(String::from("Could not copy level 2 table")));
                         }
                     } else {
+                        println!("Not user accessible at level 3");
                         (*new_table)[index].set_addr(table_3[index].addr(), flags);
                     }
                 } else {
@@ -910,6 +911,7 @@ impl BootInfoAllocator {
                             return Err(MemoryError(String::from("Could not copy level 1 table")));
                         }
                     } else {
+                        println!("Not user accessible at level 2");
                         (*new_table)[index].set_addr(table_2[index].addr(), flags);
                     }
                 } else {
@@ -956,6 +958,7 @@ impl BootInfoAllocator {
                             )));
                         }
                     } else {
+                        println!("Not user Accessible at level 1");
                         (*new_table)[index].set_addr(table_1[index].addr(), flags);
                     }
                 } else {
@@ -980,7 +983,7 @@ impl BootInfoAllocator {
         &mut self,
         table_4_addr: PhysAddr,
         remove_flags: PageTableFlags,
-        protected: bool,
+        full_deallocate: bool,
     ) -> bool {
         let _failed = false;
 
@@ -994,8 +997,11 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_4[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    let flags_level_3 =
-                        self.deallocate_level_3_page(&mut *page_table_ptr, remove_flags, protected);
+                    let flags_level_3 = self.deallocate_level_3_page(
+                        &mut *page_table_ptr,
+                        remove_flags,
+                        full_deallocate,
+                    );
                     if flags_level_3.is_empty() {
                         table_4[i].set_flags(PageTableFlags::empty());
                         self.deallocate_4k_frame(table_4[i].addr());
@@ -1017,7 +1023,7 @@ impl BootInfoAllocator {
         &mut self,
         table_3: &'static mut PageTable,
         remove_flags: PageTableFlags,
-        protected: bool,
+        full_deallocate: bool,
     ) -> PageTableFlags {
         let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
@@ -1026,8 +1032,11 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_3[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    let flags_level_2 =
-                        self.deallocate_level_2_page(&mut *page_table_ptr, remove_flags, protected);
+                    let flags_level_2 = self.deallocate_level_2_page(
+                        &mut *page_table_ptr,
+                        remove_flags,
+                        full_deallocate,
+                    );
                     if flags_level_2.is_empty() {
                         table_3[i].set_flags(PageTableFlags::empty());
                         self.deallocate_4k_frame(table_3[i].addr())
@@ -1048,7 +1057,7 @@ impl BootInfoAllocator {
         &mut self,
         table_2: &'static mut PageTable,
         remove_flags: PageTableFlags,
-        protected: bool,
+        full_deallocate: bool,
     ) -> PageTableFlags {
         let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
@@ -1057,8 +1066,11 @@ impl BootInfoAllocator {
                 if flags.contains(remove_flags) {
                     let virt = VirtAddr::new(table_2[i].addr().as_u64() + PHYSICAL_OFFSET);
                     let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                    let flags_level_1 =
-                        self.deallocate_level_1_page(&mut *page_table_ptr, remove_flags, protected);
+                    let flags_level_1 = self.deallocate_level_1_page(
+                        &mut *page_table_ptr,
+                        remove_flags,
+                        full_deallocate,
+                    );
                     if flags_level_1.is_empty() {
                         table_2[i].set_flags(PageTableFlags::empty());
                         self.deallocate_4k_frame(table_2[i].addr())
@@ -1079,7 +1091,7 @@ impl BootInfoAllocator {
         &mut self,
         table_1: &'static mut PageTable,
         remove_flags: PageTableFlags,
-        protected: bool,
+        full_deallocate: bool,
     ) -> PageTableFlags {
         let mut flags_left = PageTableFlags::empty();
         for i in 0..512 {
@@ -1087,7 +1099,7 @@ impl BootInfoAllocator {
                 let flags = table_1[i].flags();
                 if flags.contains(remove_flags) {
                     table_1[i].set_flags(PageTableFlags::empty());
-                    if protected {
+                    if full_deallocate {
                         self.deallocate_4k_frame(table_1[i].addr())
                     }
                 } else {

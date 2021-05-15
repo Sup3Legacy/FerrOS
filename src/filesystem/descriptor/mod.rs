@@ -72,11 +72,11 @@ impl GeneralFileTable {
         match &mut self.tables[index] {
             Some(file) => {
                 if file.close() {
-                    crate::debug!("was closed");
+                    crate::debug!("fd was closed");
                     super::close_file(&file);
                     self.tables[index] = None;
                 } else {
-                    crate::debug!("wasn't closed");
+                    crate::debug!("fd wasn't closed");
                 }
             }
             None => panic!("Unexisting file was closed"),

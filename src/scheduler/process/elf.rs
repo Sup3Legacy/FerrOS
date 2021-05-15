@@ -50,6 +50,10 @@ pub unsafe fn load_elf_for_exec(file_name: &str) -> Result<!, ProcessError> {
         None => panic!("the frame allocator wasn't initialized"),
     };
     let code: &[u8] = &read_file_from_path(Path::from(file_name));
+    if code.len() == 0 {
+        debug!("tries to return");
+        return Err(ProcessError::InvalidExec);
+    }
 
     warningln!("Code len 1 => {}", code.len());
 

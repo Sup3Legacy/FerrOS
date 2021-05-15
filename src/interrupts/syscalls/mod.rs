@@ -247,6 +247,9 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
     unsafe {
         match process::elf::load_elf_for_exec(&path) {
             Ok(_) => (),
+            Err(process::ProcessError::InvalidExec) => {
+                warningln!("exec wasn't done");
+            }
             Err(a) => {
                 warningln!("Killed process amid invalid exec : {:?}", a);
                 // Write the error into the process' stdout
@@ -260,6 +263,7 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
 
 extern "C" fn syscall_7_exit(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
+        warningln!("syscall exit");
         let new = process::process_died(interrupts::COUNTER, args.rdi);
         interrupts::COUNTER = 0;
         process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
@@ -270,6 +274,8 @@ extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStack
     unsafe {
         let (next, mut old) = process::gives_switch(interrupts::COUNTER);
         interrupts::COUNTER = 0;
+
+        debug!("Sleep to {}", process::CURRENT_PROCESS);
 
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
@@ -390,9 +396,10 @@ extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut Interru
 }
 
 extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    let (rax, rdi) = scheduler::process::listen();
-    args.rax = rax;
-    args.rdi = rdi;
+    let (rax, rdi) = scheduler::process::listen(args.rdi as usize);
+    args.rax = rax as u64;
+    args.rdi = rdi as u64;
+    debug!("listened {} {}", args.rax, args.rdi);
 }
 
 extern "C" fn syscall_23_kill(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
