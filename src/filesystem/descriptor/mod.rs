@@ -1,8 +1,10 @@
 //! All the logic around file descriptors and `OpenFileTable`s
 
+use super::fsflags::OpenFlags;
 use crate::data_storage::path::Path;
-
 use crate::scheduler::process;
+
+use alloc::collections::BTreeSet;
 use alloc::string::String;
 
 pub struct FileDesciptorError();
@@ -108,13 +110,13 @@ impl Default for GeneralFileTable {
 pub struct OpenFileTable {
     /// path of the file
     path: Path,
-    flags: u64,
+    flags: usize,
     offset: usize,
     id: usize,
     nb: usize,
 }
 impl OpenFileTable {
-    pub fn new(path: Path, flags: u64, id: usize) -> Self {
+    pub fn new(path: Path, flags: usize, id: usize) -> Self {
         Self {
             path,
             flags,
@@ -123,11 +125,26 @@ impl OpenFileTable {
             nb: 1,
         }
     }
-    pub fn get_path(&self) -> Path {
-        self.path.clone()
+
+    pub fn with_new_path(&self, path: Path) -> Self {
+        Self {
+            path,
+            flags: self.flags,
+            id: self.id,
+            nb: self.nb,
+            offset: self.offset,
+        }
+    }
+
+    pub fn get_path(&self) -> &Path {
+        &self.path
     }
     pub fn get_offset(&self) -> usize {
         self.offset
+    }
+
+    pub fn get_flags(&self) -> BTreeSet<OpenFlags> {
+        OpenFlags::parse(self.flags)
     }
 
     pub fn add_offset(&mut self, length: usize) {
@@ -216,7 +233,7 @@ impl ProcessDescriptorTable {
     }
 
     /// TODO : add fields like flags, etc.
-    pub fn create_file_table(&mut self, path: Path, flags: u64) -> FileDescriptor {
+    pub fn create_file_table(&mut self, path: Path, flags: usize) -> FileDescriptor {
         // Here we create a new OpenFileTable.
         // We fill it with all the passed values,
         // inserts it into the GLOBAL_FILE_TABLE
@@ -224,7 +241,7 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
-        let id = match super::open_file(&path, super::open_mode_from_flags(flags)) {
+        let id = match super::open_file(&path, OpenFlags::ORDWR) {
             Ok(i) => i,
             Err(_) => return FileDescriptor::new(usize::MAX),
         };
@@ -271,6 +288,20 @@ impl ProcessDescriptorTable {
         }
     }
 
+    pub unsafe fn close_fd(&mut self, fd: usize) -> usize {
+        if fd >= self.files.len() {
+            return 1;
+        }
+        match self.files[fd] {
+            Some(fd_inner) => {
+                GLOBAL_FILE_TABLE.delete(fd_inner);
+                self.files[fd] = None;
+                0
+            }
+            _ => 2,
+        }
+    }
+
     pub unsafe fn close(&mut self) {
         for i in 0..MAX_TOTAL_OPEN_FILES_BY_PROCESS {
             match self.files[i] {
@@ -283,7 +314,7 @@ impl ProcessDescriptorTable {
     }
 }
 
-pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
+pub fn open(filename: String, mode: OpenFlags) -> FileDescriptor {
     let current_process = unsafe { process::get_current_as_mut() };
     // look for a place to put the next file in the process file descriptor table
     let mut new_pfdt = current_process.open_files;
@@ -307,7 +338,7 @@ pub fn open(filename: String, mode: super::OpenMode) -> FileDescriptor {
                 unsafe {
                     new_pfdt.files[i] = Some(GLOBAL_FILE_TABLE.insert(OpenFileTable::new(
                         Path::from(filename.as_str()),
-                        0,
+                        mode as usize,
                         id,
                     )));
                 }

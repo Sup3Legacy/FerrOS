@@ -20,6 +20,7 @@ use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem;
 use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
+use crate::filesystem::fsflags::OpenFlags;
 use crate::hardware;
 use crate::memory;
 use crate::{debug, errorln, println};
@@ -873,13 +874,13 @@ pub fn spawn_first_process() {
     }*/
     let screen_file_name = "/hard/kbd";
     proc.open_files
-        .create_file_table(Path::from(&screen_file_name), 0_u64);
+        .create_file_table(Path::from(&screen_file_name), OpenFlags::ORDO as usize);
     let screen_file_name = "/hard/screen";
     proc.open_files
-        .create_file_table(Path::from(&screen_file_name), 0_u64);
+        .create_file_table(Path::from(&screen_file_name), OpenFlags::OWRO as usize);
     let shell_file_name = "/hard/host";
     proc.open_files
-        .create_file_table(Path::from(&shell_file_name), 0_u64);
+        .create_file_table(Path::from(&shell_file_name), OpenFlags::OWRO as usize);
     unsafe {
         ID_TABLE[0] = proc;
     }

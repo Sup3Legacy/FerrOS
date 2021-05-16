@@ -7,6 +7,8 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use super::descriptor::OpenFileTable;
+use super::fsflags::OpenFlags;
 use super::partition::Partition;
 
 use super::drivers::nopart::NoPart;
@@ -71,7 +73,7 @@ impl PartitionNode {
         &mut self,
         sliced_path: &[String],
         index: usize,
-        id: usize,
+        oft: &OpenFileTable,
     ) -> Result<bool, ErrVFS> {
         match self {
             PartitionNode::Node(next) => {
@@ -80,7 +82,7 @@ impl PartitionNode {
                 }
 
                 if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                    match next_part.remove_entry(&sliced_path, index + 1, id) {
+                    match next_part.remove_entry(&sliced_path, index + 1, oft) {
                         Err(ErrVFS()) => Err(ErrVFS()),
                         Ok(is_empty) => {
                             if is_empty {
@@ -96,7 +98,7 @@ impl PartitionNode {
                 }
             }
             PartitionNode::Leaf(part) => {
-                Ok(part.close(&Path::from_sliced(&sliced_path[index..]), id))
+                Ok(part.close(&oft.with_new_path(Path::from_sliced(&sliced_path[index..]))))
             }
         }
     }
@@ -135,7 +137,7 @@ impl PartitionNode {
         }
     }
 
-    pub fn give_param(
+    /*pub fn give_param(
         &mut self,
         sliced_path: Vec<String>,
         index: usize,
@@ -161,7 +163,7 @@ impl PartitionNode {
                 part.give_param(&Path::from_sliced(&sliced_path[index..]), id, param)
             }
         }
-    }
+    }*/
 }
 
 /// This should be the main interface of the filesystem.
@@ -169,7 +171,7 @@ impl PartitionNode {
 /// as we need to implement all structures of file descriptors, etc.
 impl VFS {
     /// Returns the index of file descriptor. -1 if error
-    pub fn open(&'static mut self, path: &Path, _mode: super::OpenMode) -> Result<usize, ErrVFS> {
+    pub fn open(&'static mut self, path: &Path, mode: OpenFlags) -> Result<usize, ErrVFS> {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // If the VFS couldn't find the corresponding partition, return -1
@@ -177,7 +179,7 @@ impl VFS {
             return Err(ErrVFS());
         }
         let (partition, remaining_path) = res_partition.unwrap();
-        match partition.open(&remaining_path) {
+        match partition.open(&remaining_path, mode) {
             None => Err(ErrVFS()),
             Some(d) => Ok(d),
         }
@@ -188,48 +190,51 @@ impl VFS {
         self.partitions.root.add_entry(sliced, 0, data)
     }
 
-    pub fn close(&mut self, path: Path, id: usize) -> Result<bool, ErrVFS> {
-        self.partitions.root.remove_entry(&path.slice(), 0, id)
+    pub fn close(&mut self, oft: &OpenFileTable) -> Result<bool, ErrVFS> {
+        self.partitions
+            .root
+            .remove_entry(&oft.get_path().clone().slice(), 0, oft)
     }
 
-    pub fn give_param(&mut self, path: &Path, id: usize, param: usize) -> usize {
-        self.partitions.root.give_param(path.slice(), 0, id, param)
-    }
-
-    pub fn read(&'static mut self, path: Path, id: usize, offset: usize, length: usize) -> Vec<u8> {
-        let sliced = path.slice();
+    pub fn give_param(&'static mut self, oft: &OpenFileTable, param: usize) -> usize {
+        let sliced = oft.get_path().clone().slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
         if let Ok((partition, remaining_path)) = res_partition {
-            partition.read(&remaining_path, id, offset, length)
+            partition.give_param(&oft.with_new_path(remaining_path), param)
         } else {
-            warningln!("Could not find partition for {:?}", path);
+            warningln!("Could not find partition for {:?}", oft.get_path());
+            usize::MAX - 1
+        }
+    }
+
+    pub fn read(&'static mut self, oft: &OpenFileTable, length: usize) -> Vec<u8> {
+        let sliced = oft.get_path().clone().slice();
+        let res_partition = self.partitions.root.get_partition(sliced, 0);
+        // TODO check it actuallye returned something
+        if let Ok((partition, remaining_path)) = res_partition {
+            partition.read(&oft.with_new_path(remaining_path), length)
+        } else {
+            warningln!("Could not find partition for {:?}", oft.get_path());
             Vec::new()
         }
     }
 
     /// TODO use offset and flag information
-    pub fn write(
-        &'static mut self,
-        path: Path,
-        id: usize,
-        data: Vec<u8>,
-        offset: usize,
-        flags: u64,
-    ) -> isize {
-        let sliced = path.slice();
+    pub fn write(&'static mut self, oft: &OpenFileTable, data: Vec<u8>) -> isize {
+        let sliced = oft.get_path().clone().slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
         let (partition, remaining_path) = res_partition.unwrap();
-        partition.write(&remaining_path, id, &data, offset, flags)
+        partition.write(&oft.with_new_path(remaining_path), &data)
     }
 
-    pub fn duplicate(&'static mut self, path: Path, id: usize) -> Option<usize> {
+    /*pub fn duplicate(&'static mut self, path: Path, id: usize) -> Option<usize> {
         let sliced = path.slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         let (partition, remaining_path) = res_partition.unwrap();
         partition.duplicate(&remaining_path, id)
-    }
+    }*/
 
     pub fn lseek(&self) {
         todo!()

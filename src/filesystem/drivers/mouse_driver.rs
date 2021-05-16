@@ -1,4 +1,6 @@
 use super::super::partition::Partition;
+use crate::filesystem::descriptor::OpenFileTable;
+use crate::filesystem::fsflags::OpenFlags;
 use crate::hardware::mouse;
 use crate::{data_storage::path::Path, warningln};
 
@@ -19,7 +21,7 @@ impl Default for MouseDriver {
 }
 
 impl Partition for MouseDriver {
-    fn open(&mut self, path: &Path) -> Option<usize> {
+    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             None
         } else {
@@ -27,7 +29,7 @@ impl Partition for MouseDriver {
         }
     }
 
-    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
         // The number of packets to be written into the buffer
         let packet_number = _size / 3;
         let mut res = Vec::new();
@@ -44,25 +46,18 @@ impl Partition for MouseDriver {
         res
     }
 
-    fn write(
-        &mut self,
-        _path: &Path,
-        _id: usize,
-        _buffer: &[u8],
-        _offset: usize,
-        _flags: u64,
-    ) -> isize {
+    fn write(&mut self, _oft: &OpenFileTable, _buffer: &[u8]) -> isize {
         warningln!("User-program attempted to write in mouse.");
         -1
     }
 
-    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+    fn close(&mut self, _oft: &OpenFileTable) -> bool {
         false
     }
 
-    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+    /*fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
         Some(0)
-    }
+    }*/
 
     fn lseek(&self) {
         todo!()
@@ -76,7 +71,7 @@ impl Partition for MouseDriver {
         todo!()
     }
 
-    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+    fn give_param(&mut self, _oft: &OpenFileTable, _param: usize) -> usize {
         usize::MAX
     }
 }

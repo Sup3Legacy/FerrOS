@@ -27,6 +27,7 @@ pub use vfs::VFS;
 
 use crate::println;
 use descriptor::OpenFileTable;
+use fsflags::OpenFlags;
 
 pub static mut VFS: Option<VFS> = None;
 
@@ -86,7 +87,7 @@ pub enum OpenMode {
     Execute = 0b00000010,
 }
 
-pub fn open_mode_from_flags(_flags: u64) -> OpenMode {
+pub fn open_mode_from_flags(_flags: usize) -> OpenMode {
     OpenMode::Read
 }
 
@@ -94,7 +95,7 @@ pub fn open_mode_from_flags(_flags: u64) -> OpenMode {
 ///
 /// Every interaction of a user-program with hardware and/or
 /// its stdin/stdout/stderr goes through this abstracted interface.
-pub fn open_file(path: &Path, mode: OpenMode) -> Result<usize, vfs::ErrVFS> {
+pub fn open_file(path: &Path, mode: OpenFlags) -> Result<usize, vfs::ErrVFS> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
             vfs.open(path, mode)
@@ -106,9 +107,8 @@ pub fn open_file(path: &Path, mode: OpenMode) -> Result<usize, vfs::ErrVFS> {
 
 pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
-        let path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
-            vfs.write(path, oft.get_id(), data, oft.get_offset(), 0) as usize
+            vfs.write(oft, data) as usize
         } else {
             panic!("VFS not initialized in write_file.");
         }
@@ -117,10 +117,8 @@ pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
 
 pub fn read_file(oft: &mut OpenFileTable, length: usize) -> Vec<u8> {
     unsafe {
-        let path = oft.get_path();
-        let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            let res = vfs.read(path, oft.get_id(), offset, length);
+            let res = vfs.read(oft, length);
             oft.add_offset(res.len());
             res
         } else {
@@ -132,7 +130,8 @@ pub fn read_file(oft: &mut OpenFileTable, length: usize) -> Vec<u8> {
 pub fn read_file_from_path(path: Path) -> Vec<u8> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            let file = vfs.read(path, usize::MAX, 0, usize::MAX);
+            let oft = OpenFileTable::new(path, fsflags::OpenFlags::OXCUTE as usize, usize::MAX);
+            let file = vfs.read(&oft, usize::MAX);
             println!("{} <- len in read_file_from_path", file.len());
             file
         } else {
@@ -143,17 +142,15 @@ pub fn read_file_from_path(path: Path) -> Vec<u8> {
 
 pub fn modify_file(oft: &OpenFileTable, param: usize) -> usize {
     unsafe {
-        let path = oft.get_path();
-        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.give_param(&path, oft.get_id(), param)
+            vfs.give_param(oft, param)
         } else {
             panic!("VFS not initialized in read_file.");
         }
     }
 }
 
-pub fn duplicate_file(oft: &OpenFileTable) -> Option<usize> {
+/*pub fn duplicate_file(oft: &OpenFileTable) -> Option<usize> {
     unsafe {
         let path = oft.get_path();
         if let Some(ref mut vfs) = VFS {
@@ -162,7 +159,7 @@ pub fn duplicate_file(oft: &OpenFileTable) -> Option<usize> {
             panic!("VFS not initialized in duplicate_file")
         }
     }
-}
+}*/
 
 pub fn get_data(_path: Path) -> &'static [u8] {
     todo!()
@@ -171,17 +168,14 @@ pub fn get_data(_path: Path) -> &'static [u8] {
 fn test() {
     println!(
         "{:?}",
-        open_file(&Path::from(&String::from("test")), OpenMode::Read)
+        open_file(&Path::from(&String::from("test")), OpenFlags::ORDO)
     );
 }
 
 pub fn close_file(oft: &OpenFileTable) {
     unsafe {
-        let path = oft.get_path();
-        let _offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.close(path, oft.get_id())
-                .expect("Unexisting file to close");
+            vfs.close(oft).expect("Unexisting file to close");
         } else {
             panic!("VFS not initialized in close_file.");
         }

@@ -1,8 +1,9 @@
 //! FIFO used for inter-process communication
 
 use super::partition::Partition;
-
 use crate::data_storage::path::Path;
+use crate::filesystem::descriptor::OpenFileTable;
+use crate::filesystem::fsflags::OpenFlags;
 use alloc::vec::Vec;
 use crossbeam_queue::{ArrayQueue, PopError, PushError};
 
@@ -48,6 +49,10 @@ impl FiFoPartitionInner {
         }
         self.data.len()
     }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 pub struct FiFoPartition {
@@ -67,7 +72,7 @@ impl Default for FiFoPartition {
 }
 
 impl Partition for FiFoPartition {
-    fn open(&mut self, path: &Path) -> Option<usize> {
+    fn open(&mut self, path: &Path, fs: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             return None;
         }
@@ -81,28 +86,21 @@ impl Partition for FiFoPartition {
         Some(self.data.len() - 1)
     }
 
-    fn read(&mut self, path: &Path, id: usize, _offset: usize, size: usize) -> Vec<u8> {
-        if path.len() != 0 {
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8> {
+        if oft.get_path().len() != 0 {
             return Vec::new();
         }
-        match &mut self.data[id] {
+        match &mut self.data[oft.get_id()] {
             None => Vec::new(),
             Some(fifo) => fifo.read(size),
         }
     }
 
-    fn write(
-        &mut self,
-        path: &Path,
-        id: usize,
-        buffer: &[u8],
-        _offset: usize,
-        _flags: u64,
-    ) -> isize {
-        if path.len() != 0 {
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
+        if oft.get_path().len() != 0 {
             return 0;
         }
-        match &mut self.data[id] {
+        match &mut self.data[oft.get_id()] {
             None => 0,
             Some(fifo) => fifo.write(buffer),
         }
@@ -120,23 +118,28 @@ impl Partition for FiFoPartition {
         todo!()
     }
 
-    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+    /*fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
         None
-    }
+    }*/
 
-    fn close(&mut self, path: &Path, id: usize) -> bool {
-        if path.len() != 0 {
+    fn close(&mut self, oft: &OpenFileTable) -> bool {
+        if oft.get_path().len() != 0 {
             panic!("closed an unexisting file in fifo")
         }
-        self.data[id] = None;
+
+        match &self.data[oft.get_id()] {
+            None => crate::warningln!("Empty fifo"),
+            Some(v) => crate::warningln!("Fifo of length {}", v.len()),
+        }
+        self.data[oft.get_id()] = None;
         false
     }
 
-    fn give_param(&mut self, path: &Path, id: usize, param: usize) -> usize {
-        if path.len() != 0 {
+    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize {
+        if oft.get_path().len() != 0 {
             panic!("give param to unexisting file")
         }
-        match &mut self.data[id] {
+        match &mut self.data[oft.get_id()] {
             None => 0,
             Some(fifo) => fifo.give_param(param),
         }

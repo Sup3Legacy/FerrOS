@@ -3,6 +3,7 @@
 use super::super::fsflags::OpenFlags;
 use super::super::partition::Partition;
 use super::disk_operations;
+use crate::filesystem::descriptor::OpenFileTable;
 use crate::println;
 use crate::{data_storage::path::Path, debug};
 use alloc::collections::BTreeMap;
@@ -821,13 +822,13 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn open(&mut self, _path: &Path) -> Option<usize> {
+    fn open(&mut self, _path: &Path, _flags: OpenFlags) -> Option<usize> {
         Some(1)
     }
 
-    fn read(&mut self, path: &Path, _id: usize, offset: usize, size: usize) -> Vec<u8> {
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8> {
         let mut path_name = String::from("root/");
-        path_name.push_str(&path.to());
+        path_name.push_str(&oft.get_path().to());
         let path = Path::from(&path_name);
         println!("Got request : {:?}", path);
         let file = match self.find_memfile(&path) {
@@ -836,35 +837,28 @@ impl Partition for UsTar {
         };
         println!("Got vec of length : {}", file.data.len());
         println!("size : {}", size);
-        println!("Offset : {}", offset);
+        println!("Offset : {}", oft.get_offset());
         let res = if size == usize::MAX {
             file.data
-        } else if offset >= file.data.len() {
+        } else if oft.get_offset() >= file.data.len() {
             Vec::new()
-        } else if offset + size >= file.data.len() {
-            file.data[offset..].to_vec()
+        } else if oft.get_offset() + size >= file.data.len() {
+            file.data[oft.get_offset()..].to_vec()
         } else {
-            file.data[offset..offset + size].to_vec()
+            file.data[oft.get_offset()..oft.get_offset() + size].to_vec()
         };
         debug!("Got data of length : {}", res.len());
         res
     }
 
     #[allow(unreachable_code)]
-    fn write(
-        &mut self,
-        path: &Path,
-        _id: usize,
-        buffer: &[u8],
-        offset: usize,
-        flags: u64,
-    ) -> isize {
-        let flag_set = OpenFlags::parse(flags);
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
+        let flag_set = oft.get_flags();
         if !(flag_set.contains(&OpenFlags::OWRO) || flag_set.contains(&OpenFlags::ORDWR)) {
             return -1; // no right to write
         }
         // find the file
-        let memfile = self.find_memfile(path);
+        let memfile = self.find_memfile(oft.get_path());
         match memfile {
             Err(_) => {
                 // create the file?
@@ -872,13 +866,13 @@ impl Partition for UsTar {
                     return -1;
                 } else {
                     // look for the parent folder in which we will create the file
-                    let parent_path = path.get_parent();
+                    let parent_path = oft.get_path().get_parent();
                     let parent_dir = if let Ok(a) = self.find_memdir(&parent_path) {
                         a
                     } else {
                         return -1;
                     };
-                    let name = path.get_name();
+                    let name = oft.get_path().get_name();
                     let bytes = name.as_bytes();
                     if name.len() > 32 {
                         return -1;
@@ -920,12 +914,12 @@ impl Partition for UsTar {
             }
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
-                let header_address = self.find_address(path).unwrap();
+                let header_address = self.find_address(oft.get_path()).unwrap();
                 let old_size = (file.header.length);
                 let true_offset = if flag_set.contains(&OpenFlags::OAPPEND) {
                     old_size as usize
                 } else {
-                    offset
+                    oft.get_offset()
                 } as u32;
                 let new_size = true_offset + (buffer.len() as u32);
                 match file.header.mode {
@@ -1010,13 +1004,13 @@ impl Partition for UsTar {
         }
     }
 
-    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+    fn close(&mut self, _oft: &OpenFileTable) -> bool {
         false
     }
 
-    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+    /*fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
         todo!()
-    }
+    }*/
 
     fn lseek(&self) {
         todo!()
@@ -1030,7 +1024,7 @@ impl Partition for UsTar {
         todo!()
     }
 
-    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+    fn give_param(&mut self, _oft: &OpenFileTable, _param: usize) -> usize {
         usize::MAX
     }
 }

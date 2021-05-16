@@ -182,7 +182,7 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
     crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path), args.rsi)
+        .create_file_table(path::Path::from(&path), args.rsi as usize)
         .into_u64();
     crate::debug!("syscall open end {}", fd);
     // Puts the fd into rax
@@ -192,11 +192,12 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// close file. arg0 : unsigned int fd
 extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let descriptor = args.rdi;
-    let ret_code = descriptor::close(descriptor);
-    match ret_code {
-        Ok(()) => args.rax = 0,
-        Err(_) => args.rax = 1,
-    };
+    crate::warningln!("Close fd {}", descriptor);
+    unsafe {
+        args.rax = process::get_current_as_mut()
+            .open_files
+            .close_fd(descriptor as usize) as u64;
+    }
 }
 
 extern "C" fn syscall_4_dup2(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

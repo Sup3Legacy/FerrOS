@@ -2,7 +2,8 @@
 
 use super::partition::Partition;
 use crate::data_storage::screen::Coord;
-
+use crate::filesystem::descriptor::OpenFileTable;
+use crate::filesystem::fsflags::OpenFlags;
 use crate::{data_storage::path::Path, errorln};
 use crate::{vga::mainscreen, vga::virtual_screen::VirtualScreenLayer, warningln};
 use alloc::string::String;
@@ -26,7 +27,7 @@ impl ScreenPartition {
 }
 
 impl Partition for ScreenPartition {
-    fn open(&mut self, path: &Path) -> Option<usize> {
+    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             return None;
         }
@@ -41,21 +42,14 @@ impl Partition for ScreenPartition {
         }
     }
 
-    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(
-        &mut self,
-        _path: &Path,
-        id: usize,
-        buffer: &[u8],
-        _offset: usize,
-        _flags: u64,
-    ) -> isize {
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let v_screen_id = mainscreen::VirtualScreenID::forge(id);
+                let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
                 let v_screen = main_screen.get_vscreen_mut(&v_screen_id);
                 if let Some(screen) = v_screen {
                     screen.write_string(&(String::from_utf8_lossy(buffer)));
@@ -75,10 +69,10 @@ impl Partition for ScreenPartition {
         }
     }
 
-    fn close(&mut self, _path: &Path, id: usize) -> bool {
+    fn close(&mut self, oft: &OpenFileTable) -> bool {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let v_screen_id = mainscreen::VirtualScreenID::forge(id);
+                let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
                 main_screen.delete_screen(v_screen_id)
             } else {
                 panic!("should not happen")
@@ -86,14 +80,14 @@ impl Partition for ScreenPartition {
         }
     }
 
-    fn duplicate(&mut self, _path: &Path, id: usize) -> Option<usize> {
+    /*fn duplicate(&mut self, _path: &Path, id: usize) -> Option<usize> {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 main_screen.duplicated(mainscreen::VirtualScreenID::forge(id))
             }
         }
         Some(id)
-    }
+    }*/
 
     fn lseek(&self) {
         panic!("not allowed");
@@ -107,10 +101,10 @@ impl Partition for ScreenPartition {
         panic!("not allowed");
     }
 
-    fn give_param(&mut self, _path: &Path, id: usize, param: usize) -> usize {
+    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let v_screen_id = mainscreen::VirtualScreenID::forge(id);
+                let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
                 if param >> 63 == 1 {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;

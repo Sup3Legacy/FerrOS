@@ -1,5 +1,7 @@
 //! Defines the `Partition` trait, implemented by all drivers and uniting them into a `VFS`!
 
+use super::descriptor::OpenFileTable;
+use super::fsflags::OpenFlags;
 use crate::data_storage::path::Path;
 use alloc::vec::Vec;
 
@@ -7,15 +9,15 @@ use alloc::vec::Vec;
 /// needs to implement this trait in order to get integrated into the
 /// VFS.
 pub trait Partition {
-    fn open(&mut self, path: &Path) -> Option<usize>;
+    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize>;
     /// Reads a file
     /// Takes as a parameter the path to the file, the offset and the size
     /// Returns the read buffer
-    fn read(&mut self, path: &Path, id: usize, offset: usize, size: usize) -> Vec<u8>;
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8>;
 
     /// Writes a file
     /// Might wanna add some flags...
-    fn write(&mut self, path: &Path, id: usize, buffer: &[u8], offset: usize, flags: u64) -> isize;
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize;
 
     /// Flushes all changes to a file
     fn flush(&self);
@@ -27,11 +29,11 @@ pub trait Partition {
     fn read_raw(&self);
 
     /// Duplicate file ?
-    fn duplicate(&mut self, path: &Path, id: usize) -> Option<usize>;
+    //    fn duplicate(&mut self, path: &Path, id: usize) -> Option<usize>;
 
     /// Close
-    fn close(&mut self, path: &Path, id: usize) -> bool;
+    fn close(&mut self, oft: &OpenFileTable) -> bool;
 
     /// Param
-    fn give_param(&mut self, path: &Path, id: usize, param: usize) -> usize;
+    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize;
 }

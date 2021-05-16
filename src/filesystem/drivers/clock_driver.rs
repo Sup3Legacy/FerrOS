@@ -1,5 +1,7 @@
 use super::super::partition::Partition;
 use crate::data_storage::path::Path;
+use crate::filesystem::descriptor::OpenFileTable;
+use crate::filesystem::fsflags::OpenFlags;
 
 use crate::warningln;
 
@@ -147,7 +149,7 @@ impl Default for ClockDriver {
 }
 
 impl Partition for ClockDriver {
-    fn open(&mut self, path: &Path) -> Option<usize> {
+    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             None
         } else {
@@ -155,7 +157,7 @@ impl Partition for ClockDriver {
         }
     }
 
-    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
         let time = unsafe { Time::get() };
         let string = format!(
             "{} {} {} {} {} {} {} {}",
@@ -172,25 +174,18 @@ impl Partition for ClockDriver {
         vec
     }
 
-    fn write(
-        &mut self,
-        _path: &Path,
-        _id: usize,
-        _buffer: &[u8],
-        _offset: usize,
-        _flags: u64,
-    ) -> isize {
+    fn write(&mut self, _oft: &OpenFileTable, _buffer: &[u8]) -> isize {
         warningln!("User-program attempted to write in clock.");
         -1
     }
 
-    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+    fn close(&mut self, _oft: &OpenFileTable) -> bool {
         false
     }
 
-    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+    /*fn duplicate(&mut self,_oft: &OpenFileTable) -> Option<usize> {
         Some(0)
-    }
+    }*/
 
     fn lseek(&self) {
         todo!()
@@ -204,7 +199,7 @@ impl Partition for ClockDriver {
         todo!()
     }
 
-    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+    fn give_param(&mut self, _oft: &OpenFileTable, _param: usize) -> usize {
         usize::MAX
     }
 }

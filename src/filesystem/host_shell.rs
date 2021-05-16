@@ -1,6 +1,8 @@
 //! host shell accessed by the serial interface
 
 use super::partition::Partition;
+use crate::filesystem::descriptor::OpenFileTable;
+use crate::filesystem::fsflags::OpenFlags;
 
 use crate::{data_storage::path::Path, print};
 use alloc::string::String;
@@ -20,22 +22,15 @@ impl Default for HostShellPartition {
 }
 
 impl Partition for HostShellPartition {
-    fn open(&mut self, _path: &Path) -> Option<usize> {
+    fn open(&mut self, _path: &Path, _flags: OpenFlags) -> Option<usize> {
         Some(0)
     }
 
-    fn read(&mut self, _path: &Path, _id: usize, _offset: usize, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
         panic!("not allowed");
     }
 
-    fn write(
-        &mut self,
-        _path: &Path,
-        _id: usize,
-        buffer: &[u8],
-        _offset: usize,
-        _flags: u64,
-    ) -> isize {
+    fn write(&mut self, _oft: &OpenFileTable, buffer: &[u8]) -> isize {
         let mut sortie = String::new();
         let size = buffer.len();
         for item in buffer.iter() {
@@ -45,13 +40,13 @@ impl Partition for HostShellPartition {
         size as isize
     }
 
-    fn close(&mut self, _path: &Path, _id: usize) -> bool {
+    fn close(&mut self, _oft: &OpenFileTable) -> bool {
         false
     }
 
-    fn duplicate(&mut self, _path: &Path, _id: usize) -> Option<usize> {
+    /*fn duplicate(&mut self, _oft: &OpenFileTable) -> Option<usize> {
         Some(0)
-    }
+    }*/
 
     fn lseek(&self) {
         panic!("not allowed");
@@ -65,7 +60,7 @@ impl Partition for HostShellPartition {
         panic!("not allowed");
     }
 
-    fn give_param(&mut self, _path: &Path, _id: usize, _param: usize) -> usize {
+    fn give_param(&mut self, _oft: &OpenFileTable, _param: usize) -> usize {
         usize::MAX
     }
 }
