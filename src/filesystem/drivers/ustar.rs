@@ -752,8 +752,11 @@ impl UsTar {
                         break;
                     }
                     file.data.push((sector.data[j] >> 8) as u8);
+                    if counter + 1 == length {
+                        break;
+                    }
                     file.data.push((sector.data[j] & 0xff) as u8);
-                    counter += 1;
+                    counter += 2;
                 }
             }
         } else {
