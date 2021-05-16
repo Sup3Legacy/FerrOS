@@ -95,42 +95,24 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
         ) {
             size = (0xFFF - args.rsi) & 0xFFF;
         }
-        if args.rdi == 0 {
-            args.rax = 0;
+        let fd = args.rdi;
+        args.rax = 0;
+        let process = process::get_current();
+        let oft_res = process
+            .open_files
+            .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+        if let Ok(oft) = oft_res {
+            let res = filesystem::read_file(oft, size as usize);
             let mut address = VirtAddr::new(args.rsi);
-            for _i in 0..size {
-                if let Ok(k) = crate::keyboard::get_top_key_event() {
-                    unsafe {
-                        *(address.as_mut_ptr::<u8>()) = k;
-                    }
-                    address += 1_u64;
-                    args.rax += 1;
+            for item in res.iter().take(min(size as usize, res.len())) {
+                unsafe {
+                    *(address.as_mut_ptr::<u8>()) = *item;
                 }
-            }
-            unsafe {
-                *(address.as_mut_ptr::<u8>()) = 0;
+                address += 1_u64;
+                args.rax += 1;
             }
         } else {
-            let fd = args.rdi;
-            args.rax = 0;
-            let process = process::get_current();
-            let oft_res = process
-                .open_files
-                .get_file_table(descriptor::FileDescriptor::new(fd as usize));
-            if let Ok(oft) = oft_res {
-                let res = filesystem::read_file(oft, size as usize);
-                let mut address = VirtAddr::new(args.rsi);
-                for item in res.iter().take(min(size as usize, res.len())) {
-                    unsafe {
-                        *(address.as_mut_ptr::<u8>()) = *item;
-                    }
-                    address += 1_u64;
-                    args.rax += 1;
-                }
-                debug!("Finished read syscall and wrote {} bytes", args.rax);
-            } else {
-                warningln!("Could not get OpenFileTable");
-            }
+            warningln!("Could not get OpenFileTable");
         }
     } else {
         warningln!("Address not allowed");

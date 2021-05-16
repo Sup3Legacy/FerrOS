@@ -3,6 +3,7 @@
 pub mod clock_driver;
 pub mod disk_operations;
 pub mod hardware;
+pub mod keyboard;
 pub mod mouse_driver;
 pub mod nopart;
 pub mod proc;

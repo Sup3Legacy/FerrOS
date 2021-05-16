@@ -197,8 +197,7 @@ impl ProcessDescriptorTable {
     }
 
     pub fn add_file_table(&mut self, open_file_table: OpenFileTable) -> FileDescriptor {
-        // ! This `3` if temporary, only for test purposes
-        let mut i = 1;
+        let mut i = 0;
         while i < MAX_TOTAL_OPEN_FILES_BY_PROCESS {
             if self.files[i].is_none() {
                 // File descriptor to be returned

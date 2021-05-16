@@ -871,6 +871,9 @@ pub fn spawn_first_process() {
     } else {
         errorln!("could not find mainscreen in first process");
     }*/
+    let screen_file_name = "/hard/kbd";
+    proc.open_files
+        .create_file_table(Path::from(&screen_file_name), 0_u64);
     let screen_file_name = "/hard/screen";
     proc.open_files
         .create_file_table(Path::from(&screen_file_name), 0_u64);

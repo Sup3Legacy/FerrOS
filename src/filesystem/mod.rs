@@ -58,13 +58,15 @@ pub unsafe fn init_vfs() {
             .expect("could not create fifo.");
 
         let s7 = drivers::proc::ProcDriver::new();
-        vfs.add_file(Path::from("proc"), Box::new(s7))
+        vfs.add_file(Path::from("/proc"), Box::new(s7))
             .expect("could not create proc.");
 
-        println!("New UsTar");
-        let s6 = ustar::UsTar::new();
-        println!("UsTar created");
-        vfs.add_file(Path::from("/usr"), Box::new(s6))
+        let s8 = drivers::keyboard::KeyBoard::new();
+        vfs.add_file(Path::from("/hard/kbd"), Box::new(s8))
+            .expect("could not create keyboard.");
+
+        let s9 = ustar::UsTar::new();
+        vfs.add_file(Path::from("/usr"), Box::new(s9))
             .expect("could not create disk driver.");
     } else {
         panic!("should not happen")
