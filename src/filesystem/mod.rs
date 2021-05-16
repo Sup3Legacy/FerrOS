@@ -38,7 +38,7 @@ pub unsafe fn init_vfs() {
     VFS = Some(VFS::new());
     if let Some(vfs) = &mut VFS {
         let s1 = screen_partition::ScreenPartition::new();
-        vfs.add_file(Path::from("/hard/screenfull"), Box::new(s1))
+        vfs.add_file(Path::from("/hard/screen"), Box::new(s1))
             .expect("could not create screen");
         let s2 = drivers::clock_driver::ClockDriver::new();
         vfs.add_file(Path::from("/hard/clock"), Box::new(s2))
