@@ -38,29 +38,29 @@ pub unsafe fn init_vfs() {
     VFS = Some(VFS::new());
     if let Some(vfs) = &mut VFS {
         let s1 = screen_partition::ScreenPartition::new();
-        vfs.add_file(Path::from("screen/screenfull"), Box::new(s1))
+        vfs.add_file(Path::from("/hard/screenfull"), Box::new(s1))
             .expect("could not create screen");
         let s2 = drivers::clock_driver::ClockDriver::new();
-        vfs.add_file(Path::from("hardware/clock"), Box::new(s2))
+        vfs.add_file(Path::from("/hard/clock"), Box::new(s2))
             .expect("could not create clock driver.");
         let s3 = drivers::mouse_driver::MouseDriver::new();
-        vfs.add_file(Path::from("hardware/mouse"), Box::new(s3))
+        vfs.add_file(Path::from("/hard/mouse"), Box::new(s3))
             .expect("could not create mouse driver.");
         let s4 = drivers::sound::SoundDriver::new();
-        vfs.add_file(Path::from("hardware/sound"), Box::new(s4))
+        vfs.add_file(Path::from("/hard/sound"), Box::new(s4))
             .expect("could not create sound driver.");
         let s5 = host_shell::HostShellPartition::new();
-        vfs.add_file(Path::from("screen/host_shell"), Box::new(s5))
+        vfs.add_file(Path::from("/hard/host"), Box::new(s5))
             .expect("could not create shell printer.");
 
         let s6 = fifo::FiFoPartition::new();
-        vfs.add_file(Path::from("communication/fifo"), Box::new(s6))
+        vfs.add_file(Path::from("/dev/fifo"), Box::new(s6))
             .expect("could not create fifo.");
 
         println!("New UsTar");
         let s6 = ustar::UsTar::new();
         println!("UsTar created");
-        vfs.add_file(Path::from("User"), Box::new(s6))
+        vfs.add_file(Path::from("/usr"), Box::new(s6))
             .expect("could not create disk driver.");
     } else {
         panic!("should not happen")

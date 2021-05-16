@@ -826,8 +826,11 @@ impl Partition for UsTar {
     }
 
     fn read(&mut self, path: &Path, _id: usize, offset: usize, size: usize) -> Vec<u8> {
+        let mut path_name = String::from("root/");
+        path_name.push_str(&path.to());
+        let path = Path::from(&path_name);
         println!("Got request : {:?}", path);
-        let file = match self.find_memfile(path) {
+        let file = match self.find_memfile(&path) {
             Ok(f) => f,
             Err(_) => return Vec::new(),
         };
