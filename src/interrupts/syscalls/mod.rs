@@ -82,7 +82,7 @@ unsafe fn read_string_from_pointer(ptr: u64) -> String {
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
 extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let (cr3, _) = Cr3::read();
-    let mut size = min(args.rdx, 1024) - 1;
+    let mut size = min(args.rdx, 1024);
     if memory::check_if_has_flags(
         cr3,
         VirtAddr::new(args.rsi),
