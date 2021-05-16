@@ -57,7 +57,7 @@ class Header:
         data[ 8:16] = [0, 0, 0, 0, 0, 0, 0, 0] # owner
         data[16:24] = [0, 0, 0, 0, 0, 0, 0, 0] # group
         data[24:28] = [self.parent.part(1), self.parent.part(0), self.parent.part(3), self.parent.part(2)] # parent address
-        data[28:32] = [(self.size >> (i * 8)) & 255 for i in range(0, 4)] # length
+        data[28:32] = [((self.size) >> (i * 8)) & 255 for i in range(0, 4)] # length
         data[32:36] = [(self.nb_bloc >> (i * 8)) & 255 for i in range(0, 4)] # nb blocs
         data[36:36+SHORT_MODE_LIMIT*4] = perm(self.block_addresses)
         assert(SHORT_MODE_LIMIT == 100)

@@ -57,6 +57,10 @@ pub unsafe fn init_vfs() {
         vfs.add_file(Path::from("/dev/fifo"), Box::new(s6))
             .expect("could not create fifo.");
 
+        let s7 = drivers::proc::ProcDriver::new();
+        vfs.add_file(Path::from("proc"), Box::new(s7))
+            .expect("could not create proc.");
+
         println!("New UsTar");
         let s6 = ustar::UsTar::new();
         println!("UsTar created");

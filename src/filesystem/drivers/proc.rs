@@ -18,9 +18,14 @@ pub struct ErrProc();
 
 impl ProcDriver {
     pub fn new() -> Self {
-        Self {
+        let mut res = Self {
             infos: BTreeMap::new(),
-        }
+        };
+        res.infos.insert(
+            String::from("heap"),
+            ProcInfoDriver::new(String::from("heap"), heap_proc),
+        );
+        res
     }
     pub fn get_info(&self, id: &str) -> Result<&ProcInfoDriver, ErrProc> {
         if let Some(res) = self.infos.get(id) {
@@ -151,7 +156,16 @@ pub struct ProcInfoDriver {
     function: fn(usize) -> Vec<u8>,
 }
 
-fn heap(proc: usize) -> Vec<u8> {
+impl ProcInfoDriver {
+    pub fn new(kwd: String, func: fn(usize) -> Vec<u8>) -> Self {
+        Self {
+            keyword: kwd,
+            function: func,
+        }
+    }
+}
+
+fn heap_proc(proc: usize) -> Vec<u8> {
     if proc as u64 >= scheduler::PROCESS_MAX_NUMBER {
         return Vec::new();
     }
