@@ -1,4 +1,4 @@
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 use crate::sound;
@@ -48,9 +48,8 @@ impl Partition for SoundDriver {
         }
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
-        warningln!("User-program attempted to read in sound.");
-        Vec::new()
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
+        Err(IoError::Kill)
     }
 
     fn write(&mut self, _oft: &OpenFileTable, buffer: &[u8]) -> isize {

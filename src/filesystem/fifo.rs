@@ -1,6 +1,6 @@
 //! FIFO used for inter-process communication
 
-use super::partition::Partition;
+use super::partition::{IoError, Partition};
 use crate::data_storage::path::Path;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
@@ -18,15 +18,25 @@ impl FiFoPartitionInner {
         }
     }
 
-    pub fn read(&mut self, size: usize) -> Vec<u8> {
+    pub fn read(&mut self, size: usize, b: bool) -> Result<Vec<u8>, IoError> {
         let mut data = Vec::new();
         for _i in 0..size {
             match self.data.pop() {
-                Err(PopError) => return data,
+                Err(PopError) => {
+                    if b {
+                        if data.len() == 0 {
+                            return Err(IoError::Kill);
+                        } else {
+                            return Ok(data);
+                        }
+                    } else {
+                        return Ok(data);
+                    }
+                }
                 Ok(d) => data.push(d),
             }
         }
-        data
+        Ok(data)
     }
 
     pub fn write(&mut self, buffer: &[u8]) -> isize {
@@ -86,13 +96,13 @@ impl Partition for FiFoPartition {
         Some(self.data.len() - 1)
     }
 
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8> {
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         if oft.get_path().len() != 0 {
-            return Vec::new();
+            return Err(IoError::Kill);
         }
         match &mut self.data[oft.get_id()] {
-            None => Vec::new(),
-            Some(fifo) => fifo.read(size),
+            None => Err(IoError::Kill),
+            Some(fifo) => fifo.read(size, oft.get_amount() == 1),
         }
     }
 

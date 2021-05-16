@@ -1,4 +1,4 @@
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 use crate::data_storage::path::Path;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
@@ -157,7 +157,7 @@ impl Partition for ClockDriver {
         }
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
         let time = unsafe { Time::get() };
         let string = format!(
             "{} {} {} {} {} {} {} {}",
@@ -171,7 +171,7 @@ impl Partition for ClockDriver {
             time.second,
         );
         let vec = Vec::from(string.as_bytes());
-        vec
+        Ok(vec)
     }
 
     fn write(&mut self, _oft: &OpenFileTable, _buffer: &[u8]) -> isize {

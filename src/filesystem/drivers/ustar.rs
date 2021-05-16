@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use super::super::fsflags::OpenFlags;
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 use super::disk_operations;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::println;
@@ -826,14 +826,14 @@ impl Partition for UsTar {
         Some(1)
     }
 
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8> {
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         let mut path_name = String::from("root/");
         path_name.push_str(&oft.get_path().to());
         let path = Path::from(&path_name);
         println!("Got request : {:?}", path);
         let file = match self.find_memfile(&path) {
             Ok(f) => f,
-            Err(_) => return Vec::new(),
+            Err(_) => return Err(IoError::Continue),
         };
         println!("Got vec of length : {}", file.data.len());
         println!("size : {}", size);
@@ -848,7 +848,7 @@ impl Partition for UsTar {
             file.data[oft.get_offset()..oft.get_offset() + size].to_vec()
         };
         debug!("Got data of length : {}", res.len());
-        res
+        Ok(res)
     }
 
     #[allow(unreachable_code)]

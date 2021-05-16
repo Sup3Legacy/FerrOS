@@ -1,4 +1,4 @@
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 
 use crate::{data_storage::path::Path, warningln};
 
@@ -30,17 +30,17 @@ impl Partition for KeyBoard {
         }
     }
 
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8> {
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         // The number of packets to be written into the buffer
         let mut res = Vec::new();
         for _ in 0..size {
             if let Ok(k) = get_top_key_event() {
                 res.push(k);
             } else {
-                return res;
+                return Ok(res);
             }
         }
-        res
+        Ok(res)
     }
 
     fn write(&mut self, _oft: &OpenFileTable, _buffer: &[u8]) -> isize {

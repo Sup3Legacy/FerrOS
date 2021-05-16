@@ -1,7 +1,7 @@
 use crate::data_storage::path::Path;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
-use crate::filesystem::partition::Partition;
+use crate::filesystem::partition::{IoError, Partition};
 use alloc::vec::Vec;
 
 /// Used to define an empty partition
@@ -19,7 +19,7 @@ impl Partition for NoPart {
         todo!()
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
         todo!()
     }
 

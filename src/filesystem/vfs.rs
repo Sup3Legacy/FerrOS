@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 use super::descriptor::OpenFileTable;
 use super::fsflags::OpenFlags;
-use super::partition::Partition;
+use super::partition::{IoError, Partition};
 
 use super::drivers::nopart::NoPart;
 
@@ -208,7 +208,7 @@ impl VFS {
         }
     }
 
-    pub fn read(&'static mut self, oft: &OpenFileTable, length: usize) -> Vec<u8> {
+    pub fn read(&'static mut self, oft: &OpenFileTable, length: usize) -> Result<Vec<u8>, IoError> {
         let sliced = oft.get_path().clone().slice();
         let res_partition = self.partitions.root.get_partition(sliced, 0);
         // TODO check it actuallye returned something
@@ -216,7 +216,7 @@ impl VFS {
             partition.read(&oft.with_new_path(remaining_path), length)
         } else {
             warningln!("Could not find partition for {:?}", oft.get_path());
-            Vec::new()
+            Err(IoError::Kill)
         }
     }
 

@@ -1,6 +1,6 @@
 //! host shell accessed by the serial interface
 
-use super::partition::Partition;
+use super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 
@@ -26,7 +26,7 @@ impl Partition for HostShellPartition {
         Some(0)
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
         panic!("not allowed");
     }
 

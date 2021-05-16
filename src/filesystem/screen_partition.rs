@@ -1,6 +1,6 @@
 //! Give a process access to a screen.
 
-use super::partition::Partition;
+use super::partition::{IoError, Partition};
 use crate::data_storage::screen::Coord;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
@@ -42,8 +42,8 @@ impl Partition for ScreenPartition {
         }
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
-        panic!("not allowed");
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
+        Err(IoError::Kill)
     }
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {

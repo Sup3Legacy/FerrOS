@@ -1,5 +1,5 @@
 //! Provides bindings to the different functions in `hardware`, `keyboard`, `sound`, etc.
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 use crate::data_storage::path::Path;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
@@ -18,7 +18,7 @@ impl Partition for SoftwarePartition {
         todo!()
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
         todo!()
     }
 

@@ -143,6 +143,10 @@ impl OpenFileTable {
         self.offset
     }
 
+    pub fn get_amount(&self) -> usize {
+        self.nb
+    }
+
     pub fn get_flags(&self) -> BTreeSet<OpenFlags> {
         OpenFlags::parse(self.flags)
     }

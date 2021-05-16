@@ -1,4 +1,4 @@
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 
@@ -53,7 +53,7 @@ impl Partition for ProcDriver {
 
     #[allow(clippy::if_same_then_else)]
     #[allow(clippy::len_zero)]
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Vec<u8> {
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         let sliced = oft.get_path().clone().slice();
         if sliced.len() == 2 {
             if let Ok(proc) = sliced[0].parse::<usize>() {
@@ -65,9 +65,9 @@ impl Partition for ProcDriver {
                     res.reverse();
                     res.truncate(core::cmp::max(res.len() - oft.get_offset(), 0));
                     res.reverse();
-                    return res;
+                    return Ok(res);
                 } else {
-                    return Vec::new();
+                    return Ok(Vec::new());
                 }
             }
         } else if sliced.len() == 1 {
@@ -85,7 +85,7 @@ impl Partition for ProcDriver {
             res_array.reverse();
             res_array.truncate(core::cmp::max(res_array.len() - oft.get_offset(), 0));
             res_array.reverse();
-            return res_array;
+            return Ok(res_array);
         } else if sliced.len() == 0 {
             // Means we access the main proc directory
             // We want to build the array of all alive processes
@@ -106,7 +106,7 @@ impl Partition for ProcDriver {
             res_array.reverse();
             res_array.truncate(core::cmp::max(res_array.len() - oft.get_offset(), 0));
             res_array.reverse();
-            return res_array;
+            return Ok(res_array);
         } else {
             panic!("Oscoure");
         }

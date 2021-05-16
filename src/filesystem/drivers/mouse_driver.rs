@@ -1,4 +1,4 @@
-use super::super::partition::Partition;
+use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 use crate::hardware::mouse;
@@ -29,7 +29,7 @@ impl Partition for MouseDriver {
         }
     }
 
-    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Vec<u8> {
+    fn read(&mut self, _oft: &OpenFileTable, _size: usize) -> Result<Vec<u8>, IoError> {
         // The number of packets to be written into the buffer
         let packet_number = _size / 3;
         let mut res = Vec::new();
@@ -43,7 +43,7 @@ impl Partition for MouseDriver {
                 break;
             }
         }
-        res
+        Ok(res)
     }
 
     fn write(&mut self, _oft: &OpenFileTable, _buffer: &[u8]) -> isize {
