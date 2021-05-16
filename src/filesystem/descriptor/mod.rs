@@ -94,8 +94,8 @@ impl GeneralFileTable {
     }
 
     /// Returns mutable copy of a given entry
-    pub fn get_file_table_ref(&'static self, index: usize) -> &'static OpenFileTable {
-        &self.tables[index].as_ref().unwrap()
+    pub fn get_file_table_ref_mut(&'static mut self, index: usize) -> &'static mut OpenFileTable {
+        self.tables[index].as_mut().unwrap()
     }
 }
 
@@ -128,6 +128,10 @@ impl OpenFileTable {
     }
     pub fn get_offset(&self) -> usize {
         self.offset
+    }
+
+    pub fn add_offset(&mut self, length: usize) {
+        self.offset += length;
     }
 
     pub fn get_id(&self) -> usize {
@@ -180,9 +184,9 @@ impl ProcessDescriptorTable {
     pub fn get_file_table(
         &self,
         fd: FileDescriptor,
-    ) -> Result<&'static OpenFileTable, FileDesciptorError> {
+    ) -> Result<&'static mut OpenFileTable, FileDesciptorError> {
         if let Some(id) = self.files[fd.into_usize()] {
-            Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref(id) })
+            Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref_mut(id) })
         } else {
             Err(FileDesciptorError())
         }

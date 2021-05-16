@@ -109,12 +109,14 @@ pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     }
 }
 
-pub fn read_file(oft: &OpenFileTable, length: usize) -> Vec<u8> {
+pub fn read_file(oft: &mut OpenFileTable, length: usize) -> Vec<u8> {
     unsafe {
         let path = oft.get_path();
         let offset = oft.get_offset();
         if let Some(ref mut vfs) = VFS {
-            vfs.read(path, oft.get_id(), offset, length)
+            let res = vfs.read(path, oft.get_id(), offset, length);
+            oft.add_offset(res.len());
+            res
         } else {
             panic!("VFS not initialized in read_file.");
         }
