@@ -686,7 +686,7 @@ impl UsTar {
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = match header.file_type {
             Type::File => header.length,
-            Type::Dir => header.length * 16,
+            Type::Dir => header.length * 32,
         };
         //println!("{:?}", header);
         let mut file = MemFile {
@@ -706,8 +706,11 @@ impl UsTar {
                         break;
                     }
                     file.data.push((sector.data[j] >> 8) as u8);
+                    if counter + 1 >= length {
+                        break;
+                    }
                     file.data.push((sector.data[j] & 0xff) as u8);
-                    counter += 1;
+                    counter += 2;
                 }
             }
         } else if header.mode == FileMode::Long {
