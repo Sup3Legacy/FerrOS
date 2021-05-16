@@ -127,7 +127,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
                     address += 1_u64;
                     args.rax += 1;
                 }
-                debug!("Finished read syscall");
+                debug!("Finished read syscall and wrote {} bytes", args.rax);
             } else {
                 warningln!("Could not get OpenFileTable");
             }

@@ -836,7 +836,7 @@ impl Partition for UsTar {
         } else {
             file.data[offset..offset + size].to_vec()
         };
-        debug!("Got data");
+        debug!("Got data of length : {}", res.len());
         res
     }
 

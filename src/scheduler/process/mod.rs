@@ -420,9 +420,7 @@ pub fn flatten_arguments(args: &Vec<String>) -> (u64, [u8; 0x1000]) {
                 res[i + index - 1] = 0;
                 break;
             }
-            debug!("Hi");
             res[i + index] = bytes[i];
-            debug!("Ha");
         }
         res[length + index] = 0;
         index += length + 1;
@@ -504,7 +502,7 @@ pub unsafe fn disassemble_and_launch(
         );
         maximum_address = max(maximum_address, address + size);
         match program.get_type() {
-            Ok(Type::Phdr) | Err(_) => continue,
+            Err(_) => continue,
             Ok(_) => (),
         };
         if address == 0 {
@@ -514,6 +512,26 @@ pub unsafe fn disassemble_and_launch(
         let mut zeroed_data = Vec::new();
         let _data = match program.get_type().unwrap() {
             Type::Load => match program.get_data(&elf).unwrap() {
+                SegmentData::Undefined(a) => a,
+                SegmentData::Note64(_, a) => a,
+                _ => panic!(":("),
+            },
+            Type::Dynamic => match program.get_data(&elf).unwrap() {
+                SegmentData::Undefined(a) => a,
+                SegmentData::Note64(_, a) => a,
+                _ => panic!(":("),
+            },
+            Type::Interp => match program.get_data(&elf).unwrap() {
+                SegmentData::Undefined(a) => a,
+                SegmentData::Note64(_, a) => a,
+                _ => panic!(":("),
+            },
+            Type::Tls => match program.get_data(&elf).unwrap() {
+                SegmentData::Undefined(a) => a,
+                SegmentData::Note64(_, a) => a,
+                _ => panic!(":("),
+            },
+            Type::GnuRelro => match program.get_data(&elf).unwrap() {
                 SegmentData::Undefined(a) => a,
                 SegmentData::Note64(_, a) => a,
                 _ => panic!(":("),
