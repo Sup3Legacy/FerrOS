@@ -3,8 +3,8 @@
 use super::super::fsflags::OpenFlags;
 use super::super::partition::Partition;
 use super::disk_operations;
-use crate::data_storage::path::Path;
 use crate::println;
+use crate::{data_storage::path::Path, debug};
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::IntoIter;
@@ -826,13 +826,18 @@ impl Partition for UsTar {
         };
         println!("Got vec of length : {}", file.data.len());
         println!("size : {}", size);
-        if size == usize::MAX {
+        println!("Offset : {}", offset);
+        let res = if size == usize::MAX {
             file.data
-        } else if offset + size > file.data.len() {
+        } else if offset >= file.data.len() {
+            Vec::new()
+        } else if offset + size >= file.data.len() {
             file.data[offset..].to_vec()
         } else {
             file.data[offset..offset + size].to_vec()
-        }
+        };
+        debug!("Got data");
+        res
     }
 
     #[allow(unreachable_code)]
