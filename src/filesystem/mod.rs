@@ -28,6 +28,7 @@ pub use vfs::VFS;
 use crate::println;
 use descriptor::OpenFileTable;
 use fsflags::OpenFlags;
+use partition::IoError;
 
 pub static mut VFS: Option<VFS> = None;
 
@@ -115,25 +116,30 @@ pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
     }
 }
 
-pub fn read_file(oft: &mut OpenFileTable, length: usize) -> Vec<u8> {
+pub fn read_file(oft: &mut OpenFileTable, length: usize) -> Result<Vec<u8>, IoError> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            let res = vfs.read(oft, length);
-            oft.add_offset(res.len());
-            res
+            match vfs.read(oft, length) {
+                Ok(res) => {
+                    oft.add_offset(res.len());
+                    Ok(res)
+                }
+                Err(err) => Err(err),
+            }
         } else {
             panic!("VFS not initialized in read_file.");
         }
     }
 }
 
-pub fn read_file_from_path(path: Path) -> Vec<u8> {
+pub fn read_file_from_path(path: Path) -> Result<Vec<u8>, IoError> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
             let oft = OpenFileTable::new(path, fsflags::OpenFlags::OXCUTE as usize, usize::MAX);
-            let file = vfs.read(&oft, usize::MAX);
-            println!("{} <- len in read_file_from_path", file.len());
-            file
+            match vfs.read(&oft, usize::MAX) {
+                Ok(res) => Ok(res),
+                Err(err) => Err(err),
+            }
         } else {
             panic!("VFS not initialized in read_file.");
         }
