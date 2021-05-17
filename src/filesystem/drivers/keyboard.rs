@@ -30,7 +30,7 @@ impl Partition for KeyBoard {
         }
     }
 
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
+    fn read(&mut self, _oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         // The number of packets to be written into the buffer
         let mut res = Vec::new();
         for _ in 0..size {

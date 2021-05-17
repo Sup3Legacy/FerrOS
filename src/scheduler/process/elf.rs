@@ -2,12 +2,12 @@ use super::ProcessError;
 use crate::data_storage::path::Path;
 use crate::filesystem::read_file_from_path;
 use crate::memory;
-use crate::{debug, errorln, warningln};
+use crate::{debug, warningln};
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cmp::max;
+
 use x86_64::structures::paging::PageTableFlags;
-use x86_64::VirtAddr;
+
 use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
 
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;

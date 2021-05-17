@@ -8,7 +8,7 @@ use crate::data_storage::{
     registers::{Registers, RegistersMini},
 };
 use crate::filesystem;
-use crate::filesystem::{descriptor, open_mode_from_flags};
+use crate::filesystem::{descriptor};
 use crate::hardware;
 use crate::interrupts;
 use crate::memory;

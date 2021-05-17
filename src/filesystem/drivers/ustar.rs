@@ -717,7 +717,7 @@ impl UsTar {
         } else if header.mode == FileMode::Long {
             println!("Reading in long mode");
             let mut counter = 0;
-            let number_address_block = header.blocks_number / 128 + {
+            let _number_address_block = header.blocks_number / 128 + {
                 if header.blocks_number % 128 == 0 {
                     0
                 } else {
@@ -782,7 +782,7 @@ impl UsTar {
 
         let mut files: BTreeMap<String, Address> = BTreeMap::new();
         //println!("#0");
-        let number = len / 32; // number of sub_items of the dir
+        let _number = len / 32; // number of sub_items of the dir
                                //println!("Number : {} {}", number, len);
         for i in 0..(len / 2) {
             let mut name_vec = Vec::new();
@@ -914,7 +914,7 @@ impl Partition for UsTar {
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
                 let header_address = self.find_address(oft.get_path()).unwrap();
-                let old_size = (file.header.length);
+                let old_size = file.header.length;
                 let true_offset = if oft.get_flags().contains(OpenFlags::OAPPEND) {
                     old_size as usize
                 } else {

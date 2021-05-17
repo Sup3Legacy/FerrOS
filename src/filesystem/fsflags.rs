@@ -2,10 +2,10 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-use alloc::collections::BTreeSet;
+
 use bitflags::bitflags;
-use core::ops::BitAnd;
-use core::slice::Iter;
+
+
 
 bitflags! {
     #[repr(transparent)]
@@ -19,7 +19,7 @@ bitflags! {
 }
 
 impl OpenFlags {
-    pub fn from(f: usize) -> Self {
+    pub fn from(_f: usize) -> Self {
         OpenFlags::ORD
     }
 }
