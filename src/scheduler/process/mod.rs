@@ -925,6 +925,9 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 /// From the number of cycles executed and return code, returns a new process
 pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process {
     let old_pid = CURRENT_PROCESS;
+    if old_pid == 0 {
+        crate::hardware::power::shutdown();
+    }
     ID_TABLE[old_pid].died(return_code as usize);
 
     let new_pid = next_pid_to_run().0 as usize;
