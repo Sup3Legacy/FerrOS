@@ -5,7 +5,7 @@ use super::super::partition::{IoError, Partition};
 use super::disk_operations;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::println;
-use crate::{data_storage::path::Path, debug};
+use crate::{data_storage::path::Path, debug, errorln, warningln};
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::IntoIter;
@@ -874,15 +874,24 @@ impl Partition for UsTar {
     }
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
+        debug!(
+            "Writing {:?}, flags={:?}\n Content={:?}",
+            oft.get_path(),
+            oft.get_flags(),
+            buffer
+        );
         if !(oft.get_flags().contains(OpenFlags::OWR)) {
+            errorln!("Tried to write in {:?}, but no right!", oft.get_path());
             return -1; // no right to write
         }
         // find the file
         let memfile = self.find_memfile(oft.get_path());
         match memfile {
             Err(_) => {
+                debug!("File {:?} did not exist, creating it", oft.get_path());
                 // create the file?
                 if !oft.get_flags().contains(OpenFlags::OCREAT) {
+                    errorln!("Tried to create {:?}, but no right!", oft.get_path());
                     return -1;
                 } else {
                     // look for the parent folder in which we will create the file
@@ -890,6 +899,10 @@ impl Partition for UsTar {
                     let parent_dir = if let Ok(a) = self.find_memdir(&parent_path) {
                         a
                     } else {
+                        errorln!(
+                            "Tried to access {:?}, but parent folder does not exist",
+                            oft.get_path()
+                        );
                         return -1;
                     };
                     let name = oft.get_path().get_name();
