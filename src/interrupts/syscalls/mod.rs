@@ -8,7 +8,7 @@ use crate::data_storage::{
     registers::{Registers, RegistersMini},
 };
 use crate::filesystem;
-use crate::filesystem::{descriptor, open_mode_from_flags};
+use crate::filesystem::descriptor;
 use crate::hardware;
 use crate::interrupts;
 use crate::memory;
@@ -21,6 +21,8 @@ use alloc::vec::Vec;
 use core::char;
 use core::cmp::min;
 use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAddr};
+
+use crate::filesystem::partition::IoError;
 
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
@@ -102,7 +104,27 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             .open_files
             .get_file_table(descriptor::FileDescriptor::new(fd as usize));
         if let Ok(oft) = oft_res {
-            let res = filesystem::read_file(oft, size as usize);
+            let res = match filesystem::read_file(oft, size as usize) {
+                Ok(x) => x,
+                Err(IoError::Continue) => Vec::new(),
+                Err(IoError::Kill) => unsafe {
+                    let new = process::process_died(interrupts::COUNTER, process::IO_ERROR);
+                    interrupts::COUNTER = 0;
+                    process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
+                },
+                Err(IoError::Sleep) => unsafe {
+                    let (next, mut old) = process::gives_switch(interrupts::COUNTER);
+                    interrupts::COUNTER = 0;
+
+                    let (cr3, cr3f) = Cr3::read();
+                    old.cr3 = cr3.start_address();
+                    old.cr3f = cr3f;
+
+                    old.rsp = VirtAddr::from_ptr(args).as_u64();
+
+                    process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
+                },
+            };
             let mut address = VirtAddr::new(args.rsi);
             for item in res.iter().take(min(size as usize, res.len())) {
                 unsafe {
@@ -182,7 +204,9 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
     crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path), args.rsi as usize)
+        .create_file_table(path::Path::from(&path), unsafe {
+            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rsi as usize)
+        })
         .into_u64();
     crate::debug!("syscall open end {}", fd);
     // Puts the fd into rax
@@ -265,8 +289,6 @@ extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStack
     unsafe {
         let (next, mut old) = process::gives_switch(interrupts::COUNTER);
         interrupts::COUNTER = 0;
-
-        debug!("Sleep to {}", process::CURRENT_PROCESS);
 
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();

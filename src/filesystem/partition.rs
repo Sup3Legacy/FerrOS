@@ -5,6 +5,7 @@ use super::fsflags::OpenFlags;
 use crate::data_storage::path::Path;
 use alloc::vec::Vec;
 
+#[derive(Debug)]
 pub enum IoError {
     Continue,
     Kill,

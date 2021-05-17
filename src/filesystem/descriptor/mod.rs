@@ -4,7 +4,6 @@ use super::fsflags::OpenFlags;
 use crate::data_storage::path::Path;
 use crate::scheduler::process;
 
-use alloc::collections::BTreeSet;
 use alloc::string::String;
 
 pub struct FileDesciptorError();
@@ -110,13 +109,13 @@ impl Default for GeneralFileTable {
 pub struct OpenFileTable {
     /// path of the file
     path: Path,
-    flags: usize,
+    flags: OpenFlags,
     offset: usize,
     id: usize,
     nb: usize,
 }
 impl OpenFileTable {
-    pub fn new(path: Path, flags: usize, id: usize) -> Self {
+    pub fn new(path: Path, flags: OpenFlags, id: usize) -> Self {
         Self {
             path,
             flags,
@@ -147,8 +146,8 @@ impl OpenFileTable {
         self.nb
     }
 
-    pub fn get_flags(&self) -> BTreeSet<OpenFlags> {
-        OpenFlags::parse(self.flags)
+    pub fn get_flags(&self) -> OpenFlags {
+        self.flags
     }
 
     pub fn add_offset(&mut self, length: usize) {
@@ -237,7 +236,7 @@ impl ProcessDescriptorTable {
     }
 
     /// TODO : add fields like flags, etc.
-    pub fn create_file_table(&mut self, path: Path, flags: usize) -> FileDescriptor {
+    pub fn create_file_table(&mut self, path: Path, flags: OpenFlags) -> FileDescriptor {
         // Here we create a new OpenFileTable.
         // We fill it with all the passed values,
         // inserts it into the GLOBAL_FILE_TABLE
@@ -245,7 +244,7 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
-        let id = match super::open_file(&path, OpenFlags::ORDWR) {
+        let id = match super::open_file(&path, flags) {
             Ok(i) => i,
             Err(_) => return FileDescriptor::new(usize::MAX),
         };
@@ -342,7 +341,7 @@ pub fn open(filename: String, mode: OpenFlags) -> FileDescriptor {
                 unsafe {
                     new_pfdt.files[i] = Some(GLOBAL_FILE_TABLE.insert(OpenFileTable::new(
                         Path::from(filename.as_str()),
-                        mode as usize,
+                        mode,
                         id,
                     )));
                 }

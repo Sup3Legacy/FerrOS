@@ -2,7 +2,7 @@ use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 use crate::sound;
-use crate::{data_storage::path::Path, print, warningln};
+use crate::{data_storage::path::Path, print};
 
 use alloc::vec::Vec;
 
@@ -40,7 +40,7 @@ fn u8slice_to_u64(slice: &[u8]) -> u64 {
 }
 
 impl Partition for SoundDriver {
-    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
+    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             None
         } else {

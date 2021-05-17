@@ -1,6 +1,6 @@
 //! FIFO used for inter-process communication
 
-use super::partition::{IoError, Partition};
+use super::super::partition::{IoError, Partition};
 use crate::data_storage::path::Path;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
@@ -25,17 +25,23 @@ impl FiFoPartitionInner {
                 Err(PopError) => {
                     if b {
                         if data.len() == 0 {
+                            crate::warningln!("FiFo empty, now killing");
                             return Err(IoError::Kill);
                         } else {
+                            crate::warningln!("FiFo gave end and is alone {}", data.len());
                             return Ok(data);
                         }
                     } else {
+                        if data.len() != 0 {
+                            crate::warningln!("FiFo gave end and not alone {}", data.len());
+                        }
                         return Ok(data);
                     }
                 }
                 Ok(d) => data.push(d),
             }
         }
+        crate::warningln!("FiFo not empty {}", data.len());
         Ok(data)
     }
 
@@ -82,7 +88,7 @@ impl Default for FiFoPartition {
 }
 
 impl Partition for FiFoPartition {
-    fn open(&mut self, path: &Path, fs: OpenFlags) -> Option<usize> {
+    fn open(&mut self, path: &Path, _fs: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             return None;
         }

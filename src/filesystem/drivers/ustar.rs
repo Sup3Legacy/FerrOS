@@ -717,7 +717,7 @@ impl UsTar {
         } else if header.mode == FileMode::Long {
             println!("Reading in long mode");
             let mut counter = 0;
-            let number_address_block = header.blocks_number / 128 + {
+            let _number_address_block = header.blocks_number / 128 + {
                 if header.blocks_number % 128 == 0 {
                     0
                 } else {
@@ -782,8 +782,8 @@ impl UsTar {
 
         let mut files: BTreeMap<String, Address> = BTreeMap::new();
         //println!("#0");
-        let number = len / 32; // number of sub_items of the dir
-                               //println!("Number : {} {}", number, len);
+        let _number = len / 32; // number of sub_items of the dir
+                                //println!("Number : {} {}", number, len);
         for i in 0..(len / 2) {
             let mut name_vec = Vec::new();
             let mut itter = 0;
@@ -853,8 +853,7 @@ impl Partition for UsTar {
 
     #[allow(unreachable_code)]
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
-        let flag_set = oft.get_flags();
-        if !(flag_set.contains(&OpenFlags::OWRO) || flag_set.contains(&OpenFlags::ORDWR)) {
+        if !(oft.get_flags().contains(OpenFlags::OWR)) {
             return -1; // no right to write
         }
         // find the file
@@ -862,7 +861,7 @@ impl Partition for UsTar {
         match memfile {
             Err(_) => {
                 // create the file?
-                if !flag_set.contains(&OpenFlags::OCREAT) {
+                if !oft.get_flags().contains(OpenFlags::OCREAT) {
                     return -1;
                 } else {
                     // look for the parent folder in which we will create the file
@@ -915,8 +914,8 @@ impl Partition for UsTar {
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
                 let header_address = self.find_address(oft.get_path()).unwrap();
-                let old_size = (file.header.length);
-                let true_offset = if flag_set.contains(&OpenFlags::OAPPEND) {
+                let old_size = file.header.length;
+                let true_offset = if oft.get_flags().contains(OpenFlags::OAPPEND) {
                     old_size as usize
                 } else {
                     oft.get_offset()

@@ -5,7 +5,7 @@
 #![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
-use ferr_os::print;
+
 use ferr_os::println;
 
 #[no_mangle]

@@ -29,6 +29,8 @@ use alloc::string::String;
 /// Default allocated heap size (in number of pages)
 const DEFAULT_HEAP_SIZE: u64 = 2;
 
+pub const IO_ERROR: u64 = 2;
+
 pub mod elf;
 
 #[derive(Debug)]
@@ -39,6 +41,7 @@ pub enum ProcessError {
     StackError,
     HeapError,
     InvalidExec,
+    ReadError,
 }
 
 #[allow(improper_ctypes)]
@@ -55,7 +58,7 @@ extern "C" {
 /// Highgly unsafe function!
 ///
 /// Given `Cr3` and `rsp` values, it leaves the context.
-pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
+pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) -> ! {
     asm!(
         "mov cr3, rdi",
         "mov rsp, rsi",
@@ -76,7 +79,6 @@ pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
         "pop r15",
         "vmovaps ymm0, [rsp]",
         "add rsp, 32",
-        //"sti",
         "iretq",
         options(noreturn,),
     )
@@ -486,12 +488,12 @@ pub unsafe fn disassemble_and_launch(
     ID_TABLE[0].state = State::Runnable;
     // This represents the very end of all loaded segments
     let mut maximum_address = 0;
-    let args_len = args.len();
+    let _args_len = args.len();
     // Loop over each section
     for program in elf.program_iter() {
         // Characteristics of the section
         let address = program.virtual_addr();
-        let offset = program.offset();
+        let _offset = program.offset();
         let size = program.mem_size();
         let file_size = program.file_size();
 
@@ -874,13 +876,13 @@ pub fn spawn_first_process() {
     }*/
     let screen_file_name = "/hard/kbd";
     proc.open_files
-        .create_file_table(Path::from(&screen_file_name), OpenFlags::ORDO as usize);
+        .create_file_table(Path::from(&screen_file_name), OpenFlags::ORD);
     let screen_file_name = "/hard/screen";
     proc.open_files
-        .create_file_table(Path::from(&screen_file_name), OpenFlags::OWRO as usize);
+        .create_file_table(Path::from(&screen_file_name), OpenFlags::OWR);
     let shell_file_name = "/hard/host";
     proc.open_files
-        .create_file_table(Path::from(&shell_file_name), OpenFlags::OWRO as usize);
+        .create_file_table(Path::from(&shell_file_name), OpenFlags::OWR);
     unsafe {
         ID_TABLE[0] = proc;
     }
