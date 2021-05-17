@@ -617,7 +617,7 @@ impl UsTar {
             }
             FileMode::Long => {
                 //println!("Writing in long mode.");
-            let number_address_block = div_ceil(blocks_number,128);
+                let number_address_block = div_ceil(blocks_number, 128);
                 let header_address = unsafe { self.get_addresses(1)[0] };
                 let address_block_addresses: Vec<Address> =
                     unsafe { self.get_addresses(number_address_block) };
@@ -711,7 +711,7 @@ impl UsTar {
         } else if header.mode == FileMode::Long {
             println!("Reading in long mode");
             let mut counter = 0;
-            let _number_address_block = div_ceil(header.blocks_number,128);
+            let _number_address_block = div_ceil(header.blocks_number, 128);
             let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
             let nb_bloc = div_ceil(length, 512);
@@ -806,8 +806,8 @@ impl UsTar {
     pub fn read_from_disk<T: U16Array>(&self, lba: u32) -> T {
         T::from_u16_array(disk_operations::read_sector(lba, self.port))
     }
-    
-    pub fn del_file(&mut self, oft:&OpenFileTable) -> Result<Address,UsTarError> {
+
+    pub fn del_file(&mut self, oft: &OpenFileTable) -> Result<Address, UsTarError> {
         let memfile = self.find_memfile(oft.get_path());
         match memfile {
             Err(_) => Err(UsTarError::FileNotFound),
@@ -816,22 +816,27 @@ impl UsTar {
                 match header.mode {
                     FileMode::Short => {
                         for addr in header.blocks.iter() {
-                            self.lba_table_global.mark_available(addr.lba as u32, addr.block as u32);
+                            self.lba_table_global
+                                .mark_available(addr.lba as u32, addr.block as u32);
                         }
-                    },
+                    }
                     FileMode::Long => {
                         for addr in header.blocks.iter() {
-                            let sector : LongFile = self.read_from_disk( (addr.lba * 512 + addr.block) as u32);
+                            let sector: LongFile =
+                                self.read_from_disk((addr.lba * 512 + addr.block) as u32);
                             for a in sector.addresses.iter() {
-                                self.lba_table_global.mark_available(a.lba as u32, a.block as u32);
+                                self.lba_table_global
+                                    .mark_available(a.lba as u32, a.block as u32);
                             }
-                            self.lba_table_global.mark_available(addr.lba as u32, addr.block as u32);
+                            self.lba_table_global
+                                .mark_available(addr.lba as u32, addr.block as u32);
                         }
                     }
                 }
                 let header_address = self.find_address(oft.get_path())?;
-                self.lba_table_global.mark_available(header_address.lba as u32,  header_address.block as u32);
-                unsafe {FILE_ADRESS_CACHE.0.remove(oft.get_path())};
+                self.lba_table_global
+                    .mark_available(header_address.lba as u32, header_address.block as u32);
+                unsafe { FILE_ADRESS_CACHE.0.remove(oft.get_path()) };
                 Ok(header_address)
             }
         }
@@ -1012,19 +1017,29 @@ impl Partition for UsTar {
                                     Err(_) => return -1,
                                     Ok(x) => x,
                                 };
-                                let res = self.write(oft, buffer);
-                                if res < 0 {
-                                    return res
+                                let effective_data =
+                                    [&file.data[..true_offset as usize], buffer].concat();
+                                let exit_code = self.write(oft, &effective_data);
+                                if exit_code < 0 {
+                                    return exit_code;
                                 }
                                 let new_header_addr_res = self.find_address(oft.get_path());
                                 let new_header_addr = match new_header_addr_res {
                                     Err(_) => return -1,
                                     Ok(x) => x,
                                 };
-                                let new_header : Header = self.read_from_disk((new_header_addr.lba * 512 + new_header_addr.block) as u32);
-                                self.write_to_disk(new_header, (old_header_addr.lba * 512 + old_header_addr.block) as u32);
-                                self.lba_table_global.mark_available(new_header_addr.lba as u32, new_header_addr.block as u32);
-                                res
+                                let new_header: Header = self.read_from_disk(
+                                    (new_header_addr.lba * 512 + new_header_addr.block) as u32,
+                                );
+                                self.write_to_disk(
+                                    new_header,
+                                    (old_header_addr.lba * 512 + old_header_addr.block) as u32,
+                                );
+                                self.lba_table_global.mark_available(
+                                    new_header_addr.lba as u32,
+                                    new_header_addr.block as u32,
+                                );
+                                exit_code
                             }
                         }
                     }
@@ -1034,19 +1049,28 @@ impl Partition for UsTar {
                             Err(_) => return -1,
                             Ok(x) => x,
                         };
-                        let res = self.write(oft, buffer);
-                        if res < 0 {
-                            return res
+                        let effective_data = [&file.data[..true_offset as usize], buffer].concat();
+                        let exit_code = self.write(oft, &effective_data);
+                        if exit_code < 0 {
+                            return exit_code;
                         }
                         let new_header_addr_res = self.find_address(oft.get_path());
                         let new_header_addr = match new_header_addr_res {
                             Err(_) => return -1,
                             Ok(x) => x,
                         };
-                        let new_header : Header = self.read_from_disk((new_header_addr.lba * 512 + new_header_addr.block) as u32);
-                        self.write_to_disk(new_header, (old_header_addr.lba * 512 + old_header_addr.block) as u32);
-                        self.lba_table_global.mark_available(new_header_addr.lba as u32, new_header_addr.block as u32);
-                        res
+                        let new_header: Header = self.read_from_disk(
+                            (new_header_addr.lba * 512 + new_header_addr.block) as u32,
+                        );
+                        self.write_to_disk(
+                            new_header,
+                            (old_header_addr.lba * 512 + old_header_addr.block) as u32,
+                        );
+                        self.lba_table_global.mark_available(
+                            new_header_addr.lba as u32,
+                            new_header_addr.block as u32,
+                        );
+                        exit_code
                     }
                 }
             }
