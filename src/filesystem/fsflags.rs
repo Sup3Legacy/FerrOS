@@ -2,10 +2,7 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-
 use bitflags::bitflags;
-
-
 
 bitflags! {
     #[repr(transparent)]
