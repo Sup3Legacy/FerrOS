@@ -874,12 +874,7 @@ impl Partition for UsTar {
     }
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
-        debug!(
-            "Writing {:?}, flags={:?}\n Content={:?}",
-            oft.get_path(),
-            oft.get_flags(),
-            buffer
-        );
+        debug!("Writing {:?}, with {:?}", oft, buffer);
         if !(oft.get_flags().contains(OpenFlags::OWR)) {
             errorln!("Tried to write in {:?}, but no right!", oft.get_path());
             return -1; // no right to write
@@ -897,6 +892,7 @@ impl Partition for UsTar {
                     // look for the parent folder in which we will create the file
                     let parent_path = oft.get_path().get_parent();
                     let parent_dir = if let Ok(a) = self.find_memdir(&parent_path) {
+                        debug!("Parent folder is : {:?}", a);
                         a
                     } else {
                         errorln!(
@@ -908,6 +904,7 @@ impl Partition for UsTar {
                     let name = oft.get_path().get_name();
                     let bytes = name.as_bytes();
                     if name.len() > 32 {
+                        errorln!("File name too long!");
                         return -1;
                     }
                     // convert it in a byte array
@@ -941,12 +938,14 @@ impl Partition for UsTar {
                         header: header,
                         data: buffer.to_vec(),
                     };
+                    debug!("File created: {:?}", file);
                     self.write_memfile_to_disk(&file);
                     return 0;
                 };
             }
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
+                debug!("File exists and is : {:?}", file);
                 let header_address = self.find_address(oft.get_path()).unwrap();
                 let old_size = file.header.length;
                 let true_offset = if oft.get_flags().contains(OpenFlags::OAPPEND) {
@@ -957,12 +956,14 @@ impl Partition for UsTar {
                 let new_size = true_offset + (buffer.len() as u32);
                 match file.header.mode {
                     FileMode::Short => {
+                        debug!("File was short!");
                         let block_addresses = file.header.blocks;
                         let blocks_to_write = slice_vec(buffer);
                         let number_blocks_to_write = blocks_to_write.len();
                         let block_offset = div_ceil(true_offset, 512);
                         let new_blocks_number = block_offset + number_blocks_to_write as u32;
                         if new_size <= old_size {
+                            debug!("New file is shorter!");
                             for i in block_offset..new_blocks_number {
                                 let addr = file.header.blocks[i as usize];
                                 self.lba_table_global
@@ -990,6 +991,7 @@ impl Partition for UsTar {
                             return 0;
                         } else {
                             if new_size < 512 * SHORT_MODE_LIMIT {
+                                debug!("File longer but still short");
                                 let block_addresses = file.header.blocks;
                                 let blocks_to_write = slice_vec(buffer);
                                 let number_blocks_to_write = blocks_to_write.len();
@@ -1025,6 +1027,7 @@ impl Partition for UsTar {
                                 self.lba_table_global.write_to_disk(self.port);
                                 return 0;
                             } else {
+                                debug!("File longer and becomes Long");
                                 let old_header_addr_res = self.del_file(oft);
                                 let old_header_addr = match old_header_addr_res {
                                     Err(_) => return -1,
@@ -1032,6 +1035,7 @@ impl Partition for UsTar {
                                 };
                                 let effective_data =
                                     [&file.data[..true_offset as usize], buffer].concat();
+                                debug!("New data: {:?}", effective_data);
                                 let exit_code = self.write(oft, &effective_data);
                                 if exit_code < 0 {
                                     return exit_code;
@@ -1057,12 +1061,14 @@ impl Partition for UsTar {
                         }
                     }
                     FileMode::Long => {
+                        debug!("File was Long");
                         let old_header_addr_res = self.del_file(oft);
                         let old_header_addr = match old_header_addr_res {
                             Err(_) => return -1,
                             Ok(x) => x,
                         };
                         let effective_data = [&file.data[..true_offset as usize], buffer].concat();
+                        debug!("New data: {:?}", effective_data);
                         let exit_code = self.write(oft, &effective_data);
                         if exit_code < 0 {
                             return exit_code;
