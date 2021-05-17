@@ -831,6 +831,7 @@ impl UsTar {
                 }
                 let header_address = self.find_address(oft.get_path())?;
                 self.lba_table_global.mark_available(header_address.lba as u32,  header_address.block as u32);
+                unsafe {FILE_ADRESS_CACHE.0.remove(oft.get_path())};
                 Ok(header_address)
             }
         }
@@ -867,7 +868,6 @@ impl Partition for UsTar {
         Ok(res)
     }
 
-    #[allow(unreachable_code)]
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
         if !(oft.get_flags().contains(OpenFlags::OWR)) {
             return -1; // no right to write
@@ -1007,7 +1007,24 @@ impl Partition for UsTar {
                                 self.lba_table_global.write_to_disk(self.port);
                                 return 0;
                             } else {
-                                todo!() // cry :'(
+                                let old_header_addr_res = self.del_file(oft);
+                                let old_header_addr = match old_header_addr_res {
+                                    Err(_) => return -1,
+                                    Ok(x) => x,
+                                };
+                                let res = self.write(oft, buffer);
+                                if res < 0 {
+                                    return res
+                                }
+                                let new_header_addr_res = self.find_address(oft.get_path());
+                                let new_header_addr = match new_header_addr_res {
+                                    Err(_) => return -1,
+                                    Ok(x) => x,
+                                };
+                                let new_header : Header = self.read_from_disk((new_header_addr.lba * 512 + new_header_addr.block) as u32);
+                                self.write_to_disk(new_header, (old_header_addr.lba * 512 + old_header_addr.block) as u32);
+                                self.lba_table_global.mark_available(new_header_addr.lba as u32, new_header_addr.block as u32);
+                                res
                             }
                         }
                     }
