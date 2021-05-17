@@ -2,6 +2,7 @@ use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 
+use crate::debug;
 use crate::scheduler;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, warningln};
@@ -55,6 +56,7 @@ impl Partition for ProcDriver {
     #[allow(clippy::len_zero)]
     fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         let sliced = oft.get_path().clone().slice();
+        debug!("proc got {:?},n {:?}", oft.get_path(), sliced);
         if sliced.len() == 2 {
             if let Ok(proc) = sliced[0].parse::<usize>() {
                 if let Ok(pi) = self.get_info(&sliced[1]) {

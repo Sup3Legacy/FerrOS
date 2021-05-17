@@ -45,6 +45,7 @@ impl Path {
             .to()
             .split('/')
             .map(String::from)
+            .filter(|x| !x.is_empty())
             .collect::<Vec<String>>();
         sliced
     }
