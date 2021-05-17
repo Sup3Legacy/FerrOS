@@ -1029,7 +1029,24 @@ impl Partition for UsTar {
                         }
                     }
                     FileMode::Long => {
-                        todo!(); // cry :'(
+                        let old_header_addr_res = self.del_file(oft);
+                        let old_header_addr = match old_header_addr_res {
+                            Err(_) => return -1,
+                            Ok(x) => x,
+                        };
+                        let res = self.write(oft, buffer);
+                        if res < 0 {
+                            return res
+                        }
+                        let new_header_addr_res = self.find_address(oft.get_path());
+                        let new_header_addr = match new_header_addr_res {
+                            Err(_) => return -1,
+                            Ok(x) => x,
+                        };
+                        let new_header : Header = self.read_from_disk((new_header_addr.lba * 512 + new_header_addr.block) as u32);
+                        self.write_to_disk(new_header, (old_header_addr.lba * 512 + old_header_addr.block) as u32);
+                        self.lba_table_global.mark_available(new_header_addr.lba as u32, new_header_addr.block as u32);
+                        res
                     }
                 }
             }
