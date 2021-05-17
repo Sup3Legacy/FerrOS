@@ -791,7 +791,17 @@ impl Process {
         }
     }
 
-    #[allow(clippy::empty_loop)]
+    pub unsafe fn died(&mut self, code: usize) {
+        self.state = State::Zombie(code);
+        for process in ID_TABLE.iter_mut() {
+            if process.ppid == self.pid {
+                process.ppid = self.ppid;
+            }
+        }
+        self.open_files.close()
+    }
+
+    /*#[allow(clippy::empty_loop)]
     /// # Safety
     /// TODO
     pub unsafe fn launch() {
@@ -799,7 +809,7 @@ impl Process {
             loop {}
         } // /!\
         launch_asm(f, 0);
-    }
+    }*/
 }
 
 // Keeps track of the children of the processes, in order to keep the Process struct on the stack
@@ -907,13 +917,7 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 /// From the number of cycles executed and return code, returns a new process
 pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process {
     let old_pid = CURRENT_PROCESS;
-    // Change parentality
-    ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
-    for process in ID_TABLE.iter_mut() {
-        if process.ppid == ID_TABLE[old_pid].pid {
-            process.ppid = ID_TABLE[old_pid].ppid;
-        }
-    }
+    ID_TABLE[old_pid].died(return_code as usize);
 
     let new_pid = next_pid_to_run().0 as usize;
     CURRENT_PROCESS = new_pid;
@@ -929,7 +933,6 @@ pub fn listen(id: usize) -> (usize, usize) {
                 if process.ppid == ppid {
                     if let State::Zombie(return_value) = process.state {
                         process.state = State::SlotAvailable;
-                        process.open_files.close();
                         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                             frame_allocator.deallocate_level_4_page(
                                 process.cr3,
@@ -948,7 +951,6 @@ pub fn listen(id: usize) -> (usize, usize) {
                 crate::warningln!("State : {:?}", process.state);
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
-                    process.open_files.close();
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                         frame_allocator.deallocate_level_4_page(
                             process.cr3,
@@ -1049,12 +1051,13 @@ pub unsafe fn set_priority(prio: usize) -> usize {
 /// Need to add more security to prevent killing random processes
 pub unsafe fn kill(target: usize) -> usize {
     let target_process = &mut ID_TABLE[target];
+    crate::warningln!("Target of Kill: {:?}", target_process.state);
     if target_process.priority < ID_TABLE[CURRENT_PROCESS].priority {
         crate::warningln!("Kill of {} failed", target);
         1
     } else {
         crate::warningln!("Kill of {} succeeded", target);
-        target_process.state = State::Zombie(1);
+        target_process.died(1);
         0
     }
 }

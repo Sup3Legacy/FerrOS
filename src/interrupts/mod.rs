@@ -369,6 +369,7 @@ extern "x86-interrupt" fn page_fault_handler(
     let read_addr = Cr2::read();
     if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
         unsafe {
+            unsafe { crate::errorln!("Process died normally. {}", process::CURRENT_PROCESS) };
             let new = process::process_died(COUNTER, 0); // TODO fetch return code
             COUNTER = 0;
             process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
