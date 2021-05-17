@@ -106,12 +106,14 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
         if let Ok(oft) = oft_res {
             let res = match filesystem::read_file(oft, size as usize) {
                 Ok(x) => x,
-                Err(IoError::Continue) => Vec::new(),
-                Err(IoError::Kill) => unsafe {
-                    let new = process::process_died(interrupts::COUNTER, process::IO_ERROR);
-                    interrupts::COUNTER = 0;
-                    process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
-                },
+                Err(IoError::Continue) => {
+                    warningln!("File reading failed: continue");
+                    todo!()
+                }
+                Err(IoError::Kill) => {
+                    warningln!("File reading failed: kill");
+                    todo!()
+                }
                 Err(IoError::Sleep) => {
                     warningln!("File reading failed: sleep");
                     todo!()
