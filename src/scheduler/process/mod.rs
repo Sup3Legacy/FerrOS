@@ -801,6 +801,14 @@ impl Process {
         self.open_files.close()
     }
 
+    pub fn get_heap(&self) -> usize {
+        self.heap_size as usize
+    }
+
+    pub fn get_ppid(&self) -> usize {
+        self.ppid.as_usize()
+    }
+
     /*#[allow(clippy::empty_loop)]
     /// # Safety
     /// TODO
