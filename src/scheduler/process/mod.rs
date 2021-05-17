@@ -29,6 +29,8 @@ use alloc::string::String;
 /// Default allocated heap size (in number of pages)
 const DEFAULT_HEAP_SIZE: u64 = 2;
 
+pub const IO_ERROR: u64 = 2;
+
 pub mod elf;
 
 #[derive(Debug)]
@@ -56,7 +58,7 @@ extern "C" {
 /// Highgly unsafe function!
 ///
 /// Given `Cr3` and `rsp` values, it leaves the context.
-pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
+pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) -> ! {
     asm!(
         "mov cr3, rdi",
         "mov rsp, rsi",
@@ -77,7 +79,6 @@ pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) {
         "pop r15",
         "vmovaps ymm0, [rsp]",
         "add rsp, 32",
-        //"sti",
         "iretq",
         options(noreturn,),
     )
