@@ -85,6 +85,7 @@ where
     }
 }
 
+/*
 #[cfg(test)]
 mod test {
     #[test]
@@ -109,3 +110,4 @@ mod test {
         assert_eq!(0, queue.pop());
     }
 }
+*/
