@@ -18,12 +18,6 @@ bitflags! {
     }
 }
 
-impl OpenFlags {
-    pub fn from(f: usize) -> Self {
-        OpenFlags::ORD
-    }
-}
-
 /*
 /// Flags used to open a file. May be incomplete
 #[repr(usize)]

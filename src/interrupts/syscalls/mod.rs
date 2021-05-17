@@ -204,10 +204,9 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
     crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
-        .create_file_table(
-            path::Path::from(&path),
-            crate::filesystem::fsflags::OpenFlags::from(args.rsi as usize),
-        )
+        .create_file_table(path::Path::from(&path), unsafe {
+            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rsi as usize)
+        })
         .into_u64();
     crate::debug!("syscall open end {}", fd);
     // Puts the fd into rax

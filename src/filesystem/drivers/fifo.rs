@@ -25,17 +25,23 @@ impl FiFoPartitionInner {
                 Err(PopError) => {
                     if b {
                         if data.len() == 0 {
+                            crate::warningln!("FiFo empty, now killing");
                             return Err(IoError::Kill);
                         } else {
+                            crate::warningln!("FiFo gave end and is alone {}", data.len());
                             return Ok(data);
                         }
                     } else {
+                        if data.len() != 0 {
+                            crate::warningln!("FiFo gave end and not alone {}", data.len());
+                        }
                         return Ok(data);
                     }
                 }
                 Ok(d) => data.push(d),
             }
         }
+        crate::warningln!("FiFo not empty {}", data.len());
         Ok(data)
     }
 
