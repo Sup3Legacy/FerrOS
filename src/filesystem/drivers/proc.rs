@@ -91,12 +91,19 @@ impl Partition for ProcDriver {
             for (id, proc) in unsafe { scheduler::process::ID_TABLE.as_ref().iter().enumerate() } {
                 match proc.state {
                     process::State::SlotAvailable => (),
-                    _ => {
+                    s => {
                         let id = format!("{}", id);
                         for b in id.bytes() {
                             res_array.push(b)
                         }
                         res_array.push(b' ');
+                        match s {
+                            process::State::Zombie(_) => res_array.push(b'Z'),
+                            process::State::Running => res_array.push(b'M'),
+                            process::State::Runnable => res_array.push(b'R'),
+                            _ => res_array.push(b'?'),
+                        }
+                        res_array.push(b'\n');
                     }
                 }
             }
