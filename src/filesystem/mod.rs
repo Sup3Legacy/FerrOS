@@ -12,11 +12,8 @@ use core::todo;
 
 pub mod descriptor;
 pub mod drivers;
-pub mod fifo;
 pub mod fsflags;
-pub mod host_shell;
 pub mod partition;
-pub mod screen_partition;
 pub mod test;
 pub mod vfs;
 
@@ -39,7 +36,7 @@ pub static mut VFS: Option<VFS> = None;
 pub unsafe fn init_vfs() {
     VFS = Some(VFS::new());
     if let Some(vfs) = &mut VFS {
-        let s1 = screen_partition::ScreenPartition::new();
+        let s1 = drivers::screen_partition::ScreenPartition::new();
         vfs.add_file(Path::from("/hard/screen"), Box::new(s1))
             .expect("could not create screen");
         let s2 = drivers::clock_driver::ClockDriver::new();
@@ -51,11 +48,11 @@ pub unsafe fn init_vfs() {
         let s4 = drivers::sound::SoundDriver::new();
         vfs.add_file(Path::from("/hard/sound"), Box::new(s4))
             .expect("could not create sound driver.");
-        let s5 = host_shell::HostShellPartition::new();
+        let s5 = drivers::host_shell::HostShellPartition::new();
         vfs.add_file(Path::from("/hard/host"), Box::new(s5))
             .expect("could not create shell printer.");
 
-        let s6 = fifo::FiFoPartition::new();
+        let s6 = drivers::fifo::FiFoPartition::new();
         vfs.add_file(Path::from("/dev/fifo"), Box::new(s6))
             .expect("could not create fifo.");
 

@@ -1,6 +1,6 @@
 //! host shell accessed by the serial interface
 
-use super::partition::{IoError, Partition};
+use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 
