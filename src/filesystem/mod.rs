@@ -135,7 +135,7 @@ pub fn read_file(oft: &mut OpenFileTable, length: usize) -> Result<Vec<u8>, IoEr
 pub fn read_file_from_path(path: Path) -> Result<Vec<u8>, IoError> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            let oft = OpenFileTable::new(path, fsflags::OpenFlags::OXCUTE as usize, usize::MAX);
+            let oft = OpenFileTable::new(path, fsflags::OpenFlags::OXCUTE, usize::MAX);
             match vfs.read(&oft, usize::MAX) {
                 Ok(res) => Ok(res),
                 Err(err) => Err(err),
@@ -174,7 +174,7 @@ pub fn get_data(_path: Path) -> &'static [u8] {
 fn test() {
     println!(
         "{:?}",
-        open_file(&Path::from(&String::from("test")), OpenFlags::ORDO)
+        open_file(&Path::from(&String::from("test")), OpenFlags::ORD)
     );
 }
 

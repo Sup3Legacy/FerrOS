@@ -876,13 +876,13 @@ pub fn spawn_first_process() {
     }*/
     let screen_file_name = "/hard/kbd";
     proc.open_files
-        .create_file_table(Path::from(&screen_file_name), OpenFlags::ORDO as usize);
+        .create_file_table(Path::from(&screen_file_name), OpenFlags::ORD);
     let screen_file_name = "/hard/screen";
     proc.open_files
-        .create_file_table(Path::from(&screen_file_name), OpenFlags::OWRO as usize);
+        .create_file_table(Path::from(&screen_file_name), OpenFlags::OWR);
     let shell_file_name = "/hard/host";
     proc.open_files
-        .create_file_table(Path::from(&shell_file_name), OpenFlags::OWRO as usize);
+        .create_file_table(Path::from(&shell_file_name), OpenFlags::OWR);
     unsafe {
         ID_TABLE[0] = proc;
     }

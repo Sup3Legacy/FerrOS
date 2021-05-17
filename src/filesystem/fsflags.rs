@@ -3,9 +3,22 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use alloc::collections::BTreeSet;
+use bitflags::bitflags;
 use core::ops::BitAnd;
 use core::slice::Iter;
 
+bitflags! {
+    #[repr(transparent)]
+    pub struct OpenFlags: usize {
+        const ORD = 1;
+        const OWR = 1 << 1;
+        const OCREAT = 1 << 2;
+        const OAPPEND = 1 << 3;
+        const OXCUTE = 1 << 4;
+    }
+}
+
+/*
 /// Flags used to open a file. May be incomplete
 #[repr(usize)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -58,3 +71,4 @@ impl OpenFlags {
         flag_set
     }
 }
+*/
