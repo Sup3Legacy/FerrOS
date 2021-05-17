@@ -163,6 +163,7 @@ impl OpenFileTable {
     }
 
     pub fn close(&mut self) -> bool {
+        crate::warningln!("Tried to close {:?}", self.path);
         self.nb -= 1;
         self.nb == 0
     }

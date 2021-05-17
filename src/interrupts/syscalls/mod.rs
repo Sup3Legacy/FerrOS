@@ -179,12 +179,20 @@ extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut InterruptStac
             args.rax = res as u64;
         } else {
             warningln!("Could not get OpenFileTable {}", fd);
-            for _i in 0..10 {
-                let _oft_res = process
+            for i in 0..10 {
+                let oft_res = process
                     .open_files
-                    .get_file_table(descriptor::FileDescriptor::new(fd as usize));
+                    .get_file_table(descriptor::FileDescriptor::new(i as usize));
+                match oft_res {
+                    Ok(oft) => {
+                        debug!("{} -> {:?}", i, oft.get_path())
+                    }
+                    Err(_) => {
+                        debug!("{} -> Nothing", i)
+                    }
+                };
             }
-            panic!("Failure");
+            unsafe { panic!("Failure {}", process::CURRENT_PROCESS) };
         }
         //}
     } else {
@@ -216,7 +224,7 @@ extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStack
 /// close file. arg0 : unsigned int fd
 extern "C" fn syscall_3_close(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let descriptor = args.rdi;
-    crate::warningln!("Close fd {}", descriptor);
+    unsafe { crate::warningln!("Close fd {} of {}", descriptor, process::CURRENT_PROCESS) };
     unsafe {
         args.rax = process::get_current_as_mut()
             .open_files
@@ -278,7 +286,7 @@ extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut InterruptStack
 
 extern "C" fn syscall_7_exit(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     unsafe {
-        warningln!("syscall exit");
+        warningln!("syscall exit {}", process::CURRENT_PROCESS);
         let new = process::process_died(interrupts::COUNTER, args.rdi);
         interrupts::COUNTER = 0;
         process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
@@ -416,6 +424,7 @@ extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptSt
 }
 
 extern "C" fn syscall_23_kill(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
+    unsafe { debug!("{} tried to kill {}", process::CURRENT_PROCESS, args.rdi) };
     args.rax = unsafe { scheduler::process::kill(args.rdi as usize) as u64 };
 }
 
