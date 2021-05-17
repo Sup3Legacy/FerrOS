@@ -2,10 +2,7 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-use alloc::collections::BTreeSet;
 use bitflags::bitflags;
-use core::ops::BitAnd;
-use core::slice::Iter;
 
 bitflags! {
     #[repr(transparent)]

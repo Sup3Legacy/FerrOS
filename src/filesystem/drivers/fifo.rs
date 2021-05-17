@@ -88,7 +88,7 @@ impl Default for FiFoPartition {
 }
 
 impl Partition for FiFoPartition {
-    fn open(&mut self, path: &Path, fs: OpenFlags) -> Option<usize> {
+    fn open(&mut self, path: &Path, _fs: OpenFlags) -> Option<usize> {
         if path.len() != 0 {
             return None;
         }

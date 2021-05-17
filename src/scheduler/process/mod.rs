@@ -488,12 +488,12 @@ pub unsafe fn disassemble_and_launch(
     ID_TABLE[0].state = State::Runnable;
     // This represents the very end of all loaded segments
     let mut maximum_address = 0;
-    let args_len = args.len();
+    let _args_len = args.len();
     // Loop over each section
     for program in elf.program_iter() {
         // Characteristics of the section
         let address = program.virtual_addr();
-        let offset = program.offset();
+        let _offset = program.offset();
         let size = program.mem_size();
         let file_size = program.file_size();
 
