@@ -112,10 +112,18 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
                     interrupts::COUNTER = 0;
                     process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
                 },
-                Err(IoError::Sleep) => {
-                    warningln!("File reading failed: sleep");
-                    todo!()
-                }
+                Err(IoError::Sleep) => unsafe {
+                    let (next, mut old) = process::gives_switch(interrupts::COUNTER);
+                    interrupts::COUNTER = 0;
+
+                    let (cr3, cr3f) = Cr3::read();
+                    old.cr3 = cr3.start_address();
+                    old.cr3f = cr3f;
+
+                    old.rsp = VirtAddr::from_ptr(args).as_u64();
+
+                    process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
+                },
             };
             let mut address = VirtAddr::new(args.rsi);
             for item in res.iter().take(min(size as usize, res.len())) {
@@ -279,8 +287,6 @@ extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStack
     unsafe {
         let (next, mut old) = process::gives_switch(interrupts::COUNTER);
         interrupts::COUNTER = 0;
-
-        debug!("Sleep to {}", process::CURRENT_PROCESS);
 
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
