@@ -22,6 +22,8 @@ use core::char;
 use core::cmp::min;
 use x86_64::{registers::control::Cr3, structures::paging::PageTableFlags, VirtAddr};
 
+use crate::filesystem::partition::IoError;
+
 /// type of the syscall interface inside the kernel
 pub type SyscallFunc = extern "C" fn();
 
@@ -102,7 +104,21 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
             .open_files
             .get_file_table(descriptor::FileDescriptor::new(fd as usize));
         if let Ok(oft) = oft_res {
-            let res = filesystem::read_file(oft, size as usize);
+            let res = match filesystem::read_file(oft, size as usize) {
+                Ok(x) => x,
+                Err(IoError::Continue) => {
+                    warningln!("File reading failed: continue");
+                    todo!()
+                },
+                Err(IoError::Kill) => {
+                    warningln!("File reading failed: kill");
+                    todo!()
+                },
+                Err(IoError::Sleep) => {
+                    warningln!("File reading failed: sleep");
+                    todo!()
+                },
+            };
             let mut address = VirtAddr::new(args.rsi);
             for item in res.iter().take(min(size as usize, res.len())) {
                 unsafe {

@@ -39,6 +39,7 @@ pub enum ProcessError {
     StackError,
     HeapError,
     InvalidExec,
+    ReadError,
 }
 
 #[allow(improper_ctypes)]
