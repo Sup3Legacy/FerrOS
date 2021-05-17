@@ -106,6 +106,20 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
         if let Ok(oft) = oft_res {
             let res = match filesystem::read_file(oft, size as usize) {
                 Ok(x) => x,
+<<<<<<< HEAD
+                Err(IoError::Continue) => {
+                    warningln!("File reading failed: continue");
+                    todo!()
+                }
+                Err(IoError::Kill) => {
+                    warningln!("File reading failed: kill");
+                    todo!()
+                }
+                Err(IoError::Sleep) => {
+                    warningln!("File reading failed: sleep");
+                    todo!()
+                }
+=======
                 Err(IoError::Continue) => Vec::new(),
                 Err(IoError::Kill) => unsafe {
                     let new = process::process_died(interrupts::COUNTER, process::IO_ERROR);
@@ -124,6 +138,7 @@ extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut InterruptStack
 
                     process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
                 },
+>>>>>>> vfs_with_open
             };
             let mut address = VirtAddr::new(args.rsi);
             for item in res.iter().take(min(size as usize, res.len())) {
