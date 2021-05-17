@@ -617,13 +617,7 @@ impl UsTar {
             }
             FileMode::Long => {
                 //println!("Writing in long mode.");
-                let number_address_block = blocks_number / 128 + {
-                    if blocks_number % 128 == 0 {
-                        0
-                    } else {
-                        1
-                    }
-                };
+            let number_address_block = div_ceil(blocks_number,128);
                 let header_address = unsafe { self.get_addresses(1)[0] };
                 let address_block_addresses: Vec<Address> =
                     unsafe { self.get_addresses(number_address_block) };
@@ -717,14 +711,7 @@ impl UsTar {
         } else if header.mode == FileMode::Long {
             println!("Reading in long mode");
             let mut counter = 0;
-            let _number_address_block = header.blocks_number / 128 + {
-                if header.blocks_number % 128 == 0 {
-                    0
-                } else {
-                    1
-                }
-            };
-
+            let _number_address_block = div_ceil(header.blocks_number,128);
             let mut data_addresses = Vec::new();
             // Read all addresses of data blocks
             let nb_bloc = div_ceil(length, 512);
@@ -818,6 +805,35 @@ impl UsTar {
 
     pub fn read_from_disk<T: U16Array>(&self, lba: u32) -> T {
         T::from_u16_array(disk_operations::read_sector(lba, self.port))
+    }
+    
+    pub fn del_file(&mut self, oft:&OpenFileTable) -> Result<Address,UsTarError> {
+        let memfile = self.find_memfile(oft.get_path());
+        match memfile {
+            Err(_) => Err(UsTarError::FileNotFound),
+            Ok(file) => {
+                let mut header = file.header;
+                match header.mode {
+                    FileMode::Short => {
+                        for addr in header.blocks.iter() {
+                            self.lba_table_global.mark_available(addr.lba as u32, addr.block as u32);
+                        }
+                    },
+                    FileMode::Long => {
+                        for addr in header.blocks.iter() {
+                            let sector : LongFile = self.read_from_disk( (addr.lba * 512 + addr.block) as u32);
+                            for a in sector.addresses.iter() {
+                                self.lba_table_global.mark_available(a.lba as u32, a.block as u32);
+                            }
+                            self.lba_table_global.mark_available(addr.lba as u32, addr.block as u32);
+                        }
+                    }
+                }
+                let header_address = self.find_address(oft.get_path())?;
+                self.lba_table_global.mark_available(header_address.lba as u32,  header_address.block as u32);
+                Ok(header_address)
+            }
+        }
     }
 }
 
