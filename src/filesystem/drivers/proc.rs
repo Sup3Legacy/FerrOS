@@ -45,11 +45,7 @@ impl Default for ProcDriver {
 
 impl Partition for ProcDriver {
     fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
-        if path.len() != 0 {
-            None
-        } else {
-            Some(0)
-        }
+        Some(0)
     }
 
     #[allow(clippy::if_same_then_else)]
