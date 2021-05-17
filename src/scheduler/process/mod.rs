@@ -945,6 +945,7 @@ pub fn listen(id: usize) -> (usize, usize) {
         } else {
             let mut process = ID_TABLE[id];
             if process.ppid == ppid {
+                crate::warningln!("State : {:?}", process.state);
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
                     process.open_files.close();
@@ -1047,10 +1048,12 @@ pub unsafe fn set_priority(prio: usize) -> usize {
 /// # Safety
 /// Need to add more security to prevent killing random processes
 pub unsafe fn kill(target: usize) -> usize {
-    let mut target_process = ID_TABLE[target];
+    let target_process = &mut ID_TABLE[target];
     if target_process.priority < ID_TABLE[CURRENT_PROCESS].priority {
+        crate::warningln!("Kill of {} failed", target);
         1
     } else {
+        crate::warningln!("Kill of {} succeeded", target);
         target_process.state = State::Zombie(1);
         0
     }

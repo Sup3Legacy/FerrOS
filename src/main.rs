@@ -133,7 +133,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     println!("Changing timer frequence");
     unsafe {
-        hardware::timer::set_timer(0x0000); // 0 = 0x10000 = frequence min
+        hardware::timer::set_timer(0x8000); // 0 = 0x10000 = frequence min
     }
 
     // Interrupt initialisation put at the end to avoid messing up with I/O

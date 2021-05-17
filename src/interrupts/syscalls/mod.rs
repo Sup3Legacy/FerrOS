@@ -418,9 +418,9 @@ extern "C" fn syscall_21_memrequest(args: &mut RegistersMini, _isf: &mut Interru
 
 extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let (rax, rdi) = scheduler::process::listen(args.rdi as usize);
+    debug!("listened {} {} and expected {}", rax, rdi, args.rdi);
     args.rax = rax as u64;
     args.rdi = rdi as u64;
-    debug!("listened {} {}", args.rax, args.rdi);
 }
 
 extern "C" fn syscall_23_kill(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
