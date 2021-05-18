@@ -733,23 +733,45 @@ impl Process {
         let new_pid = ID::new();
         unsafe {
             CHILDREN.insert(new_pid, BTreeSet::new());
+            Self {
+                pid: new_pid,
+                ppid: parent,
+                priority,
+                quantum: 0_u64,
+                cr3: PhysAddr::zero(),
+                cr3f: Cr3Flags::empty(),
+                rsp: 0,
+                stack_base: 0,
+                state: State::Runnable,
+                owner,
+                heap_address: 0,
+                heap_size: 0,
+                open_files: ProcessDescriptorTable::init(),
+                name: [b' '; SIZE_NAME],
+                //screen: VirtualScreenID::new(),
+            }
         }
+    }
+
+    pub fn fork(&self) -> Self {
+        let new_pid = ID::new();
+        let mut open_files = ProcessDescriptorTable::init();
+        open_files.copy(self.open_files);
         Self {
             pid: new_pid,
-            ppid: parent,
-            priority,
+            ppid: self.pid,
+            priority: self.priority,
             quantum: 0_u64,
             cr3: PhysAddr::zero(),
-            cr3f: Cr3Flags::empty(),
-            rsp: 0,
-            stack_base: 0,
-            state: State::Runnable,
-            owner,
-            heap_address: 0,
-            heap_size: 0,
-            open_files: ProcessDescriptorTable::init(),
-            name: [b' '; SIZE_NAME],
-            //screen: VirtualScreenID::new(),
+            cr3f: self.cr3f,
+            rsp: self.rsp,
+            stack_base: self.stack_base,
+            state: self.state,
+            owner: self.owner,
+            heap_address: self.heap_address,
+            heap_size: self.heap_size,
+            open_files,
+            name: self.name,
         }
     }
 
@@ -1011,30 +1033,21 @@ pub unsafe fn get_process(pid: usize) -> &'static Process {
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
 pub unsafe fn fork() -> ID {
-    let mut son = Process::create_new(
-        ID_TABLE[CURRENT_PROCESS].pid,
-        ID_TABLE[CURRENT_PROCESS].priority,
-        ID_TABLE[CURRENT_PROCESS].owner,
-    );
+    let mut son = ID_TABLE[CURRENT_PROCESS].fork();
     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
         match frame_allocator.copy_table_entries(ID_TABLE[CURRENT_PROCESS].cr3) {
             Ok(phys) => son.cr3 = phys,
             Err(_) => panic!("TODO"),
         }
-        son.cr3f = ID_TABLE[CURRENT_PROCESS].cr3f;
     } else {
-        panic!("un initialized frame allocator");
+        panic!("uninitialized frame allocator");
     }
     let pid = son.pid;
     son.state = State::Runnable;
-    son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
-    son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
-    son.open_files.copy(ID_TABLE[CURRENT_PROCESS].open_files);
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)
         .expect("Could not push son process into the queue");
-    // TODO
     pid
 }
 

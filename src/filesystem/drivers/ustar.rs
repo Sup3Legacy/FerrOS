@@ -370,14 +370,21 @@ struct FileBuffer(BTreeMap<Path, MemFile>);
 
 /// Slices a `Vec<u8>` of binary data into a `Vec<[u16; 256]>`.
 /// This simplifies the conversion from data-blob to set of `256-u16` sectors.
-fn slice_vec(data: &[u8]) -> Vec<[u16; 256]> {
+fn slice_vec(data: &[u8], offset: u32) -> Vec<[u16; 256]> {
+    if offset > 512 {
+        return Vec::new();
+    };
     let n = data.len();
     let block_number = div_ceil(n as u32, 512) as usize;
     let mut res: Vec<[u16; 256]> = Vec::new();
     let mut index = 0;
-    for _i in 0..block_number {
+    for i in 0..block_number {
         let mut arr = [0_u16; 256];
-        for elt in arr.iter_mut().take(256) {
+        let mut n_skip = 0;
+        if i == 0 {
+            n_skip = (offset / 2) as usize;
+        };
+        for elt in arr.iter_mut().skip(n_skip) {
             if 2 * index + 1 >= n {
                 break;
             }
@@ -646,7 +653,7 @@ impl UsTar {
                     file_header,
                     (header_address.lba * 512 + header_address.block) as u32,
                 );
-                let blocks_to_write = slice_vec(&memfile.data);
+                let blocks_to_write = slice_vec(&memfile.data, 0);
                 for i in 0..blocks_number {
                     let file_block = FileBlock {
                         data: blocks_to_write[i as usize],
@@ -705,7 +712,7 @@ impl UsTar {
                 }
 
                 // Now we write all data blocks
-                let blocks_to_write = slice_vec(&memfile.data);
+                let blocks_to_write = slice_vec(&memfile.data, 0);
                 for i in 0..blocks_number {
                     let file_block = FileBlock {
                         data: blocks_to_write[i as usize],
@@ -1004,7 +1011,7 @@ impl Partition for UsTar {
                     FileMode::Short => {
                         debug!("File was short!");
                         let block_addresses = file.header.blocks;
-                        let blocks_to_write = slice_vec(buffer);
+                        let mut blocks_to_write = slice_vec(buffer, true_offset % 512);
                         let number_blocks_to_write = blocks_to_write.len();
                         let block_offset = div_ceil(true_offset, 512);
                         let new_blocks_number = block_offset + number_blocks_to_write as u32;
@@ -1039,29 +1046,46 @@ impl Partition for UsTar {
                             if new_size < 512 * SHORT_MODE_LIMIT {
                                 debug!("File longer but still short");
                                 let block_addresses = file.header.blocks;
-                                let blocks_to_write = slice_vec(buffer);
                                 let number_blocks_to_write = blocks_to_write.len();
-                                let block_offset = div_ceil(true_offset, 512);
+                                let block_offset = true_offset / 512;
                                 let new_blocks_number =
-                                    block_offset + number_blocks_to_write as u32;
+                                    div_ceil(true_offset + buffer.len() as u32, 512);
                                 let new_addresses = unsafe {
                                     self.get_addresses(
                                         new_blocks_number - file.header.blocks_number,
                                     )
                                 };
-                                for i in file.header.blocks_number + 1..new_blocks_number {
+                                for i in file.header.blocks_number..new_blocks_number {
                                     file.header.blocks[i as usize] =
                                         new_addresses[(i - file.header.blocks_number + 1) as usize];
                                 }
+                                if true_offset % 512 != 0 {
+                                    let b: [u16; 256] = self
+                                        .read_from_disk::<FileBlock>(
+                                            (file.header.blocks[block_offset as usize].lba * 512
+                                                + file.header.blocks[block_offset as usize].block)
+                                                as u32,
+                                        )
+                                        .to_u16_array();
+                                    for i in 0..(true_offset % 512) / 2 {
+                                        blocks_to_write[0][i as usize] = b[i as usize];
+                                    }
+                                }
+                                debug!("{:?}", file.header.blocks);
+                                debug!("Writing {:?}", blocks_to_write);
                                 for i in 0..number_blocks_to_write {
                                     let file_block = FileBlock {
                                         data: blocks_to_write[i as usize],
                                     };
+                                    debug!(
+                                        "Target : {:?}",
+                                        file.header.blocks[i + block_offset as usize]
+                                    );
                                     self.write_to_disk(
                                         file_block,
-                                        (block_addresses[i + block_offset as usize].lba * 512
-                                            + block_addresses[i + block_offset as usize].block
-                                            + 1) as u32,
+                                        (file.header.blocks[i + block_offset as usize].lba * 512
+                                            + file.header.blocks[i + block_offset as usize].block)
+                                            as u32,
                                     );
                                 }
                                 file.header.blocks_number = new_blocks_number;
