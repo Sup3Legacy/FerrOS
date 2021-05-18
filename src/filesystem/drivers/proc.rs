@@ -28,6 +28,10 @@ impl ProcDriver {
             String::from("heap"),
             ProcInfoDriver::new(String::from("heap"), heap_proc),
         );
+        res.infos.insert(
+            String::from("state"),
+            ProcInfoDriver::new(String::from("state"), state),
+        );
         res
     }
     pub fn get_info(&self, id: &str) -> Result<&ProcInfoDriver, ErrProc> {
@@ -197,4 +201,13 @@ fn heap_proc(proc: usize) -> Vec<u8> {
 
 fn screen(_proc: usize) -> Vec<u8> {
     todo!()
+}
+
+fn state(proc: usize) -> Vec<u8> {
+    if proc as u64 >= scheduler::PROCESS_MAX_NUMBER {
+        return Vec::new();
+    }
+    let process = unsafe { process::get_process(proc) };
+    let str = format!("{:?}", process.state);
+    str.as_bytes().to_vec()
 }
