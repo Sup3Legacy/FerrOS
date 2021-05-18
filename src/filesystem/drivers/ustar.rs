@@ -874,34 +874,37 @@ impl Partition for UsTar {
     }
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
+        let mut path_name = String::from("root/");
+        path_name.push_str(&oft.get_path().to());
+        let path_name = Path::from(&path_name);
         debug!("Writing {:?}, with {:?}", oft, buffer);
         if !(oft.get_flags().contains(OpenFlags::OWR)) {
-            errorln!("Tried to write in {:?}, but no right!", oft.get_path());
+            errorln!("Tried to write in {:?}, but no right!", path_name);
             return -1; // no right to write
         }
         // find the file
-        let memfile = self.find_memfile(oft.get_path());
+        let memfile = self.find_memfile(&path_name);
         match memfile {
             Err(_) => {
-                debug!("File {:?} did not exist, creating it", oft.get_path());
+                debug!("File {:?} did not exist, creating it", path_name);
                 // create the file?
                 if !oft.get_flags().contains(OpenFlags::OCREAT) {
-                    errorln!("Tried to create {:?}, but no right!", oft.get_path());
+                    errorln!("Tried to create {:?}, but no right!", path_name);
                     return -1;
                 } else {
                     // look for the parent folder in which we will create the file
-                    let parent_path = oft.get_path().get_parent();
+                    let parent_path = path_name.get_parent();
                     let parent_dir = if let Ok(a) = self.find_memdir(&parent_path) {
                         debug!("Parent folder is : {:?}", a);
                         a
                     } else {
                         errorln!(
                             "Tried to access {:?}, but parent folder does not exist",
-                            oft.get_path()
+                            path_name
                         );
                         return -1;
                     };
-                    let name = oft.get_path().get_name();
+                    let name = path_name.get_name();
                     let bytes = name.as_bytes();
                     if name.len() > 32 {
                         errorln!("File name too long!");
@@ -946,7 +949,7 @@ impl Partition for UsTar {
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
                 debug!("File exists and is : {:?}", file);
-                let header_address = self.find_address(oft.get_path()).unwrap();
+                let header_address = self.find_address(&path_name).unwrap();
                 let old_size = file.header.length;
                 let true_offset = if oft.get_flags().contains(OpenFlags::OAPPEND) {
                     old_size as usize
@@ -1040,7 +1043,7 @@ impl Partition for UsTar {
                                 if exit_code < 0 {
                                     return exit_code;
                                 }
-                                let new_header_addr_res = self.find_address(oft.get_path());
+                                let new_header_addr_res = self.find_address(&path_name);
                                 let new_header_addr = match new_header_addr_res {
                                     Err(_) => return -1,
                                     Ok(x) => x,
@@ -1073,7 +1076,7 @@ impl Partition for UsTar {
                         if exit_code < 0 {
                             return exit_code;
                         }
-                        let new_header_addr_res = self.find_address(oft.get_path());
+                        let new_header_addr_res = self.find_address(&path_name);
                         let new_header_addr = match new_header_addr_res {
                             Err(_) => return -1,
                             Ok(x) => x,
