@@ -10,6 +10,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::IntoIter;
 use alloc::vec::Vec;
+use core::iter::Peekable;
 use core::{mem::transmute, todo};
 
 #[derive(Debug)]
@@ -414,7 +415,7 @@ pub trait U16Array {
 
 #[derive(Clone)]
 struct PathDecomp {
-    decomp: IntoIter<String>,
+    decomp: Peekable<IntoIter<String>>,
     current_path: Path,
     current_dir: MemDir,
 }
@@ -442,20 +443,33 @@ impl UsTar {
     }
 
     fn find_first_uncached(path: &Path) -> Result<PathDecomp, UsTarError> {
-        let mut decomp = path.slice().into_iter();
+        let mut decomp = path.slice().into_iter().peekable();
+        debug!(
+            "Path : {:?}, sliced: {:?}, iter: {:?}",
+            path,
+            path.slice(),
+            decomp.clone()
+        );
         let mut current_path = match decomp.next() {
             Some(start) => Path::from(&start),
             None => return Err(UsTarError::GenericError),
         };
+        debug!("Here, current_path is : {:?}", current_path);
         if let Some(mut current_dir) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
             while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
                 current_dir = a;
-                println!("{:?} -> {:?}", current_path, current_dir);
+                debug!("{:?} -> {:?}", current_path, current_dir);
                 if let Some(next_dir) = decomp.next() {
                     current_path.push_str(&next_dir);
+                    if decomp.peek().is_none() {
+                        break;
+                    }
                 }
             }
-            println!("Crrt_Path {:?}", current_path);
+            debug!(
+                "Current_Path {:?}, decomposed in: {:?}",
+                current_path, decomp
+            );
             Ok(PathDecomp {
                 decomp,
                 current_path,
@@ -467,24 +481,32 @@ impl UsTar {
     }
 
     fn add_cache(&self, d: &mut PathDecomp) -> Result<(), UsTarError> {
-        println!("{:?} {:?} {:?}", d.decomp, d.current_path, d.current_dir);
+        debug!(
+            "Adding to cache: {:?} {:?} {:?}",
+            &d.decomp.clone(),
+            &d.current_path, // to add to the cache
+            &d.current_dir   // what is previously in the cache
+        );
         let name = d.current_path.get_name();
-        let next_address = d
-            .current_dir
+        debug!("Name = {:?}", name);
+        let current_dir = &d.current_dir;
+        let next_address = current_dir
             .files
-            .get_mut(&name)
+            .get(&name)
             .ok_or(UsTarError::FileNotFound)?;
-        let current_dir = self.memdir_from_address(*next_address)?;
-        unsafe {
-            DIR_CACHE
-                .0
-                .insert(Path::from(&d.current_path.to()), current_dir)
-        };
-        unsafe {
-            FILE_ADRESS_CACHE
-                .0
-                .insert(Path::from(&d.current_path.to()), *next_address)
-        };
+        debug!("Next_address = {:?}", next_address);
+        let memdir = self.memdir_from_address(*next_address);
+        let file = self.memfile_from_disk(next_address);
+        if let Ok(dir) = memdir {
+            unsafe { DIR_CACHE.0.insert(Path::from(&d.current_path.to()), dir) };
+        }
+        if file.is_ok() {
+            unsafe {
+                FILE_ADRESS_CACHE
+                    .0
+                    .insert(Path::from(&d.current_path.to()), *next_address)
+            };
+        }
         return Ok(());
     }
 
@@ -492,8 +514,21 @@ impl UsTar {
         if let Some(addr) = unsafe { FILE_ADRESS_CACHE.0.get(&path) } {
             Ok(*addr)
         } else {
-            let mut path_decomp = UsTar::find_first_uncached(path)?;
-            self.add_cache(&mut path_decomp)?;
+            let mut path_decomp;
+            match UsTar::find_first_uncached(path) {
+                Ok(dc) => path_decomp = dc,
+                Err(x) => {
+                    errorln!("Find in cache failed: {:?}", x);
+                    return Err(x);
+                }
+            }
+            match self.add_cache(&mut path_decomp) {
+                Ok(_) => (),
+                Err(x) => {
+                    errorln!("Add to cache failed:{:?}", x);
+                    return Err(x);
+                }
+            };
             self.find_address(path)
         }
     }
@@ -519,15 +554,17 @@ impl UsTar {
     /// and mutate them on-the-fly to speed-up
     /// future searches even more.
     pub fn find_memfile(&self, path: &Path) -> Result<MemFile, UsTarError> {
-        println!(":( {:#?}", path);
+        debug!("Finding memfile for {:#?}", path);
+        debug!("Parent seems to be {:?}", &path.get_parent());
         let parent_dir = self.find_memdir(&path.get_parent())?;
-        println!("wtf man {}", parent_dir.files.len());
+        debug!("Parent dir : {:?}", parent_dir);
+        debug!("Files in the parent dir {}", parent_dir.files.len());
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
-                println!("Hmhmm");
+                debug!("Looking at : {}", file_name);
                 return self.memfile_from_disk(file_address);
             } else {
-                println!("{} wasn't good for {}", file_name, &path.get_name())
+                debug!("{} does not match {}", file_name, &path.get_name())
             }
         }
         Err(UsTarError::FileNotFound)
@@ -852,14 +889,14 @@ impl Partition for UsTar {
         let mut path_name = String::from("root/");
         path_name.push_str(&oft.get_path().to());
         let path = Path::from(&path_name);
-        println!("Got request : {:?}", path);
+        debug!("Got request : {:?}", path);
         let file = match self.find_memfile(&path) {
             Ok(f) => f,
             Err(_) => return Err(IoError::Continue),
         };
-        println!("Got vec of length : {}", file.data.len());
-        println!("size : {}", size);
-        println!("Offset : {}", oft.get_offset());
+        debug!("Got vec of length : {}", file.data.len());
+        debug!("size : {}", size);
+        debug!("Offset : {}", oft.get_offset());
         let res = if size == usize::MAX {
             file.data
         } else if oft.get_offset() >= file.data.len() {
