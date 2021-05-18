@@ -499,12 +499,6 @@ pub unsafe fn disassemble_and_launch(
         let size = program.mem_size();
         let file_size = program.file_size();
 
-        println!(
-            " code at {:x} {:x} {:x}",
-            address,
-            address + size,
-            address + file_size
-        );
         maximum_address = max(maximum_address, address + size);
         match program.get_type() {
             Err(_) => continue,
@@ -580,10 +574,6 @@ pub unsafe fn disassemble_and_launch(
             Err(a) => errorln!("{:?} at section : {:?}", a, 0),
         };
         if size != file_size {
-            println!(
-                "file_size and mem_size differ : file {}, mem {}",
-                file_size, size
-            );
             let mut padding = Vec::new();
             padding.resize(file_size as usize, 0_u8);
             memory::write_into_virtual_memory(
@@ -633,7 +623,7 @@ pub unsafe fn disassemble_and_launch(
                 | elf::HEAP,
             false,
         ) {
-            Ok(()) => println!("Allocated {:x}", heap_address_normalized + i * 0x1000),
+            Ok(()) => (),
             Err(memory::MemoryError(err)) => {
                 errorln!(
                     "Could not allocate the {}-th part of the heap. Error : {:?}",
@@ -673,7 +663,7 @@ pub unsafe fn disassemble_and_launch(
     let (args_number, args_data) = flatten_arguments(args);
     get_current_as_mut().set_name(&args_data);
     // Write the arguments onto the process's memory
-    debug!("Gonna write arguments");
+    //debug!("Gonna write arguments");
     match memory::write_into_virtual_memory(
         level_4_table_addr,
         VirtAddr::new(args_address),
@@ -691,7 +681,7 @@ pub unsafe fn disassemble_and_launch(
 
     let (_cr3, cr3f) = Cr3::read();
     Cr3::write(level_4_table_addr, cr3f);
-    println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
+    //println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
     Ok(towards_user_give_heap_args(
         heap_address_normalized,
