@@ -203,17 +203,18 @@ unsafe extern "C" fn syscall_1_write(args: &mut RegistersMini, _isf: &mut Interr
 
 /// open file. arg0 : const char *filename, arg1 : int flags, arg2 : umode_t mode
 unsafe extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-    /*crate::debug!("syscall open");
-    let filename = unsafe { read_string_from_pointer(args.rdi) };
-    let fd = descriptor::open(filename, open_mode_from_flags(args.rsi));
-    args.rax = fd.into_u64();*/
+    crate::warningln!(
+        "{} {:?}",
+        args.rsi,
+        crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rsi as usize)
+    );
     let path = unsafe { read_string_from_pointer(args.rdi) };
     let current_process = unsafe { process::get_current_as_mut() };
     crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
         .create_file_table(path::Path::from(&path), unsafe {
-            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rsi as usize)
+            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rdx as usize)
         })
         .into_u64();
     crate::debug!("syscall open end {}", fd);

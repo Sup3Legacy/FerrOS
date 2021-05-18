@@ -197,7 +197,7 @@ impl fmt::Debug for Header {
         let name_to_print = strip_end(&self.name, 0);
         let blocks_to_print = strip_end(&self.blocks, (Address { lba: 0, block: 0 }));
         f.debug_struct("Header")
-            //.field("user",&self.user)
+            .field("type", &self.file_type)
             //.field("owner",&self.owner)
             //.field("group",&self.group)
             .field("length", &self.length)
@@ -378,17 +378,26 @@ fn slice_vec(data: &[u8], offset: u32) -> Vec<[u16; 256]> {
     let block_number = div_ceil(n as u32, 512) as usize;
     let mut res: Vec<[u16; 256]> = Vec::new();
     let mut index = 0;
+    let off_2 = (offset & 1) as usize;
     for i in 0..block_number {
         let mut arr = [0_u16; 256];
         let mut n_skip = 0;
         if i == 0 {
             n_skip = (offset / 2) as usize;
+            if off_2 == 1 {
+                arr[(offset / 2) as usize] = data[0] as u16;
+                n_skip += 1;
+            }
         };
         for elt in arr.iter_mut().skip(n_skip) {
-            if 2 * index + 1 >= n {
+            if 2 * index + 1 + off_2 >= n {
+                if 2 * index + 1 + off_2 == n {
+                    *elt = ((data[2 * index + off_2] as u16) & 0xff) << 8;
+                }
                 break;
             }
-            *elt = (((data[2 * index] as u16) & 0xff) << 8) + (data[2 * index + 1] as u16);
+            *elt = (((data[2 * index + off_2] as u16) & 0xff) << 8)
+                + (data[2 * index + 1 + off_2] as u16);
             index += 1;
         }
         res.push(arr);
@@ -852,6 +861,57 @@ impl UsTar {
         })
     }
 
+    pub fn add_file_in_directory(
+        &mut self,
+        parent_dir: MemDir,
+        parent_path: Path,
+        name: [u8; 32],
+        nameStr: String,
+        pos: Address,
+    ) -> Result<(), ()> {
+        let s = parent_dir.files.len();
+        let addr = parent_dir.address;
+        let mut dir = self.read_from_disk::<Header>(addr.lba as u32 * 512 + addr.block as u32);
+        let mut name_arr2 = [0; 28];
+        for i in 0..14 {
+            name_arr2[2 * i] = name[2 * i + 1];
+            name_arr2[2 * i + 1] = name[2 * i];
+        }
+        if dir.length < 160 {
+            if dir.length % 16 == 0 {
+                let new_add = unsafe { self.get_addresses(1)[0] };
+                let mut dir_bloc = DirBlock {
+                    subitems: [([b' '; 28], Address { lba: 0, block: 0 }); 16],
+                };
+                dir_bloc.subitems[0] = (name_arr2, pos);
+                self.write_to_disk(dir_bloc, new_add.lba as u32 * 512 + new_add.block as u32);
+                dir.blocks[(dir.blocks_number) as usize] = new_add;
+                dir.blocks_number += 1;
+            } else {
+                let add = dir.blocks[(dir.length / 16) as usize];
+                let mut dir_bloc =
+                    self.read_from_disk::<DirBlock>(add.lba as u32 * 512 + add.block as u32);
+                dir_bloc.subitems[(dir.length % 16) as usize] = (name_arr2, pos);
+                self.write_to_disk(dir_bloc, add.lba as u32 * 512 + add.block as u32);
+            }
+
+            dir.length += 1;
+            self.write_to_disk(dir, addr.lba as u32 * 512 + addr.block as u32);
+            unsafe {
+                match DIR_CACHE.0.remove(&parent_path) {
+                    Some(mut d) => {
+                        d.files.insert(nameStr, pos);
+                        DIR_CACHE.0.insert(parent_path, d);
+                    }
+                    None => panic!("Should not happen, please report this"),
+                }
+            };
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     pub fn write_to_disk(&self, data: impl U16Array, lba: u32) {
         disk_operations::write_sector(&data.to_u16_array(), lba, self.port);
     }
@@ -865,7 +925,7 @@ impl UsTar {
         match memfile {
             Err(_) => Err(UsTarError::FileNotFound),
             Ok(file) => {
-                let mut header = file.header;
+                let header = file.header;
                 match header.mode {
                     FileMode::Short => {
                         for addr in header.blocks.iter() {
@@ -897,7 +957,37 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn open(&mut self, _path: &Path, _flags: OpenFlags) -> Option<usize> {
+    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
+        let mut path_name = String::from("root/");
+        path_name.push_str(&path.to());
+        let path_name = Path::from(&path_name);
+        let memfile = self.find_memfile(&path_name);
+        /*match memfile {
+            Some(f) => {
+                if flags.contains(OpenFlags::ORD | OpenFlags::OWR) | flags.contains(OpenFlags::OXCUTE | OpenFlags::OWR) {
+                    None
+                } else {
+                    if flags.contains(OpenFlags::OAPPEND) {
+                        todo!()
+                    } else if flags.contains(OpenFlags::OXCUTE) {
+                        Some(1)
+                    } else {
+                        Some(1)
+                    }
+                }
+            },
+            None => {
+                if flags.contains(OpenFlags::ORD | OpenFlags::OWR) | flags.contains(OpenFlags::OXCUTE | OpenFlags::OWR) {
+                    None
+                } else {
+                    if !flags.contains(OpenFlags::OWR) {
+                        None
+                    else {
+                        todo!()
+                    }
+                }
+            },
+        }*/
         Some(1)
     }
 
@@ -937,7 +1027,11 @@ impl Partition for UsTar {
                 debug!("File {:?} did not exist, creating it", path_name);
                 // create the file?
                 if !oft.get_flags().contains(OpenFlags::OCREAT) {
-                    errorln!("Tried to create {:?}, but no right!", path_name);
+                    errorln!(
+                        "Tried to create {:?}, but no right! {:?}",
+                        path_name,
+                        oft.get_flags()
+                    );
                     return -1;
                 } else {
                     // look for the parent folder in which we will create the file
@@ -990,8 +1084,17 @@ impl Partition for UsTar {
                         data: buffer.to_vec(),
                     };
                     debug!("File created: {:?}", file);
-                    self.write_memfile_to_disk(&file);
-                    return 0;
+                    let file_address = self.write_memfile_to_disk(&file);
+                    match self.add_file_in_directory(
+                        parent_dir,
+                        parent_path,
+                        name_arr,
+                        name,
+                        file_address,
+                    ) {
+                        Ok(()) => return buffer.len() as isize,
+                        Err(()) => panic!("Unhandled"),
+                    }
                 };
             }
             Ok(mut file) => {
@@ -1013,14 +1116,31 @@ impl Partition for UsTar {
                         let block_addresses = file.header.blocks;
                         let mut blocks_to_write = slice_vec(buffer, true_offset % 512);
                         let number_blocks_to_write = blocks_to_write.len();
-                        let block_offset = div_ceil(true_offset, 512);
-                        let new_blocks_number = block_offset + number_blocks_to_write as u32;
+                        let block_offset = true_offset / 512;
+                        let new_blocks_number = div_ceil(true_offset + buffer.len() as u32, 512);
+
                         if new_size <= old_size {
                             debug!("New file is shorter!");
-                            for i in block_offset..new_blocks_number {
+                            for i in new_blocks_number..file.header.blocks_number {
                                 let addr = file.header.blocks[i as usize];
                                 self.lba_table_global
                                     .mark_available(addr.lba as u32, addr.block as u32);
+                            }
+                            if true_offset % 512 != 0 {
+                                let b: [u16; 256] = self
+                                    .read_from_disk::<FileBlock>(
+                                        (file.header.blocks[block_offset as usize].lba * 512
+                                            + file.header.blocks[block_offset as usize].block)
+                                            as u32,
+                                    )
+                                    .to_u16_array();
+                                for i in 0..(true_offset % 512) / 2 {
+                                    blocks_to_write[0][i as usize] = b[i as usize];
+                                }
+                                if true_offset % 2 == 1 {
+                                    blocks_to_write[0][((true_offset % 512) / 2) as usize] |=
+                                        b[((true_offset % 512) / 2) as usize] & 0xFF00;
+                                }
                             }
                             for i in 0..number_blocks_to_write {
                                 let file_block = FileBlock {
@@ -1029,27 +1149,22 @@ impl Partition for UsTar {
                                 self.write_to_disk(
                                     file_block,
                                     (block_addresses[i + block_offset as usize].lba * 512
-                                        + block_addresses[i + block_offset as usize].block
-                                        + 1) as u32,
+                                        + block_addresses[i + block_offset as usize].block)
+                                        as u32,
                                 );
                             }
-                            file.header.blocks_number =
-                                block_offset + number_blocks_to_write as u32;
+                            file.header.blocks_number = new_blocks_number;
                             file.header.length = new_size;
                             self.write_to_disk(
                                 file.header,
                                 (header_address.lba * 512 + header_address.block) as u32,
                             );
                             self.lba_table_global.write_to_disk(self.port);
-                            return 0;
+                            return (new_size - true_offset) as isize;
                         } else {
-                            if new_size < 512 * SHORT_MODE_LIMIT {
+                            if new_size <= 512 * SHORT_MODE_LIMIT {
                                 debug!("File longer but still short");
-                                let block_addresses = file.header.blocks;
-                                let number_blocks_to_write = blocks_to_write.len();
-                                let block_offset = true_offset / 512;
-                                let new_blocks_number =
-                                    div_ceil(true_offset + buffer.len() as u32, 512);
+
                                 let new_addresses = unsafe {
                                     self.get_addresses(
                                         new_blocks_number - file.header.blocks_number,
@@ -1070,17 +1185,15 @@ impl Partition for UsTar {
                                     for i in 0..(true_offset % 512) / 2 {
                                         blocks_to_write[0][i as usize] = b[i as usize];
                                     }
+                                    if true_offset % 2 == 1 {
+                                        blocks_to_write[0][((true_offset % 512) / 2) as usize] |=
+                                            b[((true_offset % 512) / 2) as usize] & 0xFF00;
+                                    }
                                 }
-                                debug!("{:?}", file.header.blocks);
-                                debug!("Writing {:?}", blocks_to_write);
                                 for i in 0..number_blocks_to_write {
                                     let file_block = FileBlock {
                                         data: blocks_to_write[i as usize],
                                     };
-                                    debug!(
-                                        "Target : {:?}",
-                                        file.header.blocks[i + block_offset as usize]
-                                    );
                                     self.write_to_disk(
                                         file_block,
                                         (file.header.blocks[i + block_offset as usize].lba * 512
@@ -1095,7 +1208,7 @@ impl Partition for UsTar {
                                     (header_address.lba * 512 + header_address.block) as u32,
                                 );
                                 self.lba_table_global.write_to_disk(self.port);
-                                return 0;
+                                return (new_size - true_offset) as isize;
                             } else {
                                 debug!("File longer and becomes Long");
                                 let old_header_addr_res = self.del_file(oft);

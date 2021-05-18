@@ -103,10 +103,12 @@ pub fn open_file(path: &Path, mode: OpenFlags) -> Result<usize, vfs::ErrVFS> {
     }
 }
 
-pub fn write_file(oft: &OpenFileTable, data: Vec<u8>) -> usize {
+pub fn write_file(oft: &mut OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            vfs.write(oft, data) as usize
+            let nb = vfs.write(oft, data) as usize;
+            oft.add_offset(nb);
+            nb
         } else {
             panic!("VFS not initialized in write_file.");
         }

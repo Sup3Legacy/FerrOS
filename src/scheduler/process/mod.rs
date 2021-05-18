@@ -1094,7 +1094,7 @@ pub unsafe fn kill(target: usize) -> usize {
 }
 
 pub unsafe fn write_to_stdout(message: String) {
-    if let Ok(res) = &ID_TABLE[CURRENT_PROCESS]
+    if let Ok(res) = &mut ID_TABLE[CURRENT_PROCESS]
         .open_files
         .get_file_table(FileDescriptor::new(1))
     {
