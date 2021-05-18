@@ -31,6 +31,8 @@ const DEFAULT_HEAP_SIZE: u64 = 2;
 
 pub const IO_ERROR: u64 = 2;
 
+pub const SIZE_NAME: usize = 20;
+
 pub mod elf;
 
 #[derive(Debug)]
@@ -669,6 +671,7 @@ pub unsafe fn disassemble_and_launch(
     debug!("Gonna flatten arguments : {:?}", args.len());
     debug!("args : {:?}", args);
     let (args_number, args_data) = flatten_arguments(args);
+    get_current_as_mut().set_name(&args_data);
     // Write the arguments onto the process's memory
     debug!("Gonna write arguments");
     match memory::write_into_virtual_memory(
@@ -731,6 +734,7 @@ pub struct Process {
     pub heap_address: u64,
     pub heap_size: u64,
     pub open_files: ProcessDescriptorTable,
+    pub name: [u8; SIZE_NAME],
     //pub screen: VirtualScreenID,
 }
 
@@ -754,6 +758,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            name: [b' '; SIZE_NAME],
             //screen: VirtualScreenID::new(),
         }
     }
@@ -773,6 +778,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            name: [b' '; SIZE_NAME],
             //screen: VirtualScreenID::null(),
         }
     }
@@ -807,6 +813,12 @@ impl Process {
 
     pub fn get_ppid(&self) -> usize {
         self.ppid.as_usize()
+    }
+
+    pub fn set_name(&mut self, name: &[u8]) {
+        for i in 0..core::cmp::min(name.len(), SIZE_NAME) {
+            self.name[i] = name[i];
+        }
     }
 
     /*#[allow(clippy::empty_loop)]
