@@ -202,7 +202,7 @@ impl fmt::Debug for Header {
             //.field("group",&self.group)
             .field("length", &self.length)
             .field("blocks_number", &self.blocks_number)
-            .field("flags", &self.flags)
+            //.field("flags", &self.flags)
             .field("mode", &self.mode)
             .field("blocks", &blocks_to_print)
             .field("name", &name_to_print)
@@ -480,21 +480,13 @@ impl UsTar {
 
     fn find_first_uncached(path: &Path) -> Result<PathDecomp, UsTarError> {
         let mut decomp = path.slice().into_iter().peekable();
-        debug!(
-            "Path : {:?}, sliced: {:?}, iter: {:?}",
-            path,
-            path.slice(),
-            decomp.clone()
-        );
         let mut current_path = match decomp.next() {
             Some(start) => Path::from(&start),
             None => return Err(UsTarError::GenericError),
         };
-        debug!("Here, current_path is : {:?}", current_path);
         if let Some(mut current_dir) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
             while let Some(a) = unsafe { DIR_CACHE.0.get_mut(&current_path) } {
                 current_dir = a;
-                debug!("{:?} -> {:?}", current_path, current_dir);
                 if let Some(next_dir) = decomp.next() {
                     current_path.push_str(&next_dir);
                     if decomp.peek().is_none() {
@@ -502,10 +494,6 @@ impl UsTar {
                     }
                 }
             }
-            debug!(
-                "Current_Path {:?}, decomposed in: {:?}",
-                current_path, decomp
-            );
             Ok(PathDecomp {
                 decomp,
                 current_path,
@@ -517,20 +505,12 @@ impl UsTar {
     }
 
     fn add_cache(&self, d: &mut PathDecomp) -> Result<(), UsTarError> {
-        debug!(
-            "Adding to cache: {:?} {:?} {:?}",
-            &d.decomp.clone(),
-            &d.current_path, // to add to the cache
-            &d.current_dir   // what is previously in the cache
-        );
         let name = d.current_path.get_name();
-        debug!("Name = {:?}", name);
         let current_dir = &d.current_dir;
         let next_address = current_dir
             .files
             .get(&name)
             .ok_or(UsTarError::FileNotFound)?;
-        debug!("Next_address = {:?}", next_address);
         let memdir = self.memdir_from_address(*next_address);
         let file = self.memfile_from_disk(next_address);
         if let Ok(dir) = memdir {
@@ -590,17 +570,10 @@ impl UsTar {
     /// and mutate them on-the-fly to speed-up
     /// future searches even more.
     pub fn find_memfile(&self, path: &Path) -> Result<MemFile, UsTarError> {
-        debug!("Finding memfile for {:#?}", path);
-        debug!("Parent seems to be {:?}", &path.get_parent());
         let parent_dir = self.find_memdir(&path.get_parent())?;
-        debug!("Parent dir : {:?}", parent_dir);
-        debug!("Files in the parent dir {}", parent_dir.files.len());
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
-                debug!("Looking at : {}", file_name);
                 return self.memfile_from_disk(file_address);
-            } else {
-                debug!("{} does not match {}", file_name, &path.get_name())
             }
         }
         Err(UsTarError::FileNotFound)
@@ -925,14 +898,10 @@ impl Partition for UsTar {
         let mut path_name = String::from("root/");
         path_name.push_str(&oft.get_path().to());
         let path = Path::from(&path_name);
-        debug!("Got request : {:?}", path);
         let file = match self.find_memfile(&path) {
             Ok(f) => f,
             Err(_) => return Err(IoError::Continue),
         };
-        debug!("Got vec of length : {}", file.data.len());
-        debug!("size : {}", size);
-        debug!("Offset : {}", oft.get_offset());
         let res = if size == usize::MAX {
             file.data
         } else if oft.get_offset() >= file.data.len() {
@@ -942,7 +911,6 @@ impl Partition for UsTar {
         } else {
             file.data[oft.get_offset()..oft.get_offset() + size].to_vec()
         };
-        debug!("Got data of length : {}", res.len());
         Ok(res)
     }
 
@@ -1022,7 +990,6 @@ impl Partition for UsTar {
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
                 debug!("File exists and is : {:?}", file);
-                debug!("File blockss are: {:?}", file.header.blocks);
                 let header_address = self.find_address(&path_name).unwrap();
                 let old_size = file.header.length;
                 let true_offset = if oft.get_flags().contains(OpenFlags::OAPPEND) {
@@ -1030,6 +997,8 @@ impl Partition for UsTar {
                 } else {
                     oft.get_offset()
                 } as u32;
+                debug!("Old size = {}", old_size);
+                debug!("True offset = {}", true_offset);
                 let new_size = true_offset + (buffer.len() as u32);
                 match file.header.mode {
                     FileMode::Short => {
