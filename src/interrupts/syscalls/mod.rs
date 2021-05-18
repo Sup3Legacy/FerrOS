@@ -217,9 +217,6 @@ unsafe extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut Interru
         })
         .into_u64();
     crate::debug!("syscall open end {}", fd);
-    if fd == u64::MAX {
-        panic!("TODO");
-    }
     // Puts the fd into rax
     args.rax = fd;
 }
