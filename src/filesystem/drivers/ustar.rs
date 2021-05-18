@@ -6,10 +6,12 @@ use super::disk_operations;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::println;
 use crate::{data_storage::path::Path, debug, errorln, warningln};
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::IntoIter;
 use alloc::vec::Vec;
+use core::fmt;
 use core::iter::Peekable;
 use core::{mem::transmute, todo};
 
@@ -133,10 +135,22 @@ pub struct UGOID(pub u64);
 /// * `lba` - the index of the `LBA` the sector belongs to.
 /// * `block` - its index within that `LBA`.
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Address {
     pub lba: u16,
     pub block: u16, // Really only u8 needed
+}
+impl fmt::Debug for Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self != &(Address { lba: 0, block: 0 }) {
+            f.debug_struct("Address")
+                .field("lba", &self.lba)
+                .field("block", &self.block)
+                .finish()
+        } else {
+            f.debug_struct("NULL").finish()
+        }
+    }
 }
 
 /// A chunk's header
@@ -150,7 +164,7 @@ pub struct Address {
 /// * `owner` - the owner's ID
 /// * `group` - the group's ID
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Header {
     pub user: UGOID,             // 8 bytes
     pub owner: UGOID,            // 8 bytes
@@ -165,14 +179,36 @@ pub struct Header {
     pub file_type: Type, // 1 byte
     pub padding: [u8; 40], // Padding to have a nice SHORT_MODE_LIMIT number
 }
-
 impl Header {
     /// Returns whether the header is of a directory. Pretty useless.
     fn is_dir(&self) -> bool {
         matches!(self.file_type, Type::Dir)
     }
 }
-
+fn strip_end<T: Eq>(a: &[T], c: T) -> Box<&[T]> {
+    let mut idx = a.len() - 1;
+    while idx > 0 && a[idx - 1] == c {
+        idx -= 1;
+    }
+    Box::new(&a[..idx])
+}
+impl fmt::Debug for Header {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name_to_print = strip_end(&self.name, 0);
+        let blocks_to_print = strip_end(&self.blocks, (Address { lba: 0, block: 0 }));
+        f.debug_struct("Header")
+            //.field("user",&self.user)
+            //.field("owner",&self.owner)
+            //.field("group",&self.group)
+            .field("length", &self.length)
+            .field("blocks_number", &self.blocks_number)
+            .field("flags", &self.flags)
+            .field("mode", &self.mode)
+            .field("blocks", &blocks_to_print)
+            .field("name", &name_to_print)
+            .finish_non_exhaustive()
+    }
+}
 #[derive(Debug, Clone)]
 pub struct MemDir {
     name: String,
@@ -914,7 +950,7 @@ impl Partition for UsTar {
         let mut path_name = String::from("root/");
         path_name.push_str(&oft.get_path().to());
         let path_name = Path::from(&path_name);
-        debug!("Writing {:?}, with {:?}", oft, buffer);
+        debug!("Writing {:#?}, with {:?}", oft, buffer);
         if !(oft.get_flags().contains(OpenFlags::OWR)) {
             errorln!("Tried to write in {:?}, but no right!", path_name);
             return -1; // no right to write
@@ -986,6 +1022,7 @@ impl Partition for UsTar {
             Ok(mut file) => {
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
                 debug!("File exists and is : {:?}", file);
+                debug!("File blockss are: {:?}", file.header.blocks);
                 let header_address = self.find_address(&path_name).unwrap();
                 let old_size = file.header.length;
                 let true_offset = if oft.get_flags().contains(OpenFlags::OAPPEND) {
