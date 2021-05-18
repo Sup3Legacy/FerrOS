@@ -811,6 +811,10 @@ impl Process {
         }
     }
 
+    pub fn get_name(&self) -> Vec<u8> {
+        Vec::from(self.name)
+    }
+
     /*#[allow(clippy::empty_loop)]
     /// # Safety
     /// TODO

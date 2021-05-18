@@ -32,6 +32,14 @@ impl ProcDriver {
             String::from("state"),
             ProcInfoDriver::new(String::from("state"), state),
         );
+        res.infos.insert(
+            String::from("ppid"),
+            ProcInfoDriver::new(String::from("ppid"), ppid),
+        );
+        res.infos.insert(
+            String::from("name"),
+            ProcInfoDriver::new(String::from("name"), name),
+        );
         res
     }
     pub fn get_info(&self, id: &str) -> Result<&ProcInfoDriver, ErrProc> {
@@ -182,4 +190,16 @@ fn state(proc: usize) -> Vec<u8> {
     let process = unsafe { process::get_process(proc) };
     let str = format!("{:?}", process.state);
     str.as_bytes().to_vec()
+}
+
+fn ppid(proc: usize) -> Vec<u8> {
+    if proc as u64 >= scheduler::PROCESS_MAX_NUMBER {
+        return Vec::new();
+    }
+    let str = format!("{:?}", unsafe { process::get_process(proc) }.get_ppid());
+    str.as_bytes().to_vec()
+}
+
+fn name(proc: usize) -> Vec<u8> {
+    unsafe { process::get_process(proc).get_name() }
 }
