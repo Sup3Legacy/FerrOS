@@ -92,43 +92,15 @@ impl Partition for ProcDriver {
             // Means we access the main proc directory
             // We want to build the array of all alive processes
             let mut res_array = Vec::new();
-            res_array.extend_from_slice("PID S PPID HEAP\n".as_bytes());
             for (id, proc) in unsafe { scheduler::process::ID_TABLE.as_ref().iter().enumerate() } {
                 match proc.state {
                     process::State::SlotAvailable => (),
-                    s => {
+                    _ => {
                         let id = format!("{}", id);
-                        for _ in id.len()..3 {
-                            res_array.push(b' ')
-                        }
                         for b in id.bytes() {
                             res_array.push(b)
                         }
                         res_array.push(b' ');
-                        match s {
-                            process::State::Zombie(_) => res_array.push(b'Z'),
-                            process::State::Running => res_array.push(b'M'),
-                            process::State::Runnable => res_array.push(b'R'),
-                            _ => res_array.push(b'?'),
-                        }
-
-                        let ppid = format!("{}", proc.get_ppid());
-                        for _ in ppid.len()..5 {
-                            res_array.push(b' ')
-                        }
-                        for b in ppid.bytes() {
-                            res_array.push(b)
-                        }
-
-                        let heap_size = format!("{}", proc.get_heap());
-                        for _ in heap_size.len()..5 {
-                            res_array.push(b' ')
-                        }
-                        for b in heap_size.bytes() {
-                            res_array.push(b)
-                        }
-
-                        res_array.push(b'\n');
                     }
                 }
             }
