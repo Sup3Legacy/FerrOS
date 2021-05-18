@@ -206,6 +206,9 @@ impl ProcessDescriptorTable {
         &self,
         fd: FileDescriptor,
     ) -> Result<&'static mut OpenFileTable, FileDesciptorError> {
+        if fd.into_usize() >= MAX_TOTAL_OPEN_FILES_BY_PROCESS {
+            return Err(FileDesciptorError());
+        }
         if let Some(id) = self.files[fd.into_usize()] {
             Ok(unsafe { GLOBAL_FILE_TABLE.get_file_table_ref_mut(id) })
         } else {
@@ -255,8 +258,17 @@ impl ProcessDescriptorTable {
 
     /// self.dup(1, 4) redirects fd 1 to the OpenFileTable
     /// fd 4 points to.
-    pub fn dup(&mut self, target: FileDescriptor, operand: FileDescriptor) -> usize {
+    pub fn dup(
+        &mut self,
+        target: FileDescriptor,
+        operand: FileDescriptor,
+    ) -> Result<usize, FileDesciptorError> {
         // TO DO check the bounds and validity of the given data!
+        if target.into_usize() >= MAX_TOTAL_OPEN_FILES_BY_PROCESS
+            || operand.into_usize() >= MAX_TOTAL_OPEN_FILES_BY_PROCESS
+        {
+            return Err(FileDesciptorError());
+        }
         crate::debug!(
             "Dup from descriptor {} -> {}",
             target.into_usize(),
@@ -275,7 +287,7 @@ impl ProcessDescriptorTable {
                 GLOBAL_FILE_TABLE.duplicate(fd);
             },
         }
-        0
+        Ok(0)
     }
 
     pub fn copy(&mut self, father: ProcessDescriptorTable) {
@@ -292,17 +304,17 @@ impl ProcessDescriptorTable {
         }
     }
 
-    pub unsafe fn close_fd(&mut self, fd: usize) -> usize {
+    pub unsafe fn close_fd(&mut self, fd: usize) -> Result<usize, FileDesciptorError> {
         if fd >= self.files.len() {
-            return 1;
+            return Err(FileDesciptorError());
         }
         match self.files[fd] {
             Some(fd_inner) => {
                 GLOBAL_FILE_TABLE.delete(fd_inner);
                 self.files[fd] = None;
-                0
+                Ok(0)
             }
-            _ => 2,
+            _ => Ok(2),
         }
     }
 

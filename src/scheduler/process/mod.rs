@@ -19,7 +19,7 @@ use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem;
-use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
+use crate::filesystem::descriptor::{FileDesciptorError, FileDescriptor, ProcessDescriptorTable};
 use crate::filesystem::fsflags::OpenFlags;
 use crate::hardware;
 use crate::memory;
@@ -30,6 +30,7 @@ use alloc::string::String;
 const DEFAULT_HEAP_SIZE: u64 = 2;
 
 pub const IO_ERROR: u64 = 2;
+pub const BAD_FILE_MANIPULATION: u64 = 3;
 
 pub const SIZE_NAME: usize = 20;
 
@@ -1051,7 +1052,7 @@ pub unsafe fn fork() -> ID {
     pid
 }
 
-pub fn dup2(fd_target: usize, fd_from: usize) -> usize {
+pub fn dup2(fd_target: usize, fd_from: usize) -> Result<usize, FileDesciptorError> {
     unsafe {
         ID_TABLE[CURRENT_PROCESS]
             .open_files
