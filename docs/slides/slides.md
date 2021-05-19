@@ -38,7 +38,7 @@ Features :
 > But why would you want to use Rust instead of the all-mighty C? Rust's "safeness" comes with a great amount of limitations and those who give up their liberty for the sake of winning some temporary safety get neith#(IAç]/l5Q¦Bmçtl¿(Fx **Segmentation fault (core dumped)**
 
 ---
-
+Enfin ça dépend 
 - jsp quoi
 - Sécurité et fiabilité des structures déja existantes
 - Compilation et gestion des dépendances
@@ -79,4 +79,3 @@ pub trait Partition {
 
 ---
 
-lol
