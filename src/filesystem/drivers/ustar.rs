@@ -593,13 +593,11 @@ impl UsTar {
             }
         }
         let parent_dir = self.find_memdir(&path.get_parent())?;
-        crate::errorln!("Found parent {:?}", path);
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
                 return self.memfile_from_disk(file_address);
             }
         }
-        crate::errorln!("Not found {:?}", path);
         Err(UsTarError::FileNotFound)
     }
 
@@ -748,7 +746,6 @@ impl UsTar {
     }
 
     pub fn memfile_from_disk(&self, address: &Address) -> Result<MemFile, UsTarError> {
-        crate::errorln!("Read at {:?}", address);
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = match header.file_type {
             Type::File => header.length,
