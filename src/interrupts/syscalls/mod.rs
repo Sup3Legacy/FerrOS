@@ -111,7 +111,7 @@ unsafe extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut Interru
                     let new = process::process_died(interrupts::COUNTER, process::IO_ERROR);
                     interrupts::COUNTER = 0;
                     process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
-                },
+                }
                 Err(IoError::Sleep) => {
                     let (next, mut old) = process::gives_switch(interrupts::COUNTER);
                     interrupts::COUNTER = 0;
@@ -123,7 +123,7 @@ unsafe extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut Interru
                     old.rsp = VirtAddr::from_ptr(args).as_u64();
 
                     process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
-                },
+                }
             };
             let mut address = VirtAddr::new(args.rsi);
             for item in res.iter().take(min(size as usize, res.len())) {
@@ -210,8 +210,9 @@ unsafe extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut Interru
     crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path),
-            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rdx as usize)
+        .create_file_table(
+            path::Path::from(&path),
+            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rdx as usize),
         )
         .into_u64();
     crate::debug!("syscall open end {}", fd);
@@ -312,10 +313,7 @@ unsafe extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut Int
     hardware::power::shutdown();
 }
 
-unsafe extern "C" fn syscall_10_get_puid(
-    args: &mut RegistersMini,
-    _isf: &mut InterruptStackFrame,
-) {
+unsafe extern "C" fn syscall_10_get_puid(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     args.rax = process::CURRENT_PROCESS as u64
 }
 
@@ -466,7 +464,7 @@ unsafe extern "C" fn syscall_not_implemented(
 }
 
 /// dispatch function who gives control to the good syscall function
-pub extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut RegistersMini) {
+pub unsafe extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut RegistersMini) {
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall : {:?}", args);
     } else {
