@@ -33,7 +33,7 @@ impl Partition for ScreenPartition {
         }
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let s = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+                let s = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(10));
                 Some(s.as_usize())
             } else {
                 crate::debug!("no main screen");
