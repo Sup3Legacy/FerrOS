@@ -25,7 +25,7 @@ pub use vfs::VFS;
 use crate::println;
 use descriptor::OpenFileTable;
 use fsflags::OpenFlags;
-use partition::IoError;
+use partition::{IoError, Partition};
 
 pub static mut VFS: Option<VFS> = None;
 
@@ -93,7 +93,7 @@ pub fn open_mode_from_flags(_flags: usize) -> OpenMode {
 ///
 /// Every interaction of a user-program with hardware and/or
 /// its stdin/stdout/stderr goes through this abstracted interface.
-pub fn open_file(path: &Path, mode: OpenFlags) -> Result<usize, vfs::ErrVFS> {
+pub fn open_file(path: &Path, mode: OpenFlags) -> Option<usize> {
     unsafe {
         if let Some(ref mut vfs) = VFS {
             vfs.open(path, mode)
@@ -106,7 +106,7 @@ pub fn open_file(path: &Path, mode: OpenFlags) -> Result<usize, vfs::ErrVFS> {
 pub fn write_file(oft: &mut OpenFileTable, data: Vec<u8>) -> usize {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            let nb = vfs.write(oft, data) as usize;
+            let nb = vfs.write(oft, &data) as usize;
             oft.add_offset(nb);
             nb
         } else {
@@ -180,7 +180,9 @@ fn test() {
 pub fn close_file(oft: &OpenFileTable) {
     unsafe {
         if let Some(ref mut vfs) = VFS {
-            vfs.close(oft).expect("Unexisting file to close");
+            if vfs.close(oft) {
+                panic!("Sould not close the whole VFS !!!")
+            };
         } else {
             panic!("VFS not initialized in close_file.");
         }

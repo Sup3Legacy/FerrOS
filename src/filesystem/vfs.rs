@@ -19,237 +19,201 @@ use crate::{data_storage::path::Path, warningln};
 pub struct ErrVFS();
 
 /// Root of the partition-tree
-struct PartitionTree {
-    root: PartitionNode,
+pub struct VFS {
+    depth: usize,
+    subfiles: PartitionNode,
 }
 
 enum PartitionNode {
-    Node(BTreeMap<String, Box<PartitionNode>>),
+    Node(BTreeMap<String, VFS>),
     Leaf(Box<dyn Partition>),
 }
 
-/// Main data structure of the FileSystem.
-/// The [`VFS`] is a key component in the virtualization of
-/// storage ressources. It can treansparently handle each and
-/// every type of partition (RAM-Disk, ustar on ATA drive, raw device)
-/// while having a global unified file-tree.
-///
-/// It holds a partition-tree :
-/// This tree stores the hierarchy of partition in the global filesystem.
-///
-/// For example, the `/proc/` folder can be mounted to a RAM-Disk for
-/// increased efficiency, while `/usr/`, `/bin/`, etc. get mounted
-/// to a physical drive for bulk storage capacity.
-pub struct VFS {
-    /// partitions: BTreeMap<String, Box<dyn Partition>>,
-    partitions: PartitionTree,
-}
-
-/// This immplementation takes care of all operations needed on the partition-tree,
-/// such as the recursive search for the partition given a certain path.
-impl PartitionNode {
-    /// Returns reference to partition containing the path's target
-    pub fn get_partition(
-        &'static mut self,
-        sliced_path: Vec<String>,
-        index: usize,
-    ) -> Result<(&'static mut Box<dyn Partition>, Path), ()> {
-        match self {
-            PartitionNode::Node(next) => {
-                if index >= sliced_path.len() {
-                    return Err(());
-                }
-                if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                    next_part.get_partition(sliced_path, index + 1)
+impl Partition for VFS {
+    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
+        let sliced = path.slice();
+        warningln!("O {:?} {:?} depth: {}", sliced, path, self.depth);
+        match &mut self.subfiles {
+            PartitionNode::Leaf(part) => {
+                let path2 = Path::from_sliced(&sliced[self.depth..]);
+                part.open(&path2, flags)
+            }
+            PartitionNode::Node(map) => {
+                if self.depth == sliced.len()
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                {
+                    Some(0)
                 } else {
-                    Err(())
+                    match map.get_mut(&sliced[self.depth]) {
+                        None => None,
+                        Some(next) => next.open(path, flags),
+                    }
                 }
             }
-            PartitionNode::Leaf(part) => Ok((part, Path::from_sliced(&sliced_path[index..]))),
         }
     }
 
-    pub fn remove_entry(
-        &mut self,
-        sliced_path: &[String],
-        index: usize,
-        oft: &OpenFileTable,
-    ) -> Result<bool, ErrVFS> {
-        match self {
-            PartitionNode::Node(next) => {
-                if index >= sliced_path.len() {
-                    return Err(ErrVFS());
-                }
-
-                if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                    match next_part.remove_entry(&sliced_path, index + 1, oft) {
-                        Err(ErrVFS()) => Err(ErrVFS()),
-                        Ok(is_empty) => {
-                            if is_empty {
-                                next.remove_entry(&sliced_path[index]);
-                                Ok(next.is_empty())
-                            } else {
-                                Ok(is_empty)
-                            }
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
+        let sliced = oft.get_path().slice();
+        match &mut self.subfiles {
+            PartitionNode::Leaf(part) => {
+                let path = Path::from_sliced(&sliced[self.depth..]);
+                part.read(&oft.with_new_path(path), size)
+            }
+            PartitionNode::Node(map) => {
+                if self.depth == sliced.len()
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                {
+                    let mut v = Vec::new();
+                    for key in map.keys().skip(oft.get_offset() / 28) {
+                        if v.len() + 28 > size {
+                            return Ok(v);
                         }
+                        for l in key.bytes() {
+                            v.push(l)
+                        }
+                        for _ in key.len()..28 {
+                            v.push(b' ')
+                        }
+                        v.push(b'\n');
                     }
+                    Ok(v)
                 } else {
-                    Err(ErrVFS())
+                    match map.get_mut(&sliced[self.depth]) {
+                        None => Err(IoError::Kill),
+                        Some(next) => next.read(oft, size),
+                    }
                 }
             }
+        }
+    }
+
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
+        let sliced = oft.get_path().slice();
+        match &mut self.subfiles {
             PartitionNode::Leaf(part) => {
-                Ok(part.close(&oft.with_new_path(Path::from_sliced(&sliced_path[index..]))))
+                let path = Path::from_sliced(&sliced[self.depth..]);
+                part.write(&oft.with_new_path(path), buffer)
             }
-        }
-    }
-
-    pub fn add_entry(
-        &mut self,
-        sliced_path: Vec<String>,
-        index: usize,
-        data: Box<dyn Partition>,
-    ) -> Result<(), ErrVFS> {
-        match self {
-            PartitionNode::Node(next) => {
-                if index == sliced_path.len() {
-                    return Err(ErrVFS());
-                }
-                if next.get(&sliced_path[index]).is_some() {
-                    if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                        next_part.add_entry(sliced_path, index + 1, data)
-                    } else {
-                        panic!("should not happen")
-                    }
+            PartitionNode::Node(map) => {
+                if self.depth == sliced.len()
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                {
+                    -1
                 } else {
-                    let mut tree = PartitionNode::Leaf(data);
-                    let mut i2 = sliced_path.len() - 1;
-                    while i2 > index {
-                        let mut map = BTreeMap::new();
-                        map.insert(String::from(sliced_path[i2].as_str()), Box::new(tree));
-                        tree = PartitionNode::Node(map);
-                        i2 -= 1;
+                    match map.get_mut(&sliced[self.depth]) {
+                        None => -1,
+                        Some(next) => next.write(oft, buffer),
                     }
-                    next.insert(String::from(sliced_path[index].as_str()), Box::new(tree));
-                    Ok(())
                 }
             }
-            PartitionNode::Leaf(_) => Err(ErrVFS()),
         }
     }
 
-    /*pub fn give_param(
-        &mut self,
-        sliced_path: Vec<String>,
-        index: usize,
-        id: usize,
-        param: usize,
-    ) -> usize {
-        match self {
-            PartitionNode::Node(next) => {
-                if index == sliced_path.len() {
-                    return usize::MAX;
-                }
-                if next.get(&sliced_path[index]).is_some() {
-                    if let Some(next_part) = next.get_mut(&sliced_path[index]) {
-                        next_part.give_param(sliced_path, index + 1, id, param)
-                    } else {
-                        panic!("should not happen")
-                    }
-                } else {
-                    panic!("should not happen")
-                }
-            }
-            PartitionNode::Leaf(part) => {
-                part.give_param(&Path::from_sliced(&sliced_path[index..]), id, param)
-            }
-        }
-    }*/
-}
-
-/// This should be the main interface of the filesystem.
-/// Still it will need some work besides this implementation,
-/// as we need to implement all structures of file descriptors, etc.
-impl VFS {
-    /// Returns the index of file descriptor. -1 if error
-    pub fn open(&'static mut self, path: &Path, mode: OpenFlags) -> Result<usize, ErrVFS> {
-        let sliced = path.slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
-        // If the VFS couldn't find the corresponding partition, return -1
-        if res_partition.is_err() {
-            return Err(ErrVFS());
-        }
-        let (partition, remaining_path) = res_partition.unwrap();
-        match partition.open(&remaining_path, mode) {
-            None => Err(ErrVFS()),
-            Some(d) => Ok(d),
-        }
-    }
-
-    pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
-        let sliced = path.slice();
-        self.partitions.root.add_entry(sliced, 0, data)
-    }
-
-    pub fn close(&mut self, oft: &OpenFileTable) -> Result<bool, ErrVFS> {
-        self.partitions
-            .root
-            .remove_entry(&oft.get_path().clone().slice(), 0, oft)
-    }
-
-    pub fn give_param(&'static mut self, oft: &OpenFileTable, param: usize) -> usize {
-        let sliced = oft.get_path().clone().slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
-        // TODO check it actuallye returned something
-        if let Ok((partition, remaining_path)) = res_partition {
-            partition.give_param(&oft.with_new_path(remaining_path), param)
-        } else {
-            warningln!("Could not find partition for {:?}", oft.get_path());
-            usize::MAX - 1
-        }
-    }
-
-    pub fn read(&'static mut self, oft: &OpenFileTable, length: usize) -> Result<Vec<u8>, IoError> {
-        let sliced = oft.get_path().clone().slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
-        // TODO check it actuallye returned something
-        if let Ok((partition, remaining_path)) = res_partition {
-            partition.read(&oft.with_new_path(remaining_path), length)
-        } else {
-            warningln!("Could not find partition for {:?}", oft.get_path());
-            Err(IoError::Kill)
-        }
-    }
-
-    /// TODO use offset and flag information
-    pub fn write(&'static mut self, oft: &OpenFileTable, data: Vec<u8>) -> isize {
-        let sliced = oft.get_path().clone().slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
-        // TODO check it actuallye returned something
-        let (partition, remaining_path) = res_partition.unwrap();
-        partition.write(&oft.with_new_path(remaining_path), &data)
-    }
-
-    /*pub fn duplicate(&'static mut self, path: Path, id: usize) -> Option<usize> {
-        let sliced = path.slice();
-        let res_partition = self.partitions.root.get_partition(sliced, 0);
-        let (partition, remaining_path) = res_partition.unwrap();
-        partition.duplicate(&remaining_path, id)
-    }*/
-
-    pub fn lseek(&self) {
+    /// Flushes all changes to a file
+    fn flush(&self) {
         todo!()
     }
 
+    /// TODO
+    fn lseek(&self) {
+        todo!()
+    }
+
+    /// This is the function the kernel reads through.
+    fn read_raw(&self) {
+        todo!()
+    }
+
+    fn close(&mut self, oft: &OpenFileTable) -> bool {
+        let sliced = oft.get_path().slice();
+        match &mut self.subfiles {
+            PartitionNode::Leaf(part) => {
+                let path = Path::from_sliced(&sliced[self.depth..]);
+                part.close(&oft.with_new_path(path));
+                false
+            }
+            PartitionNode::Node(map) => {
+                if self.depth == sliced.len()
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                {
+                    false
+                } else {
+                    match map.get_mut(&sliced[self.depth]) {
+                        None => false,
+                        Some(next) => {
+                            next.close(oft);
+                            false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Param
+    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize {
+        let sliced = oft.get_path().slice();
+        match &mut self.subfiles {
+            PartitionNode::Leaf(part) => {
+                let path = Path::from_sliced(&sliced[self.depth..]);
+                part.give_param(&oft.with_new_path(path), param)
+            }
+            PartitionNode::Node(map) => {
+                if self.depth == sliced.len()
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                {
+                    usize::MAX
+                } else {
+                    match map.get_mut(&sliced[self.depth]) {
+                        None => usize::MAX,
+                        Some(next) => next.give_param(oft, param),
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl VFS {
+    pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
+        let sliced = path.slice();
+        warningln!("C {:?} {:?} depth: {}", sliced, path, self.depth);
+        if self.depth == sliced.len() {
+            match &self.subfiles {
+                PartitionNode::Leaf(_) => Err(ErrVFS()),
+                PartitionNode::Node(map) => {
+                    if map.is_empty() {
+                        self.subfiles = PartitionNode::Leaf(data);
+                        Ok(())
+                    } else {
+                        Err(ErrVFS())
+                    }
+                }
+            }
+        } else {
+            match &mut self.subfiles {
+                PartitionNode::Leaf(part) => Err(ErrVFS()),
+                PartitionNode::Node(map) => match map.get_mut(&sliced[self.depth]) {
+                    None => {
+                        let mut next = VFS {
+                            depth: self.depth + 1,
+                            subfiles: PartitionNode::Node(BTreeMap::new()),
+                        };
+                        let res = next.add_file(path, data);
+                        map.insert(String::from(&sliced[self.depth]), next);
+                        res
+                    }
+                    Some(next) => next.add_file(path, data),
+                },
+            }
+        }
+    }
     pub fn new() -> Self {
-        let mut map = BTreeMap::new();
-        map.insert(
-            String::from("null"),
-            Box::new(PartitionNode::Leaf(Box::new(NoPart::new()))),
-        );
-        let parts = PartitionTree {
-            root: PartitionNode::Node(map),
-        };
-        Self { partitions: parts }
+        Self {
+            depth: 0,
+            subfiles: PartitionNode::Node(BTreeMap::new()),
+        }
     }
 }
 impl Default for VFS {

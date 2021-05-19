@@ -70,14 +70,14 @@ unsafe extern "C" fn convert_register_to_full(_args: &mut RegistersMini) -> &'st
 unsafe fn read_string_from_pointer(ptr: u64) -> String {
     let mut buf = Vec::new();
     let mut addr = ptr;
-    let mut reading = *(addr as *mut u8) as char;
-    while reading != '\u{0}' {
-        buf.push(reading);
+    while *(addr as *const u8) != 0 {
+        buf.push(*(addr as *const u8) as char);
         addr += 1_u64;
-        reading = *(addr as *mut u8) as char
+    }
+    if buf == ['/', '\x1f'] {
+        buf.pop();
     }
     let res = buf.into_iter().collect();
-    debug!("read: {}", res);
     res
 }
 
@@ -209,6 +209,7 @@ unsafe extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut Interru
         crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rsi as usize)
     );
     let path = unsafe { read_string_from_pointer(args.rdi) };
+    crate::debug!("{:?} {}", [&path], path.len());
     let current_process = unsafe { process::get_current_as_mut() };
     crate::debug!("syscall open mid");
     let fd = current_process

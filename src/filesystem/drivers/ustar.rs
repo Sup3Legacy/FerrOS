@@ -586,12 +586,21 @@ impl UsTar {
     /// and mutate them on-the-fly to speed-up
     /// future searches even more.
     pub fn find_memfile(&self, path: &Path) -> Result<MemFile, UsTarError> {
+        if path.len() == 1 {
+            if let Some(file_address) = unsafe { DIR_CACHE.0.get(path) } {
+                return self.memfile_from_disk(&file_address.address);
+            } else {
+                panic!("{:?} doesn't exist !!!!!! Report this please", path)
+            }
+        }
         let parent_dir = self.find_memdir(&path.get_parent())?;
+        crate::errorln!("Found parent {:?}", path);
         for (file_name, file_address) in parent_dir.files.iter() {
             if file_name == &path.get_name() {
                 return self.memfile_from_disk(file_address);
             }
         }
+        crate::errorln!("Not found {:?}", path);
         Err(UsTarError::FileNotFound)
     }
 
@@ -740,6 +749,7 @@ impl UsTar {
     }
 
     pub fn memfile_from_disk(&self, address: &Address) -> Result<MemFile, UsTarError> {
+        crate::errorln!("Read at {:?}", address);
         let header: Header = self.read_from_disk((address.lba * 512 + address.block) as u32); // /!\
         let length = match header.file_type {
             Type::File => header.length,
@@ -958,7 +968,10 @@ impl UsTar {
 
 impl Partition for UsTar {
     fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
-        let mut path_name = String::from("root/");
+        let mut path_name = String::from("root");
+        if path.len() > 0 {
+            path_name.push('/');
+        }
         path_name.push_str(&path.to());
         let path_name = Path::from(&path_name);
         let memfile = self.find_memfile(&path_name);
@@ -992,7 +1005,10 @@ impl Partition for UsTar {
     }
 
     fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
-        let mut path_name = String::from("root/");
+        let mut path_name = String::from("root");
+        if oft.get_path().len() > 0 {
+            path_name.push('/');
+        }
         path_name.push_str(&oft.get_path().to());
         let path = Path::from(&path_name);
         let file = match self.find_memfile(&path) {
@@ -1012,7 +1028,10 @@ impl Partition for UsTar {
     }
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
-        let mut path_name = String::from("root/");
+        let mut path_name = String::from("root");
+        if oft.get_path().len() > 0 {
+            path_name.push('/');
+        }
         path_name.push_str(&oft.get_path().to());
         let path_name = Path::from(&path_name);
         debug!("Writing {:#?}, with {:?}", oft, buffer);
@@ -1098,6 +1117,9 @@ impl Partition for UsTar {
                 };
             }
             Ok(mut file) => {
+                if file.header.file_type == Type::Dir {
+                    return 0;
+                }
                 // compute the new size of the file, to see if we need to allocate/deallocate disk memory
                 debug!("File exists and is : {:?}", file);
                 let header_address = self.find_address(&path_name).unwrap();
