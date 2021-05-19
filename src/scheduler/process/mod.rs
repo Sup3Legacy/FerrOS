@@ -19,7 +19,7 @@ use crate::alloc::collections::{BTreeMap, BTreeSet};
 use crate::alloc::vec::Vec;
 use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem;
-use crate::filesystem::descriptor::{FileDescriptor, ProcessDescriptorTable};
+use crate::filesystem::descriptor::{FileDesciptorError, FileDescriptor, ProcessDescriptorTable};
 use crate::filesystem::fsflags::OpenFlags;
 use crate::hardware;
 use crate::memory;
@@ -30,6 +30,9 @@ use alloc::string::String;
 const DEFAULT_HEAP_SIZE: u64 = 2;
 
 pub const IO_ERROR: u64 = 2;
+pub const BAD_FILE_MANIPULATION: u64 = 3;
+
+pub const SIZE_NAME: usize = 20;
 
 pub mod elf;
 
@@ -497,12 +500,6 @@ pub unsafe fn disassemble_and_launch(
         let size = program.mem_size();
         let file_size = program.file_size();
 
-        println!(
-            " code at {:x} {:x} {:x}",
-            address,
-            address + size,
-            address + file_size
-        );
         maximum_address = max(maximum_address, address + size);
         match program.get_type() {
             Err(_) => continue,
@@ -578,10 +575,6 @@ pub unsafe fn disassemble_and_launch(
             Err(a) => errorln!("{:?} at section : {:?}", a, 0),
         };
         if size != file_size {
-            println!(
-                "file_size and mem_size differ : file {}, mem {}",
-                file_size, size
-            );
             let mut padding = Vec::new();
             padding.resize(file_size as usize, 0_u8);
             memory::write_into_virtual_memory(
@@ -631,7 +624,7 @@ pub unsafe fn disassemble_and_launch(
                 | elf::HEAP,
             false,
         ) {
-            Ok(()) => println!("Allocated {:x}", heap_address_normalized + i * 0x1000),
+            Ok(()) => (),
             Err(memory::MemoryError(err)) => {
                 errorln!(
                     "Could not allocate the {}-th part of the heap. Error : {:?}",
@@ -669,8 +662,9 @@ pub unsafe fn disassemble_and_launch(
     debug!("Gonna flatten arguments : {:?}", args.len());
     debug!("args : {:?}", args);
     let (args_number, args_data) = flatten_arguments(args);
+    get_current_as_mut().set_name(&args_data);
     // Write the arguments onto the process's memory
-    debug!("Gonna write arguments");
+    //debug!("Gonna write arguments");
     match memory::write_into_virtual_memory(
         level_4_table_addr,
         VirtAddr::new(args_address),
@@ -688,7 +682,7 @@ pub unsafe fn disassemble_and_launch(
 
     let (_cr3, cr3f) = Cr3::read();
     Cr3::write(level_4_table_addr, cr3f);
-    println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
+    //println!("good luck user ;) {:x} {:x}", addr_stack, prog_entry);
     println!("target : {:x}", prog_entry);
     Ok(towards_user_give_heap_args(
         heap_address_normalized,
@@ -731,6 +725,7 @@ pub struct Process {
     pub heap_address: u64,
     pub heap_size: u64,
     pub open_files: ProcessDescriptorTable,
+    pub name: [u8; SIZE_NAME],
     //pub screen: VirtualScreenID,
 }
 
@@ -739,22 +734,45 @@ impl Process {
         let new_pid = ID::new();
         unsafe {
             CHILDREN.insert(new_pid, BTreeSet::new());
+            Self {
+                pid: new_pid,
+                ppid: parent,
+                priority,
+                quantum: 0_u64,
+                cr3: PhysAddr::zero(),
+                cr3f: Cr3Flags::empty(),
+                rsp: 0,
+                stack_base: 0,
+                state: State::Runnable,
+                owner,
+                heap_address: 0,
+                heap_size: 0,
+                open_files: ProcessDescriptorTable::init(),
+                name: [b' '; SIZE_NAME],
+                //screen: VirtualScreenID::new(),
+            }
         }
+    }
+
+    pub fn fork(&self) -> Self {
+        let new_pid = ID::new();
+        let mut open_files = ProcessDescriptorTable::init();
+        open_files.copy(self.open_files);
         Self {
             pid: new_pid,
-            ppid: parent,
-            priority,
+            ppid: self.pid,
+            priority: self.priority,
             quantum: 0_u64,
             cr3: PhysAddr::zero(),
-            cr3f: Cr3Flags::empty(),
-            rsp: 0,
-            stack_base: 0,
-            state: State::Runnable,
-            owner,
-            heap_address: 0,
-            heap_size: 0,
-            open_files: ProcessDescriptorTable::init(),
-            //screen: VirtualScreenID::new(),
+            cr3f: self.cr3f,
+            rsp: self.rsp,
+            stack_base: self.stack_base,
+            state: self.state,
+            owner: self.owner,
+            heap_address: self.heap_address,
+            heap_size: self.heap_size,
+            open_files,
+            name: self.name,
         }
     }
 
@@ -773,6 +791,7 @@ impl Process {
             heap_address: 0,
             heap_size: 0,
             open_files: ProcessDescriptorTable::init(),
+            name: [b' '; SIZE_NAME],
             //screen: VirtualScreenID::null(),
         }
     }
@@ -791,7 +810,35 @@ impl Process {
         }
     }
 
-    #[allow(clippy::empty_loop)]
+    pub unsafe fn died(&mut self, code: usize) {
+        self.state = State::Zombie(code);
+        for process in ID_TABLE.iter_mut() {
+            if process.ppid == self.pid {
+                process.ppid = self.ppid;
+            }
+        }
+        self.open_files.close()
+    }
+
+    pub fn get_heap(&self) -> usize {
+        self.heap_size as usize
+    }
+
+    pub fn get_ppid(&self) -> usize {
+        self.ppid.as_usize()
+    }
+
+    pub fn set_name(&mut self, name: &[u8]) {
+        for i in 0..core::cmp::min(name.len(), SIZE_NAME) {
+            self.name[i] = name[i];
+        }
+    }
+
+    pub fn get_name(&self) -> Vec<u8> {
+        Vec::from(self.name)
+    }
+
+    /*#[allow(clippy::empty_loop)]
     /// # Safety
     /// TODO
     pub unsafe fn launch() {
@@ -799,7 +846,7 @@ impl Process {
             loop {}
         } // /!\
         launch_asm(f, 0);
-    }
+    }*/
 }
 
 // Keeps track of the children of the processes, in order to keep the Process struct on the stack
@@ -907,13 +954,10 @@ pub unsafe fn gives_switch(_counter: u64) -> (&'static Process, &'static mut Pro
 /// From the number of cycles executed and return code, returns a new process
 pub unsafe fn process_died(_counter: u64, return_code: u64) -> &'static Process {
     let old_pid = CURRENT_PROCESS;
-    // Change parentality
-    ID_TABLE[old_pid].state = State::Zombie(return_code as usize);
-    for process in ID_TABLE.iter_mut() {
-        if process.ppid == ID_TABLE[old_pid].pid {
-            process.ppid = ID_TABLE[old_pid].ppid;
-        }
+    if old_pid == 0 {
+        crate::hardware::power::shutdown();
     }
+    ID_TABLE[old_pid].died(return_code as usize);
 
     let new_pid = next_pid_to_run().0 as usize;
     CURRENT_PROCESS = new_pid;
@@ -929,7 +973,6 @@ pub fn listen(id: usize) -> (usize, usize) {
                 if process.ppid == ppid {
                     if let State::Zombie(return_value) = process.state {
                         process.state = State::SlotAvailable;
-                        process.open_files.close();
                         if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                             frame_allocator.deallocate_level_4_page(
                                 process.cr3,
@@ -943,11 +986,11 @@ pub fn listen(id: usize) -> (usize, usize) {
                 }
             }
         } else {
-            let mut process = ID_TABLE[id];
+            let process = &mut ID_TABLE[id];
             if process.ppid == ppid {
+                crate::warningln!("State : {:?}", process.state);
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
-                    process.open_files.close();
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
                         frame_allocator.deallocate_level_4_page(
                             process.cr3,
@@ -991,34 +1034,25 @@ pub unsafe fn get_process(pid: usize) -> &'static Process {
 /// For more info on the usage, see the code of the fork syscall
 /// Returns : child process pid
 pub unsafe fn fork() -> ID {
-    let mut son = Process::create_new(
-        ID_TABLE[CURRENT_PROCESS].pid,
-        ID_TABLE[CURRENT_PROCESS].priority,
-        ID_TABLE[CURRENT_PROCESS].owner,
-    );
+    let mut son = ID_TABLE[CURRENT_PROCESS].fork();
     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
         match frame_allocator.copy_table_entries(ID_TABLE[CURRENT_PROCESS].cr3) {
             Ok(phys) => son.cr3 = phys,
             Err(_) => panic!("TODO"),
         }
-        son.cr3f = ID_TABLE[CURRENT_PROCESS].cr3f;
     } else {
-        panic!("un initialized frame allocator");
+        panic!("uninitialized frame allocator");
     }
     let pid = son.pid;
     son.state = State::Runnable;
-    son.rsp = ID_TABLE[CURRENT_PROCESS].rsp;
-    son.stack_base = ID_TABLE[CURRENT_PROCESS].stack_base;
-    son.open_files.copy(ID_TABLE[CURRENT_PROCESS].open_files);
     ID_TABLE[pid.0 as usize] = son;
     WAITING_QUEUES[son.priority.0]
         .push(pid)
         .expect("Could not push son process into the queue");
-    // TODO
     pid
 }
 
-pub fn dup2(fd_target: usize, fd_from: usize) -> usize {
+pub fn dup2(fd_target: usize, fd_from: usize) -> Result<usize, FileDesciptorError> {
     unsafe {
         ID_TABLE[CURRENT_PROCESS]
             .open_files
@@ -1047,17 +1081,20 @@ pub unsafe fn set_priority(prio: usize) -> usize {
 /// # Safety
 /// Need to add more security to prevent killing random processes
 pub unsafe fn kill(target: usize) -> usize {
-    let mut target_process = ID_TABLE[target];
+    let target_process = &mut ID_TABLE[target];
+    crate::warningln!("Target of Kill: {:?}", target_process.state);
     if target_process.priority < ID_TABLE[CURRENT_PROCESS].priority {
+        crate::warningln!("Kill of {} failed", target);
         1
     } else {
-        target_process.state = State::Zombie(1);
+        crate::warningln!("Kill of {} succeeded", target);
+        target_process.died(1);
         0
     }
 }
 
 pub unsafe fn write_to_stdout(message: String) {
-    if let Ok(res) = &ID_TABLE[CURRENT_PROCESS]
+    if let Ok(res) = &mut ID_TABLE[CURRENT_PROCESS]
         .open_files
         .get_file_table(FileDescriptor::new(1))
     {

@@ -35,7 +35,7 @@ use x86_64::{
 use ferr_os::{
     allocator, data_storage, debug, errorln, filesystem, gdt, halt_loop, hardware, initdebugln,
     interrupts, keyboard, long_halt, memory, print, println, scheduler, serial, sound, test_panic,
-    vga, warningln, FIRST_PROGRAM,
+    vga, warningln, FIRST_PROGRAM, VGA_BUFFER,
 };
 use x86_64::instructions::random::RdRand;
 use x86_64::registers::control::Cr3;
@@ -108,17 +108,7 @@ pub fn init(_boot_info: &'static BootInfo) {
                 PageTableFlags::BIT_9,
                 false,
             );
-            frame_allocator
-                .add_forced_entry_to_table(
-                    level_4_frame,
-                    PhysAddr::new(0xb8000),
-                    VirtAddr::new(0xb8000),
-                    PageTableFlags::PRESENT
-                        | PageTableFlags::WRITABLE
-                        | PageTableFlags::USER_ACCESSIBLE,
-                    false,
-                )
-                .expect("Could not allocate screen buffer :(");
+            VGA_BUFFER += _boot_info.physical_memory_offset;
             allocator::init(&mut mapper, frame_allocator).expect("Heap init failed :((");
         } else {
             panic!("Frame allocator wasn't initialized");
@@ -133,7 +123,7 @@ pub fn init(_boot_info: &'static BootInfo) {
 
     println!("Changing timer frequence");
     unsafe {
-        hardware::timer::set_timer(0x0000); // 0 = 0x10000 = frequence min
+        hardware::timer::set_timer(0x8000); // 0 = 0x10000 = frequence min
     }
 
     // Interrupt initialisation put at the end to avoid messing up with I/O

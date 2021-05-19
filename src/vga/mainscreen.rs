@@ -66,7 +66,9 @@ impl MainScreen {
             map: BTreeMap::new(),
             queue: PriorityQueue::with_default_hasher(),
             roll_queue: PriorityQueue::with_default_hasher(),
-            buffer: unsafe { &mut *(0xb8000 as *mut [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT]) },
+            buffer: unsafe {
+                &mut *(crate::VGA_BUFFER as *mut [[CHAR; BUFFER_WIDTH]; BUFFER_HEIGHT])
+            },
             alpha: [[false; BUFFER_WIDTH]; BUFFER_HEIGHT],
         }
     }
@@ -95,12 +97,16 @@ impl MainScreen {
             }
         }
     }
+
+    pub fn change_vscreen_layer(&mut self, id: &VirtualScreenID, layer: VirtualScreenLayer) {
+        self.queue.change_priority(id, layer);
+    }
     /// Draws the whole screen by displaying each v_screen ordered by layer
     ///
     /// A higher layer means the v_screen will be more on the foreground.
     pub fn draw(&mut self) {
         self.reset_alpha();
-        while let Some((v_screen_id, _layer)) = self.queue.pop() {
+        while let Some((v_screen_id, layer)) = self.queue.pop() {
             if let Some((_amount, v_screen)) = self.map.get(&v_screen_id) {
                 let position = v_screen.get_position();
                 let size = v_screen.get_size();
@@ -108,6 +114,7 @@ impl MainScreen {
                 let col_origin = position.get_col();
                 let row_size = size.get_row();
                 let col_size = size.get_col();
+
                 for i in 0..row_size {
                     for j in 0..col_size {
                         // The alpha layer helps ensuring we do not write to a previously
@@ -116,22 +123,14 @@ impl MainScreen {
                         // of decreasing layer.
                         if i + row_origin < BUFFER_HEIGHT
                             && j + col_origin < BUFFER_WIDTH
-                            && !self.alpha[i + row_origin][j + col_origin]
+                            && self.alpha[i + row_origin][j + col_origin]
                         {
-                            /*if i < 3 {
-                                println!(
-                                    "{}, {} : {:?}",
-                                    i + row_origin,
-                                    j + col_origin,
-                                    v_screen.get_char(i, j)
-                                );
-                            }*/
                             self.buffer[i + row_origin][j + col_origin] = v_screen.get_char(i, j);
-                            self.alpha[i + row_origin][j + col_origin] = true;
+                            self.alpha[i + row_origin][j + col_origin] = false;
                         }
                     }
                 }
-                self.roll_queue.push(v_screen_id, _layer);
+                self.roll_queue.push(v_screen_id, layer);
             }
         }
         self.spill_queue();
@@ -148,7 +147,7 @@ impl MainScreen {
     fn reset_alpha(&mut self) {
         for i in 0..BUFFER_HEIGHT {
             for j in 0..BUFFER_WIDTH {
-                self.alpha[i][j] = false;
+                self.alpha[i][j] = true;
             }
         }
     }

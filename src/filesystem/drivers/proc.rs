@@ -2,6 +2,7 @@ use super::super::partition::{IoError, Partition};
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::filesystem::fsflags::OpenFlags;
 
+use crate::debug;
 use crate::scheduler;
 use crate::scheduler::process;
 use crate::{data_storage::path::Path, warningln};
@@ -27,6 +28,18 @@ impl ProcDriver {
             String::from("heap"),
             ProcInfoDriver::new(String::from("heap"), heap_proc),
         );
+        res.infos.insert(
+            String::from("state"),
+            ProcInfoDriver::new(String::from("state"), state),
+        );
+        res.infos.insert(
+            String::from("ppid"),
+            ProcInfoDriver::new(String::from("ppid"), ppid),
+        );
+        res.infos.insert(
+            String::from("name"),
+            ProcInfoDriver::new(String::from("name"), name),
+        );
         res
     }
     pub fn get_info(&self, id: &str) -> Result<&ProcInfoDriver, ErrProc> {
@@ -43,18 +56,15 @@ impl Default for ProcDriver {
 }
 
 impl Partition for ProcDriver {
-    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
-        if path.len() != 0 {
-            None
-        } else {
-            Some(0)
-        }
+    fn open(&mut self, _path: &Path, _flags: OpenFlags) -> Option<usize> {
+        Some(0)
     }
 
     #[allow(clippy::if_same_then_else)]
     #[allow(clippy::len_zero)]
     fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         let sliced = oft.get_path().clone().slice();
+        debug!("proc got {:?},n {:?}", oft.get_path(), sliced);
         if sliced.len() == 2 {
             if let Ok(proc) = sliced[0].parse::<usize>() {
                 if let Ok(pi) = self.get_info(&sliced[1]) {
@@ -171,4 +181,25 @@ fn heap_proc(proc: usize) -> Vec<u8> {
 
 fn screen(_proc: usize) -> Vec<u8> {
     todo!()
+}
+
+fn state(proc: usize) -> Vec<u8> {
+    if proc as u64 >= scheduler::PROCESS_MAX_NUMBER {
+        return Vec::new();
+    }
+    let process = unsafe { process::get_process(proc) };
+    let str = format!("{:?}", process.state);
+    str.as_bytes().to_vec()
+}
+
+fn ppid(proc: usize) -> Vec<u8> {
+    if proc as u64 >= scheduler::PROCESS_MAX_NUMBER {
+        return Vec::new();
+    }
+    let str = format!("{:?}", unsafe { process::get_process(proc) }.get_ppid());
+    str.as_bytes().to_vec()
+}
+
+fn name(proc: usize) -> Vec<u8> {
+    unsafe { process::get_process(proc).get_name() }
 }

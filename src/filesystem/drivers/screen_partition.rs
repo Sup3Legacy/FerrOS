@@ -33,7 +33,7 @@ impl Partition for ScreenPartition {
         }
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
-                let s = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(0));
+                let s = main_screen.new_screen(0, 0, 0, 0, VirtualScreenLayer::new(10));
                 Some(s.as_usize())
             } else {
                 crate::debug!("no main screen");
@@ -52,9 +52,9 @@ impl Partition for ScreenPartition {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
                 let v_screen = main_screen.get_vscreen_mut(&v_screen_id);
                 if let Some(screen) = v_screen {
-                    screen.write_string(&(String::from_utf8_lossy(buffer)));
+                    let v = screen.write_string(&(String::from_utf8_lossy(buffer)));
                     main_screen.draw();
-                    buffer.len() as isize
+                    v as isize
                 } else {
                     warningln!(
                         "Attempted to write in non-existing virtualscreen : {:?}",
@@ -105,16 +105,19 @@ impl Partition for ScreenPartition {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
-                if param >> 63 == 1 {
+                if param >> 62 == 2 {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;
                     crate::debug!("resize {} {}", x, y);
                     main_screen.resize_vscreen(&v_screen_id, Coord::new(x, y))
-                } else {
+                } else if param >> 62 == 1 {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;
                     crate::debug!("move {} {}", x, y);
                     main_screen.replace_vscreen(&v_screen_id, Coord::new(x, y))
+                } else if param >> 62 == 0 {
+                    let layer = param & 0xFF;
+                    main_screen.change_vscreen_layer(&v_screen_id, VirtualScreenLayer::new(layer))
                 }
                 0
             } else {

@@ -585,17 +585,10 @@ impl BootInfoAllocator {
         frame_4: PhysAddr,
         virt_4: VirtAddr,
         flags: PageTableFlags,
-        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let virt = VirtAddr::new(table_4.start_address().as_u64() + PHYSICAL_OFFSET);
         let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-        self.add_forced_entry_to_table_4(
-            &mut *page_table_ptr,
-            frame_4,
-            virt_4,
-            flags,
-            allow_duplicate,
-        )
+        self.add_forced_entry_to_table_4(&mut *page_table_ptr, frame_4, virt_4, flags)
     }
 
     /// Creates a new entry in the level_4 table at the given entry (virt) with the given flags
@@ -607,31 +600,16 @@ impl BootInfoAllocator {
         frame_4: PhysAddr,
         virt_4: VirtAddr,
         flags: PageTableFlags,
-        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_4 = virt_4.p4_index();
         let entry = table_4[p_4].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_4[p_4].set_flags(entry | flags);
-                //warningln!("already existed for user l.178");
-                let virt = VirtAddr::new(table_4[p_4].addr().as_u64() + PHYSICAL_OFFSET);
-                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                self.add_forced_entry_to_table_3(
-                    &mut *page_table_ptr,
-                    frame_4,
-                    virt_4,
-                    flags,
-                    allow_duplicate,
-                )
-            } else {
-                warningln!("already existed for kernel l.183 failure");
-                warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
-                warningln!("{:#?}", entry);
-                Err(MemoryError(String::from(
-                    "Level 4 entry is not USER_ACCESSIBLE",
-                )))
-            }
+            warningln!("already existed for kernel l.183 failure");
+            warningln!("p4 address : {:#?} of {:#?}", p_4, virt_4);
+            warningln!("{:#?}", entry);
+            Err(MemoryError(String::from(
+                "Level 4 entry is not USER_ACCESSIBLE",
+            )))
         } else {
             //warningln!("l.187 new page");
             match self.allocate_4k_frame() {
@@ -645,14 +623,7 @@ impl BootInfoAllocator {
                     for i in 0..512 {
                         (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
                     }
-                    table_4[p_4].set_flags(entry | flags);
-                    self.add_forced_entry_to_table_3(
-                        &mut *page_table_ptr,
-                        frame_4,
-                        virt_4,
-                        flags,
-                        allow_duplicate,
-                    )
+                    self.add_forced_entry_to_table_3(&mut *page_table_ptr, frame_4, virt_4, flags)
                 }
             }
         }
@@ -665,29 +636,14 @@ impl BootInfoAllocator {
         frame_3: PhysAddr,
         virt_3: VirtAddr,
         flags: PageTableFlags,
-        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_3 = virt_3.p3_index();
         let entry = table_3[p_3].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_3[p_3].set_flags(entry | flags);
-                let virt = VirtAddr::new(table_3[p_3].addr().as_u64() + PHYSICAL_OFFSET);
-                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                table_3[p_3].set_flags(entry | flags);
-                self.add_forced_entry_to_table_2(
-                    &mut *page_table_ptr,
-                    frame_3,
-                    virt_3,
-                    flags,
-                    allow_duplicate,
-                )
-            } else {
-                warningln!("line 240");
-                Err(MemoryError(String::from(
-                    "Level 3 entry is not USER_ACCESSIBLE",
-                )))
-            }
+            warningln!("line 240");
+            Err(MemoryError(String::from(
+                "Level 3 entry is not USER_ACCESSIBLE",
+            )))
         } else {
             match self.allocate_4k_frame() {
                 None => Err(MemoryError(String::from(
@@ -701,13 +657,7 @@ impl BootInfoAllocator {
                     for i in 0..512 {
                         (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
                     }
-                    self.add_forced_entry_to_table_2(
-                        &mut *page_table_ptr,
-                        frame_3,
-                        virt_3,
-                        flags,
-                        allow_duplicate,
-                    )
+                    self.add_forced_entry_to_table_2(&mut *page_table_ptr, frame_3, virt_3, flags)
                 }
             }
         }
@@ -720,29 +670,14 @@ impl BootInfoAllocator {
         frame_2: PhysAddr,
         virt_2: VirtAddr,
         flags: PageTableFlags,
-        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_2 = virt_2.p2_index();
         let entry = table_2[p_2].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            if entry.contains(PageTableFlags::USER_ACCESSIBLE) {
-                table_2[p_2].set_flags(entry | flags);
-                let virt = VirtAddr::new(table_2[p_2].addr().as_u64() + PHYSICAL_OFFSET);
-                let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
-                table_2[p_2].set_flags(entry | flags);
-                self.add_forced_entry_to_table_1(
-                    &mut *page_table_ptr,
-                    frame_2,
-                    virt_2,
-                    flags,
-                    allow_duplicate,
-                )
-            } else {
-                warningln!("line 274");
-                Err(MemoryError(String::from(
-                    "Level 2 entry is not USER_ACCESSIBLE",
-                )))
-            }
+            warningln!("line 274");
+            Err(MemoryError(String::from(
+                "Level 2 entry is not USER_ACCESSIBLE",
+            )))
         } else {
             match self.allocate_4k_frame() {
                 None => Err(MemoryError(String::from("Could not allocate 4k #2"))),
@@ -754,13 +689,7 @@ impl BootInfoAllocator {
                     for i in 0..512 {
                         (*page_table_ptr)[i].set_flags(PageTableFlags::empty());
                     }
-                    self.add_forced_entry_to_table_1(
-                        &mut *page_table_ptr,
-                        frame_2,
-                        virt_2,
-                        flags,
-                        allow_duplicate,
-                    )
+                    self.add_forced_entry_to_table_1(&mut *page_table_ptr, frame_2, virt_2, flags)
                 }
             }
         }
@@ -773,20 +702,14 @@ impl BootInfoAllocator {
         frame_1: PhysAddr,
         virt_1: VirtAddr,
         flags: PageTableFlags,
-        allow_duplicate: bool,
     ) -> Result<(), MemoryError> {
         let p_1 = virt_1.p1_index();
         let entry = table_1[p_1].flags();
         if entry.contains(PageTableFlags::PRESENT) {
-            if allow_duplicate {
-                table_1[p_1].set_flags(entry | flags);
-                Ok(())
-            } else {
-                warningln!("already here, l.301 {:#?}", virt_1);
-                Err(MemoryError(String::from(
-                    "Level 1 entry is already present",
-                )))
-            }
+            warningln!("already here, l.301 {:#?}", virt_1);
+            Err(MemoryError(String::from(
+                "Level 1 entry is already present",
+            )))
         } else {
             // TODO Check the page is available :D
             self.pages_available[(frame_1.as_u64() / 4096) as usize] = false;
