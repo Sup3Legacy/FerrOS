@@ -26,7 +26,21 @@ We were aware that this language, however, has a lot less documentations when it
 
 We still managed to find enough documentation regarding the language-specific settings we would need (ranging from the `asm!` macro to the configuration of a `no-std` baremetal target) and could adapt all the technical documentation that is explained using the C programming language in most topic-specific resources (such as OSdev).
 
+### Summary of the main features of Rust
+- Memory safety.
+- Algebraic data types with `enum`.
+- Powerfull type system with traits.
+- Reproducible build with `Cargo.lock`.
+- Macros: DRY (Don't  Repeat Yourself). This allowed to significantly reduce the syze of some programs (see the branch `keyboard` or `FerrOS-user/lisp` or `FerrOS-user/music`, ...).
+- Conditional compilation. This is usefull for automatic testing (see the branch `testing`) without launching the graphical interface.
 
+### Some drawbacks of using Rust
+- We wanted to code a lisp parser and interpreter for FerrOS.
+But we got a bit carried away with Rust's advanced features.
+We created macros to implement parser combinators.
+Sadly, it was getting to difficult to manage all of the lifetime parameters so we had to abandon the project.
+- We had to use Rust unstable (Nightly) so stability is a bit of an issue.
+- Nix (for even more reproducile builds) doesn't work well will Rust Nightly and cross compilation.
 
 # Theoretical plan
 
