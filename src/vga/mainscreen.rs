@@ -95,6 +95,10 @@ impl MainScreen {
             }
         }
     }
+
+    pub fn change_vscreen_layer(&mut self, id: &VirtualScreenID, layer: VirtualScreenLayer) {
+        self.queue.change_priority(id, layer);
+    }
     /// Draws the whole screen by displaying each v_screen ordered by layer
     ///
     /// A higher layer means the v_screen will be more on the foreground.

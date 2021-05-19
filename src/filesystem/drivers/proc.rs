@@ -56,7 +56,7 @@ impl Default for ProcDriver {
 }
 
 impl Partition for ProcDriver {
-    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
+    fn open(&mut self, _path: &Path, _flags: OpenFlags) -> Option<usize> {
         Some(0)
     }
 

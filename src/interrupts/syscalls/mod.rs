@@ -345,7 +345,7 @@ unsafe extern "C" fn syscall_11_set_screen_size(
         .open_files
         .get_file_table(descriptor::FileDescriptor::new(1));
     if let Ok(oft) = oft_res {
-        let res = filesystem::modify_file(oft, (1 << 63) | (height << 32) | width);
+        let res = filesystem::modify_file(oft, (2 << 62) | (height << 32) | width);
         args.rax = res as u64;
     } else {
         args.rax = u64::MAX;
@@ -364,7 +364,7 @@ unsafe extern "C" fn syscall_12_set_screen_position(
         .open_files
         .get_file_table(descriptor::FileDescriptor::new(1));
     if let Ok(oft) = oft_res {
-        let res = filesystem::modify_file(oft, (height << 32) | width);
+        let res = filesystem::modify_file(oft, (1 << 62) | (height << 32) | width);
         args.rax = res as u64;
     } else {
         args.rax = u64::MAX;
@@ -395,10 +395,21 @@ unsafe extern "C" fn syscall_17_get_layer(
 }
 
 unsafe extern "C" fn syscall_18_set_layer(
-    _args: &mut RegistersMini,
+    args: &mut RegistersMini,
     _isf: &mut InterruptStackFrame,
 ) {
-    panic!("set layer not implemented");
+    let layer = args.rdi as usize;
+    debug!("set_layer {}", layer);
+    let process = process::get_current();
+    let oft_res = process
+        .open_files
+        .get_file_table(descriptor::FileDescriptor::new(1));
+    if let Ok(oft) = oft_res {
+        let res = filesystem::modify_file(oft, (0 << 62) | layer);
+        args.rax = res as u64;
+    } else {
+        args.rax = u64::MAX;
+    }
 }
 
 unsafe extern "C" fn syscall_19_set_focus(

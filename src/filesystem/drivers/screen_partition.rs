@@ -105,16 +105,19 @@ impl Partition for ScreenPartition {
         unsafe {
             if let Some(main_screen) = &mut mainscreen::MAIN_SCREEN {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
-                if param >> 63 == 1 {
+                if param >> 62 == 2 {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;
                     crate::debug!("resize {} {}", x, y);
                     main_screen.resize_vscreen(&v_screen_id, Coord::new(x, y))
-                } else {
+                } else if param >> 62 == 1 {
                     let x = param & 0xFF;
                     let y = (param >> 32) & 0xFF;
                     crate::debug!("move {} {}", x, y);
                     main_screen.replace_vscreen(&v_screen_id, Coord::new(x, y))
+                } else if param >> 62 == 0 {
+                    let layer = param & 0xFF;
+                    main_screen.change_vscreen_layer(&v_screen_id, VirtualScreenLayer::new(layer))
                 }
                 0
             } else {
