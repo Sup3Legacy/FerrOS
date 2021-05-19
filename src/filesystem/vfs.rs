@@ -11,7 +11,7 @@ use super::descriptor::OpenFileTable;
 use super::fsflags::OpenFlags;
 use super::partition::{IoError, Partition};
 
-use crate::{data_storage::path::Path, warningln};
+use crate::data_storage::path::Path;
 
 #[derive(Debug)]
 pub struct ErrVFS();
@@ -30,7 +30,6 @@ enum PartitionNode {
 impl Partition for VFS {
     fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
         let sliced = path.slice();
-        warningln!("O {:?} {:?} depth: {}", sliced, path, self.depth);
         match &mut self.subfiles {
             PartitionNode::Leaf(part) => {
                 let path2 = Path::from_sliced(&sliced[self.depth..]);
@@ -176,7 +175,6 @@ impl Partition for VFS {
 impl VFS {
     pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
         let sliced = path.slice();
-        warningln!("C {:?} {:?} depth: {}", sliced, path, self.depth);
         if self.depth == sliced.len() {
             match &self.subfiles {
                 PartitionNode::Leaf(_) => Err(ErrVFS()),
