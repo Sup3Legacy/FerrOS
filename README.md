@@ -6,7 +6,7 @@
 - cargo
 - rustup
 - qemu
-
+- Python 3.8
 ## Installation
 Install the dependencies.
 
