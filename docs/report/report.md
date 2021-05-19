@@ -34,13 +34,13 @@ Before talking about how our kernel works, let's first explain how we designed i
 
 ## General idea
 
-To give a rough idea, our goal during this project was to write a sort of UNIX-like kernel (though we never designed our kernel as being really compatible with any *NIX OS). So the base idea isn't original at all. However, the choice of the language, as we thought, would make this project interesting, as OS written in Rust still are not common. One example would be Redox (TODO insert link), the best known and probably most advanced operating system written in Rust.
+To give a rough idea, our goal during this project was to write a sort of UNIX-like kernel (though we never designed our kernel as being really compatible with any *NIX OS). So the base idea isn't original at all. However, the choice of the language, as we thought, would make this project interesting, as OS written in Rust still are not common. One example would be [Redox](https://www.redox-os.org/), the best known and probably most advanced operating system written in Rust.
 
 ## Main objectives
 
 When we first began working on FerrOS, we have fixed some objectives we wanted to achieve :
 
-* General-purpose kernel with a working userland
+* General-purpose kernel with a working user space
 * Some basic interactions using system calls
 * Preemptive multitasking with a not-too-naive scheduling algorithm (basically at least something more advanced than a simple round-robin) and some notion of priority.
 * As many accessible physical devices as possible (because that's fun)
@@ -52,7 +52,7 @@ This can be all summed up by "Have a working usermode shell that can do some bas
 
 # Programming
 
-The very first stages of our kernel were written following Philip Oppermann's (TODO : add link) tutorial on writing a microkernel in Rust. This brought us to the point where we had a bootloader (TODO cf. plus loin), a primitive VGA teletype driver, a keyboard driver, page and memory allocation. Thanks to this tutorial, we could acquire the bases of low-level programming in Rust and could move far beyond this proof-of-concept kernel.
+The very first stages of our kernel were written following [Philip Oppermann's tutorial](https://os.phil-opp.com/) on writing a microkernel in Rust. This brought us to the point where we had a bootloader, a primitive VGA teletype driver, a keyboard driver, page and memory allocation. Thanks to this tutorial, we could acquire the bases of low-level programming in Rust and could move far beyond this proof-of-concept kernel.
 
 During this project, we used some crates instead of writing the code ourselves in areas where two conditions were met :
 
@@ -62,7 +62,7 @@ During this project, we used some crates instead of writing the code ourselves i
 In practical, the main crates we used were :
 
 * `x86-64` : a very useful crates with a lot of structures used in x86-64-system-programming. It provides safe wrapper to read and write from/to ports, manage GDT, paging tables, etc.
-* `Bootloader` : a bootloader is something we didn't want to write at the beginning of the project. TODO on en fait un maintenant?
+* `Bootloader` : a bootloader is something we didn't want to write at the beginning of the project. We implemented part of a bootloader to start the boot sequence.
 * `xmas-elf` : an ELF parsing utility. This is something we could have written ourselves but it involves a lot of boilerplate code that would take a long time to write.
 
 Some other crates brought us some convenient structures and macros but can be considered as "accessories".
