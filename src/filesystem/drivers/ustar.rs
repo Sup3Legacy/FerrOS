@@ -1006,7 +1006,7 @@ impl Partition for UsTar {
 
     fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         let mut path_name = String::from("root");
-        if !oft.get_path().is_empty(){
+        if !oft.get_path().is_empty() {
             path_name.push('/');
         }
         path_name.push_str(&oft.get_path().to());
@@ -1184,85 +1184,82 @@ impl Partition for UsTar {
                             self.lba_table_global.write_to_disk(self.port);
                             (new_size - true_offset) as isize
                         } else if new_size <= 512 * SHORT_MODE_LIMIT {
-                                debug!("File longer but still short");
+                            debug!("File longer but still short");
 
-                                let new_addresses = unsafe {
-                                    self.get_addresses(
-                                        new_blocks_number - file.header.blocks_number,
-                                    )
-                                };
-                                for i in file.header.blocks_number..new_blocks_number {
-                                    file.header.blocks[i as usize] =
-                                        new_addresses[(i - file.header.blocks_number + 1) as usize];
-                                }
-                                if true_offset % 512 != 0 {
-                                    let b: [u16; 256] = self
-                                        .read_from_disk::<FileBlock>(
-                                            (file.header.blocks[block_offset as usize].lba * 512
-                                                + file.header.blocks[block_offset as usize].block)
-                                                as u32,
-                                        )
-                                        .to_u16_array();
-                                    for i in 0..(true_offset % 512) / 2 {
-                                        blocks_to_write[0][i as usize] = b[i as usize];
-                                    }
-                                    if true_offset % 2 == 1 {
-                                        blocks_to_write[0][((true_offset % 512) / 2) as usize] |=
-                                            b[((true_offset % 512) / 2) as usize] & 0xFF00;
-                                    }
-                                }
-                                for i in 0..number_blocks_to_write {
-                                    let file_block = FileBlock {
-                                        data: blocks_to_write[i as usize],
-                                    };
-                                    self.write_to_disk(
-                                        file_block,
-                                        (file.header.blocks[i + block_offset as usize].lba * 512
-                                            + file.header.blocks[i + block_offset as usize].block)
-                                            as u32,
-                                    );
-                                }
-                                file.header.blocks_number = new_blocks_number;
-                                file.header.length = new_size;
-                                self.write_to_disk(
-                                    file.header,
-                                    (header_address.lba * 512 + header_address.block) as u32,
-                                );
-                                self.lba_table_global.write_to_disk(self.port);
-                                (new_size - true_offset) as isize
-                            } else {
-                                debug!("File longer and becomes Long");
-                                let old_header_addr_res = self.del_file(oft);
-                                let old_header_addr = match old_header_addr_res {
-                                    Err(_) => return -1,
-                                    Ok(x) => x,
-                                };
-                                let effective_data =
-                                    [&file.data[..true_offset as usize], buffer].concat();
-                                debug!("New data: {:?}", effective_data);
-                                let exit_code = self.write(oft, &effective_data);
-                                if exit_code < 0 {
-                                    return exit_code;
-                                }
-                                let new_header_addr_res = self.find_address(&path_name);
-                                let new_header_addr = match new_header_addr_res {
-                                    Err(_) => return -1,
-                                    Ok(x) => x,
-                                };
-                                let new_header: Header = self.read_from_disk(
-                                    (new_header_addr.lba * 512 + new_header_addr.block) as u32,
-                                );
-                                self.write_to_disk(
-                                    new_header,
-                                    (old_header_addr.lba * 512 + old_header_addr.block) as u32,
-                                );
-                                self.lba_table_global.mark_available(
-                                    new_header_addr.lba as u32,
-                                    new_header_addr.block as u32,
-                                );
-                                exit_code
+                            let new_addresses = unsafe {
+                                self.get_addresses(new_blocks_number - file.header.blocks_number)
+                            };
+                            for i in file.header.blocks_number..new_blocks_number {
+                                file.header.blocks[i as usize] =
+                                    new_addresses[(i - file.header.blocks_number + 1) as usize];
                             }
-                        
+                            if true_offset % 512 != 0 {
+                                let b: [u16; 256] = self
+                                    .read_from_disk::<FileBlock>(
+                                        (file.header.blocks[block_offset as usize].lba * 512
+                                            + file.header.blocks[block_offset as usize].block)
+                                            as u32,
+                                    )
+                                    .to_u16_array();
+                                for i in 0..(true_offset % 512) / 2 {
+                                    blocks_to_write[0][i as usize] = b[i as usize];
+                                }
+                                if true_offset % 2 == 1 {
+                                    blocks_to_write[0][((true_offset % 512) / 2) as usize] |=
+                                        b[((true_offset % 512) / 2) as usize] & 0xFF00;
+                                }
+                            }
+                            for i in 0..number_blocks_to_write {
+                                let file_block = FileBlock {
+                                    data: blocks_to_write[i as usize],
+                                };
+                                self.write_to_disk(
+                                    file_block,
+                                    (file.header.blocks[i + block_offset as usize].lba * 512
+                                        + file.header.blocks[i + block_offset as usize].block)
+                                        as u32,
+                                );
+                            }
+                            file.header.blocks_number = new_blocks_number;
+                            file.header.length = new_size;
+                            self.write_to_disk(
+                                file.header,
+                                (header_address.lba * 512 + header_address.block) as u32,
+                            );
+                            self.lba_table_global.write_to_disk(self.port);
+                            (new_size - true_offset) as isize
+                        } else {
+                            debug!("File longer and becomes Long");
+                            let old_header_addr_res = self.del_file(oft);
+                            let old_header_addr = match old_header_addr_res {
+                                Err(_) => return -1,
+                                Ok(x) => x,
+                            };
+                            let effective_data =
+                                [&file.data[..true_offset as usize], buffer].concat();
+                            debug!("New data: {:?}", effective_data);
+                            let exit_code = self.write(oft, &effective_data);
+                            if exit_code < 0 {
+                                return exit_code;
+                            }
+                            let new_header_addr_res = self.find_address(&path_name);
+                            let new_header_addr = match new_header_addr_res {
+                                Err(_) => return -1,
+                                Ok(x) => x,
+                            };
+                            let new_header: Header = self.read_from_disk(
+                                (new_header_addr.lba * 512 + new_header_addr.block) as u32,
+                            );
+                            self.write_to_disk(
+                                new_header,
+                                (old_header_addr.lba * 512 + old_header_addr.block) as u32,
+                            );
+                            self.lba_table_global.mark_available(
+                                new_header_addr.lba as u32,
+                                new_header_addr.block as u32,
+                            );
+                            exit_code
+                        }
                     }
                     FileMode::Long => {
                         debug!("File was Long");

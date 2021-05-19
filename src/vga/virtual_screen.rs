@@ -188,7 +188,7 @@ impl VirtualScreen {
                 b'\x1b' => {
                     // Escape code
                     let mut end = i;
-                    for (j,c) in char_vec.iter().enumerate().take(len).skip(i) {
+                    for (j, c) in char_vec.iter().enumerate().take(len).skip(i) {
                         if char::is_alphabetic(*c) {
                             end = j;
                             break;
@@ -223,7 +223,6 @@ impl VirtualScreen {
         // Handle escape code
         let escaped_length = code.len();
         let terminator = code[escaped_length - 1];
-        debug!("Got escaped code : {:?}", code);
         assert_eq!(code[0] as u8, b'\x1b');
         assert!(char::is_alphabetic(terminator));
         match terminator {

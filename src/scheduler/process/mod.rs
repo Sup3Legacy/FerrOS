@@ -307,7 +307,7 @@ pub unsafe fn disassemble_and_launch(
 
         maximum_address = max(maximum_address, address + size);
         if program.get_type().is_err() {
-            continue
+            continue;
         };
         if address == 0 {
             continue;
@@ -635,8 +635,8 @@ impl Process {
     }
 
     pub fn set_name(&mut self, name: &[u8]) {
-        self.name[..min(name.len(),SIZE_NAME)]
-        .clone_from_slice(&name[..min(name.len(), SIZE_NAME)]);
+        self.name[..min(name.len(), SIZE_NAME)]
+            .clone_from_slice(&name[..min(name.len(), SIZE_NAME)]);
     }
 
     pub fn get_name(&self) -> Vec<u8> {
@@ -793,7 +793,6 @@ pub fn listen(id: usize) -> (usize, usize) {
         } else {
             let process = &mut ID_TABLE[id];
             if process.ppid == ppid {
-                crate::warningln!("State : {:?}", process.state);
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
