@@ -5,7 +5,7 @@ use super::super::partition::{IoError, Partition};
 use super::disk_operations;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::println;
-use crate::{data_storage::path::Path, debug, errorln, warningln};
+use crate::{data_storage::path::Path, debug, errorln};
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -195,7 +195,7 @@ fn strip_end<T: Eq>(a: &[T], c: T) -> Box<&[T]> {
 impl fmt::Debug for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name_to_print = strip_end(&self.name, 0);
-        let blocks_to_print = strip_end(&self.blocks, (Address { lba: 0, block: 0 }));
+        let blocks_to_print = strip_end(&self.blocks, Address { lba: 0, block: 0 });
         f.debug_struct("Header")
             .field("type", &self.file_type)
             //.field("owner",&self.owner)
@@ -869,7 +869,7 @@ impl UsTar {
         nameStr: String,
         pos: Address,
     ) -> Result<(), ()> {
-        let s = parent_dir.files.len();
+        let _s = parent_dir.files.len();
         let addr = parent_dir.address;
         let mut dir = self.read_from_disk::<Header>(addr.lba as u32 * 512 + addr.block as u32);
         let mut name_arr2 = [0; 28];
@@ -957,11 +957,11 @@ impl UsTar {
 }
 
 impl Partition for UsTar {
-    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
+    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
         let mut path_name = String::from("root/");
         path_name.push_str(&path.to());
         let path_name = Path::from(&path_name);
-        let memfile = self.find_memfile(&path_name);
+        let _memfile = self.find_memfile(&path_name);
         /*match memfile {
             Some(f) => {
                 if flags.contains(OpenFlags::ORD | OpenFlags::OWR) | flags.contains(OpenFlags::OXCUTE | OpenFlags::OWR) {
