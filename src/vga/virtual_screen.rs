@@ -188,8 +188,8 @@ impl VirtualScreen {
                 b'\x1b' => {
                     // Escape code
                     let mut end = i;
-                    for j in i..len {
-                        if char::is_alphabetic(char_vec[j]) {
+                    for (j,c) in char_vec.iter().enumerate().take(len).skip(i) {
+                        if char::is_alphabetic(*c) {
                             end = j;
                             break;
                         }

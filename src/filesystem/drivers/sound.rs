@@ -41,7 +41,7 @@ fn u8slice_to_u64(slice: &[u8]) -> u64 {
 
 impl Partition for SoundDriver {
     fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
-        if path.len() != 0 {
+        if !path.is_empty() {
             None
         } else {
             Some(0)

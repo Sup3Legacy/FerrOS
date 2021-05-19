@@ -6,7 +6,6 @@ use super::disk_operations;
 use crate::filesystem::descriptor::OpenFileTable;
 use crate::println;
 use crate::{data_storage::path::Path, debug, errorln};
-use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::IntoIter;
@@ -185,12 +184,12 @@ impl Header {
         matches!(self.file_type, Type::Dir)
     }
 }
-fn strip_end<T: Eq>(a: &[T], c: T) -> Box<&[T]> {
+fn strip_end<T: Eq>(a: &[T], c: T) -> &[T] {
     let mut idx = a.len() - 1;
     while idx > 0 && a[idx - 1] == c {
         idx -= 1;
     }
-    Box::new(&a[..idx])
+    &a[..idx]
 }
 impl fmt::Debug for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -539,7 +538,7 @@ impl UsTar {
                     .insert(Path::from(&d.current_path.to()), *next_address)
             };
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn find_address(&self, path: &Path) -> Result<Address, UsTarError> {
@@ -876,9 +875,9 @@ impl UsTar {
         parent_dir: MemDir,
         parent_path: Path,
         name: [u8; 32],
-        nameStr: String,
+        name_str: String,
         pos: Address,
-    ) -> Result<(), ()> {
+    ) -> Result<(), UsTarError> {
         let _s = parent_dir.files.len();
         let addr = parent_dir.address;
         let mut dir = self.read_from_disk::<Header>(addr.lba as u32 * 512 + addr.block as u32);
@@ -910,7 +909,7 @@ impl UsTar {
             unsafe {
                 match DIR_CACHE.0.remove(&parent_path) {
                     Some(mut d) => {
-                        d.files.insert(nameStr, pos);
+                        d.files.insert(name_str, pos);
                         DIR_CACHE.0.insert(parent_path, d);
                     }
                     None => panic!("Should not happen, please report this"),
@@ -918,7 +917,7 @@ impl UsTar {
             };
             Ok(())
         } else {
-            Err(())
+            Err(UsTarError::GenericError)
         }
     }
 
@@ -965,11 +964,15 @@ impl UsTar {
         }
     }
 }
-
+impl Default for UsTar {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Partition for UsTar {
-    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
+    fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
         let mut path_name = String::from("root");
-        if path.len() > 0 {
+        if !path.is_empty() {
             path_name.push('/');
         }
         path_name.push_str(&path.to());
@@ -1006,7 +1009,7 @@ impl Partition for UsTar {
 
     fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
         let mut path_name = String::from("root");
-        if oft.get_path().len() > 0 {
+        if !oft.get_path().is_empty(){
             path_name.push('/');
         }
         path_name.push_str(&oft.get_path().to());
@@ -1029,7 +1032,7 @@ impl Partition for UsTar {
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
         let mut path_name = String::from("root");
-        if oft.get_path().len() > 0 {
+        if !oft.get_path().is_empty() {
             path_name.push('/');
         }
         path_name.push_str(&oft.get_path().to());
@@ -1051,7 +1054,7 @@ impl Partition for UsTar {
                         path_name,
                         oft.get_flags()
                     );
-                    return -1;
+                    -1
                 } else {
                     // look for the parent folder in which we will create the file
                     let parent_path = path_name.get_parent();
@@ -1084,22 +1087,22 @@ impl Partition for UsTar {
                     let header = Header {
                         user: UGOID(412),
                         owner: UGOID(666),
-                        group: UGOID(007),
+                        group: UGOID(777),
                         parent_address: parent_dir.address,
                         length: length as u32,
-                        blocks_number: blocks_number,
+                        blocks_number,
                         blocks: [Address { lba: 0, block: 0 }; SHORT_MODE_LIMIT as usize],
                         flags: HeaderFlags {
                             user_owner: 0b1111_1111_u8,
                             group_misc: 0b1111_1111_u8,
                         },
-                        mode: mode,
+                        mode,
                         name: name_arr,
                         file_type: Type::File,
                         padding: [0_u8; 40],
                     };
                     let file = MemFile {
-                        header: header,
+                        header,
                         data: buffer.to_vec(),
                     };
                     debug!("File created: {:?}", file);
@@ -1111,10 +1114,10 @@ impl Partition for UsTar {
                         name,
                         file_address,
                     ) {
-                        Ok(()) => return buffer.len() as isize,
-                        Err(()) => panic!("Unhandled"),
+                        Ok(()) => buffer.len() as isize,
+                        Err(_) => panic!("Unhandled"),
                     }
-                };
+                }
             }
             Ok(mut file) => {
                 if file.header.file_type == Type::Dir {
@@ -1182,9 +1185,8 @@ impl Partition for UsTar {
                                 (header_address.lba * 512 + header_address.block) as u32,
                             );
                             self.lba_table_global.write_to_disk(self.port);
-                            return (new_size - true_offset) as isize;
-                        } else {
-                            if new_size <= 512 * SHORT_MODE_LIMIT {
+                            (new_size - true_offset) as isize
+                        } else if new_size <= 512 * SHORT_MODE_LIMIT {
                                 debug!("File longer but still short");
 
                                 let new_addresses = unsafe {
@@ -1230,7 +1232,7 @@ impl Partition for UsTar {
                                     (header_address.lba * 512 + header_address.block) as u32,
                                 );
                                 self.lba_table_global.write_to_disk(self.port);
-                                return (new_size - true_offset) as isize;
+                                (new_size - true_offset) as isize
                             } else {
                                 debug!("File longer and becomes Long");
                                 let old_header_addr_res = self.del_file(oft);
@@ -1263,7 +1265,7 @@ impl Partition for UsTar {
                                 );
                                 exit_code
                             }
-                        }
+                        
                     }
                     FileMode::Long => {
                         debug!("File was Long");

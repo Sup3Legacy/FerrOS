@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 
 use x86_64::structures::paging::PageTableFlags;
 
-use xmas_elf::{program::SegmentData, program::Type, sections::ShType, ElfFile};
+use xmas_elf::sections::ShType;
 
 pub const MODIFY_WITH_EXEC: PageTableFlags = PageTableFlags::BIT_9;
 pub const STACK: PageTableFlags = PageTableFlags::BIT_10;
@@ -44,7 +44,7 @@ pub const MINIMAL_HEAP_SIZE: u64 = 100;
 
 /// # Safety
 /// TODO
-pub unsafe fn load_elf_for_exec(file_name: &str, args: &Vec<String>) -> Result<!, ProcessError> {
+pub unsafe fn load_elf_for_exec(file_name: &str, args: &[String]) -> Result<!, ProcessError> {
     let frame_allocator = match &mut memory::FRAME_ALLOCATOR {
         Some(fa) => fa,
         None => panic!("the frame allocator wasn't initialized"),
@@ -54,7 +54,7 @@ pub unsafe fn load_elf_for_exec(file_name: &str, args: &Vec<String>) -> Result<!
         Ok(x) => x,
         Err(_) => return Err(ProcessError::ReadError),
     };
-    if code.len() == 0 {
+    if code.is_empty() {
         debug!("tries to return");
         return Err(ProcessError::InvalidExec);
     }

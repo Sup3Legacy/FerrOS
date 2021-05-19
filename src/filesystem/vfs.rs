@@ -11,8 +11,6 @@ use super::descriptor::OpenFileTable;
 use super::fsflags::OpenFlags;
 use super::partition::{IoError, Partition};
 
-use super::drivers::nopart::NoPart;
-
 use crate::{data_storage::path::Path, warningln};
 
 #[derive(Debug)]
@@ -40,7 +38,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     Some(0)
                 } else {
@@ -62,7 +60,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     let mut v = Vec::new();
                     for key in map.keys().skip(oft.get_offset() / 28) {
@@ -97,7 +95,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     -1
                 } else {
@@ -135,7 +133,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     false
                 } else {
@@ -161,7 +159,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     usize::MAX
                 } else {
@@ -193,7 +191,7 @@ impl VFS {
             }
         } else {
             match &mut self.subfiles {
-                PartitionNode::Leaf(part) => Err(ErrVFS()),
+                PartitionNode::Leaf(_) => Err(ErrVFS()),
                 PartitionNode::Node(map) => match map.get_mut(&sliced[self.depth]) {
                     None => {
                         let mut next = VFS {
