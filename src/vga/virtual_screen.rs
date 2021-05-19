@@ -176,7 +176,7 @@ impl VirtualScreen {
     ///
     /// # Arguments
     /// * `s : &str` - the string to print.
-    pub fn write_string(&mut self, s: &str) {
+    pub fn write_string(&mut self, s: &str) -> usize {
         let char_vec = s.chars().collect::<Vec<char>>();
         let len = char_vec.len();
         let mut i = 0;
@@ -194,9 +194,13 @@ impl VirtualScreen {
                             break;
                         }
                     }
-                    assert!(end > i);
-                    self.handle_escaped(&char_vec[i..=end]);
-                    i = end
+                    if end > i {
+                        assert!(end > i);
+                        self.handle_escaped(&char_vec[i..=end]);
+                        i = end
+                    } else {
+                        return i;
+                    }
                 }
                 _ => {
                     if self.col_pos == self.width {
@@ -212,6 +216,7 @@ impl VirtualScreen {
             //self.set_cursor();
             i += 1;
         }
+        len
     }
 
     fn handle_escaped(&mut self, code: &[char]) {

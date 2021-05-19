@@ -52,9 +52,9 @@ impl Partition for ScreenPartition {
                 let v_screen_id = mainscreen::VirtualScreenID::forge(oft.get_id());
                 let v_screen = main_screen.get_vscreen_mut(&v_screen_id);
                 if let Some(screen) = v_screen {
-                    screen.write_string(&(String::from_utf8_lossy(buffer)));
+                    let v = screen.write_string(&(String::from_utf8_lossy(buffer)));
                     main_screen.draw();
-                    buffer.len() as isize
+                    v as isize
                 } else {
                     warningln!(
                         "Attempted to write in non-existing virtualscreen : {:?}",
