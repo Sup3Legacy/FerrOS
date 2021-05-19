@@ -53,7 +53,7 @@ test-timeout = 60  # Number of seconds before timeout.
 run-args = [
     "-drive", "format=raw,file=disk/disk2.img,index=2",
     "-boot", "c",
-    #"-soundhw", "pcspk",
+    "-soundhw", "pcspk",
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",  # Enable serial port.
     "-serial", "stdio",  # Redirect the output of the serial port to stdout.
     "-cpu", "max,+ssse3,+sse4.1,+sse4.2", #,+avx512f,+avx512vl
