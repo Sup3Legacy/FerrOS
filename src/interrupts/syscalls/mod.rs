@@ -257,7 +257,6 @@ unsafe extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut Interru
     current.rsp = VirtAddr::from_ptr(args).as_u64();
     let next: u64 = process::fork().0;
     args.rax = next;
-    process::leave_context(current.rsp);
 }
 
 /// arg0 : address of file name
