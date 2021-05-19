@@ -21,7 +21,7 @@ use crate::data_storage::registers::Registers;
 use crate::gdt;
 use crate::scheduler::process;
 use crate::sound;
-use crate::{bsod, println, warningln};
+use crate::{bsod, errorln, warningln};
 use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 
@@ -51,6 +51,16 @@ impl InterruptIndex {
 
 pub fn is_kernel_space(address: VirtAddr) -> bool {
     address.p4_index() >= PageTableIndex::new(256)
+}
+
+macro_rules! new_process {
+    ($code: expr) => {
+        unsafe {
+            let new = process::process_died(COUNTER, $code); // TODO fetch return code
+            COUNTER = 0;
+            process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
+        }
+    };
 }
 
 #[macro_export]
@@ -190,54 +200,53 @@ pub fn init() {
 }
 
 extern "x86-interrupt" fn divide_error_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("div 0");
-    panic!("DIVISION BY ZERO {:#?}", _stack_frame);
+    errorln!("div 0");
+    new_process!(3);
 } // Rust catches this before the CPU, but it's a safeguard for asm/extern code.
 
 // probably would not need to panic ?
 // This interruption should pause the current process until the father restarts it
 extern "x86-interrupt" fn debug_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("debug");
-    panic!("DEBUG");
+    warningln!("debug");
 }
 
 extern "x86-interrupt" fn non_maskable_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("non maskable");
-    panic!("Non maskable Stack Frame");
+    errorln!("non maskable");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
-    println!("BREAKPOINT : {:#?}", stack_frame);
-    loop {}
+    errorln!("BREAKPOINT : {:#?}", stack_frame);
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn overflow_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("overflow");
-    panic!("OVERFLOW");
+    errorln!("overflow");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn bound_range_exceeded_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("bound range");
-    panic!("BOUND RANGE EXCEEDED");
+    errorln!("bound range");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn invalid_opcode_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("opcode");
-    panic!("INVALID OPCODE");
+    errorln!("opcode");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn device_not_available_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("device");
-    panic!("DEVICE NOT AVAILABLE");
+    errorln!("device");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn double_fault_handler(
     stack_frame: &mut InterruptStackFrame,
     error_code: u64,
 ) -> ! {
-    println!("ERROR : {:#?}", error_code);
-    println!("saved rsp : {:#?}", process::get_current().rsp);
-    println!("CR3 : {:#?}", Cr3::read());
+    bsod!("ERROR : {:#?}", error_code);
+    bsod!("saved rsp : {:#?}", process::get_current().rsp);
+    bsod!("CR3 : {:#?}", Cr3::read());
     panic!("EXCEPTION : DOUBLE FAULT : \n {:#?}", stack_frame);
 }
 
@@ -245,74 +254,65 @@ extern "x86-interrupt" fn invalid_tss_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
-    println!("tss");
-    panic!("INVALID TSS");
+    errorln!("tss");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn segment_not_present_handler(
     _stack_frame: &mut InterruptStackFrame,
-    _error_code: u64,
+    error_code: u64,
 ) {
-    println!("segment {}", _error_code);
-    println!("error : {}", _error_code);
-    panic!("SEGMENT NOT PRESENT {}", _error_code);
+    errorln!("segment {}", error_code);
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn stack_segment_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
-    println!("stack");
-    panic!("STACK SEGMENT FAULT");
+    errorln!("stack");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn general_protection_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
-    _error_code: u64,
+    error_code: u64,
 ) {
-    println!("Protection {}", _error_code);
-    unsafe {
-        let stack = _stack_frame.as_mut();
-        println!("cs {} ss {}", stack.code_segment, stack.stack_segment);
-        println!("ip : {}", stack.instruction_pointer.as_u64());
-        println!("sp : {}", stack.stack_pointer.as_u64());
-        //println!("cs2 {}", segmentation::cs().0);
-        println!("GENERAL PROTECTION FAULT! {:#?}", stack);
-    }
-    println!("TRIED TO READ : {:#?}", Cr2::read());
-    println!("CR3 : {:#?}", Cr3::read());
-    println!("ERROR : {:#?}", _error_code);
-    hardware::power::shutdown();
+    bsod!("TRIED TO READ : {:#?}", Cr2::read());
+    bsod!("CR3 : {:#?}", Cr3::read());
+    bsod!("ERROR : {:#?}", error_code);
+    new_process!(11);
 }
 
 extern "x86-interrupt" fn x87_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
-    panic!("x87 FLOATING POINT ERROR");
+    errorln!("x87 floating point handler");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn alignment_check_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
-    println!("alignement");
-    panic!("ALIGNMENT CHECK ERROR");
+    errorln!("alignement");
+    new_process!(11);
 }
 
 extern "x86-interrupt" fn simd_floating_point_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("simd");
-    panic!("SIMD FLOATING POINT ERROR");
+    errorln!("simd");
+    new_process!(3);
 }
 
 extern "x86-interrupt" fn virtualization_handler(_stack_frame: &mut InterruptStackFrame) {
-    println!("virtualization");
-    panic!("VIRTUALIZATION ERROR");
+    errorln!("virtualization");
+    new_process!(11);
 }
 
 extern "x86-interrupt" fn security_exception_handler(
     _stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) {
-    println!("security");
-    panic!("SECURITY EXCEPTION");
+    errorln!("security");
+    new_process!(11);
 }
 
 // Should be entirely rewritten for multi-process handling
@@ -321,38 +321,24 @@ unsafe extern "C" fn timer_interrupt_handler(
     registers: &mut Registers,
 ) {
     sound::handle();
-    //println!(".{}/{}", COUNTER, QUANTUM);
-    //println!("{:#?}", stack_frame);
-    //println!("rax:{} rdi:{} rsi:{} r10:{}", registers.rax, registers.rdi, registers.rsi, registers.r10);
-    //println!("r8:{} r9:{} r15:{} r14:{} r13:{}", registers.r8, registers.r9, registers.r15, registers.r14, registers.r13);
-    //println!("r12:{} r11:{} rbp:{} rcx:{} rbx:{}", registers.r12, registers.r11, registers.rbp, registers.rcx, registers.rbx);
+
     if COUNTER == QUANTUM {
-        //warningln!("Gonna change process");
         COUNTER = 0;
-        //println!("{:#?}", stack_frame);
+
         let _stack_frame_2 = stack_frame.as_mut();
-        //println!("entered");
+
         let (next, mut old) = process::gives_switch(QUANTUM);
 
-        //println!("here");
         let (cr3, cr3f) = Cr3::read();
         old.cr3 = cr3.start_address();
         old.cr3f = cr3f;
 
         old.rsp = VirtAddr::from_ptr(registers).as_u64();
 
-        //println!("Tick");
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-        //print!("here {:X} stored {:X}\n", VirtAddr::from_ptr(registers).as_u64(), rsp_store);
-        //println!("other data {:X}", VirtAddr::from_ptr(stack_frame).as_u64());
-        //Cr3::write(PhysFrame::containing_address(next.cr3), next.cr3f);
-        //println!("target {:x}", process::leave_context_cr3 as usize);
-        //println!("{:#?} {:x}", next.cr3f, next.cr3f.bits());
-        //print!("Switch process");
         process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
         loop {}
-        // return; -> unreachable
     } else {
         COUNTER += 1;
     }
@@ -385,7 +371,7 @@ extern "x86-interrupt" fn page_fault_handler(
         bsod!("TRIED TO READ : {:#?}", Cr2::read());
         bsod!("PAGE FAULT! {:#?}", stack_frame);
         bsod!("ERROR : {:#?}", error_code);
-        panic!("killed")
+        new_process!(11);
     }
 }
 
@@ -403,7 +389,6 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
 }
 
 extern "x86-interrupt" fn mouse_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    //debug!("{:?}", hardware::mouse::read_simple_packet());
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Mouse.as_u8());
