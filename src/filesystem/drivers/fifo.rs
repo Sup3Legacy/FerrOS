@@ -32,7 +32,7 @@ impl FiFoPartitionInner {
                             return Ok(data);
                         }
                     } else {
-                        if !data.is_empty(){
+                        if !data.is_empty() {
                             crate::warningln!("FiFo gave end and not alone {}", data.len());
                         }
                         return Ok(data);

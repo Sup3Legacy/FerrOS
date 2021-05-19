@@ -110,7 +110,7 @@ unsafe extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut Interru
                     let new = process::process_died(interrupts::COUNTER, process::IO_ERROR);
                     interrupts::COUNTER = 0;
                     process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);
-                },
+                }
                 Err(IoError::Sleep) => {
                     let (next, mut old) = process::gives_switch(interrupts::COUNTER);
                     interrupts::COUNTER = 0;
@@ -122,7 +122,7 @@ unsafe extern "C" fn syscall_0_read(args: &mut RegistersMini, _isf: &mut Interru
                     old.rsp = VirtAddr::from_ptr(args).as_u64();
 
                     process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
-                },
+                }
             };
             let mut address = VirtAddr::new(args.rsi);
             for item in res.iter().take(min(size as usize, res.len())) {
@@ -209,8 +209,9 @@ unsafe extern "C" fn syscall_2_open(args: &mut RegistersMini, _isf: &mut Interru
     crate::debug!("syscall open mid");
     let fd = current_process
         .open_files
-        .create_file_table(path::Path::from(&path),
-            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rdx as usize)
+        .create_file_table(
+            path::Path::from(&path),
+            crate::filesystem::fsflags::OpenFlags::from_bits_unchecked(args.rdx as usize),
         )
         .into_u64();
     crate::debug!("syscall open end {}", fd);
@@ -293,16 +294,16 @@ unsafe extern "C" fn syscall_7_exit(args: &mut RegistersMini, _isf: &mut Interru
 }
 
 unsafe extern "C" fn syscall_8_wait(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
-        let (next, mut old) = process::gives_switch(interrupts::COUNTER);
-        interrupts::COUNTER = 0;
+    let (next, mut old) = process::gives_switch(interrupts::COUNTER);
+    interrupts::COUNTER = 0;
 
-        let (cr3, cr3f) = Cr3::read();
-        old.cr3 = cr3.start_address();
-        old.cr3f = cr3f;
+    let (cr3, cr3f) = Cr3::read();
+    old.cr3 = cr3.start_address();
+    old.cr3f = cr3f;
 
-        old.rsp = VirtAddr::from_ptr(args).as_u64();
+    old.rsp = VirtAddr::from_ptr(args).as_u64();
 
-        process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
+    process::leave_context_cr3(next.cr3.as_u64() | next.cr3f.bits(), next.rsp);
 }
 
 unsafe extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
@@ -310,10 +311,7 @@ unsafe extern "C" fn syscall_9_shutdown(args: &mut RegistersMini, _isf: &mut Int
     hardware::power::shutdown();
 }
 
-unsafe extern "C" fn syscall_10_get_puid(
-    args: &mut RegistersMini,
-    _isf: &mut InterruptStackFrame,
-) {
+unsafe extern "C" fn syscall_10_get_puid(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     args.rax = process::CURRENT_PROCESS as u64
 }
 
@@ -425,16 +423,16 @@ unsafe extern "C" fn syscall_21_memrequest(
         return;
     }
     let given;
-        if let Some(ref mut frame_allocator) = crate::memory::FRAME_ALLOCATOR {
-            given = scheduler::process::allocate_additional_heap_pages(
-                frame_allocator,
-                current_process.heap_address + current_heap_size * 0x1000,
-                additional,
-                &current_process,
-            );
-        } else {
-            given = 0;
-        }
+    if let Some(ref mut frame_allocator) = crate::memory::FRAME_ALLOCATOR {
+        given = scheduler::process::allocate_additional_heap_pages(
+            frame_allocator,
+            current_process.heap_address + current_heap_size * 0x1000,
+            additional,
+            &current_process,
+        );
+    } else {
+        given = 0;
+    }
     debug!("Fullfilled memrequest {}", given);
     current_process.heap_size += given;
     args.rax = given
@@ -448,7 +446,7 @@ unsafe extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut Inte
 
 unsafe extern "C" fn syscall_23_kill(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     debug!("{} tried to kill {}", process::CURRENT_PROCESS, args.rdi);
-    args.rax = scheduler::process::kill(args.rdi as usize) as u64 ;
+    args.rax = scheduler::process::kill(args.rdi as usize) as u64;
 }
 
 unsafe extern "C" fn syscall_test(_args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {

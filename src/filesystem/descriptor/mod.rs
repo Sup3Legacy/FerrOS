@@ -304,7 +304,7 @@ impl ProcessDescriptorTable {
             }
         }
     }
-    
+
     /// # Safety
     /// TODO
     pub unsafe fn close_fd(&mut self, fd: usize) -> Result<usize, FileDesciptorError> {

@@ -32,7 +32,7 @@ impl Path {
     }
 
     pub fn len(&self) -> usize {
-        if self.0.is_empty(){
+        if self.0.is_empty() {
             0
         } else {
             self.slice().len()
@@ -42,7 +42,7 @@ impl Path {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    
+
     /// Slices the `Path` and returns a `Vec<String>`
     pub fn slice(&self) -> Vec<String> {
         let sliced = self

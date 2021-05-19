@@ -23,7 +23,7 @@ impl Default for KeyBoard {
 
 impl Partition for KeyBoard {
     fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
-        if !path.is_empty(){
+        if !path.is_empty() {
             None
         } else {
             Some(0)
