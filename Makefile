@@ -1,7 +1,7 @@
-all: disk ferros_release
+all: disk run
 
 setup:
-	rustup override set nightly-2021-05-11
+	rustup override set nightly-2021-05-18
 	rustup update
 	cargo update
 	cargo install bootimage
