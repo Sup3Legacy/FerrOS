@@ -106,6 +106,14 @@ Each node in the tree holds a hash-map (we use Rust's `BTreeMap`) which associat
 
 [^1]: Kernel Wars, A new filesystem
 
+## Virtual memory
+
+Virtual memory is used to have real processes with separated space. We haven't activated ring 3 due to lack of time to understand the error we got when trying to activate it but the whole paging has been done considering the user program would be in ring 3 (such as using the `USER_ACCESSIBLE` flag).
+
+In all, every process has it's own level 4 table and the kernel is a higher space kernel with with the level 3 tables of the kernel in common between every process.
+
+In terms of performances and space used. The frame allocator has a array of booleans to store wich pages of 4KiB are available to be allocated.
+
 ## Program/kernel interaction
 
 A program cannot by itself interact with the user or with the underlying hardware, as all software and hardware resources are managed by the kernel (our drivers are all part of the kernel space for simplicity sakes). Every interaction between a program and the kernel is done via either a forced context switch or a software interrupt, implementing a syscall.
@@ -153,6 +161,8 @@ Of course, an operating system is not complete without its user suite. We, given
 
 - `shell`, a command interpret, capable of some file descriptor manipulation (`|`, `>`, `>>`, `<`, `<<`, `&`)
 
+The syntax is exactly the same as the one from the `mini-shell` TP.
+
 - `cat`, to read the content of a file or list the elements of a folder (replaces the traditional `ls`)
 - `hexdump`, to dump the byte sequence of a file
 - `echo` to redirect an input (originally `STD_IN`) to an output (originally `STD_OUT`)
@@ -165,6 +175,7 @@ We also took some artistic liberty to implement some fun things to demonstrate w
 
 - `neofetch`, to display some misc info on the OS (totally accurate)
 - `snake` a little snake game, implemented in 36 hours to distract the unwary developer from implementing even more syscalls.
+- `music` a little music player.
 
 # Drivers
 
@@ -207,7 +218,7 @@ There are some things we could have done if we had more time :
 
 We have a straight-forward (using OSdev) driver that reads the CMOS RTC and outputs the time informations. It can be accesses by the kernel or a program through `/hardware/clock`.
 
-## UsTar
+## UsTar / Disk interaction
 
 We really wanted to have a way to load and store data in a persistent way, using Qemu's disk emulation. Therefore we had to choose a file system format, so we took whatever the most simple one was : Tar. It went through some modifications and simplifications as we didn't need all features the original Tar format offers.
 
