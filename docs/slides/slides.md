@@ -79,3 +79,30 @@ pub trait Partition {
 
 ---
 
+# Rust
+Bug type lifetime
+macro
+    keyboard macro
+    lisp combinators
+doc
+build reproductible
+auto tests
+
+---
+
+# Demonstration
+colors
+userspace
+- shell
+- cat
+- grep
+- echo
+- hexdump
+launcher
+neofetch
+clock
+multiscreen
+VFS
+musique
+
+---
