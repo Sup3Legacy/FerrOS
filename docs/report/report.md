@@ -20,7 +20,7 @@ When we were first thinking about that language, someone (who asked to remain an
 
 > But why would you want to use Rust instead of the all-mighty C? Rust's "safeness" comes with a great amount of limitations and those who give up their liberty for the sake of winning some temporary safety get neith#(IAç]/l5Q¦Bmçtl¿(Fx **Segmentation fault (core dumped)**
 
-This sums up pretty well the pros and cons of Rust. A very advanced and experienced user could do certain things a lot simpler using C because they wouldn't have to worry about data lifetime, cursed memory mutations and data races detection. But they would probably still encounter more segfaults than we did when developping the kernel. Aside from the developpment of the bootloader (raw ASM, so very prompt to crashes) and memory/page allcoator, we really encountered a very reasonnable amout of segfaults and pagefaults, and all of them were caused by mistakes in our page allocating routines. This meant that, when we had all the very technical bases in place, we almost didn't have to worry about any crash.
+This sums up pretty well the pros and cons of Rust. A very advanced and experienced user could do certain things a lot simpler using C because they wouldn't have to worry about data lifetime, cursed memory mutations and data races detection. But they would probably still encounter more segfaults than we did when developing the kernel. Aside from the development of the bootloader (raw ASM, so very prompt to crashes) and memory/page allocator, we really encountered a very reasonable amount of segfaults and pagefaults, and all of them were caused by mistakes in our page allocating routines. This meant that, when we had all the very technical bases in place, we almost didn't have to worry about any crash.
 
 We were aware that this language, however, has a lot less documentations when it comes to system programing, as it is very young (the first stable version was released only 6 years ago) and only a few such projects have been written using it.
 
@@ -45,10 +45,10 @@ When we first began working on FerrOS, we have fixed some objectives we wanted t
 * Preemptive multitasking with a not-too-naive scheduling algorithm (basically at least something more advanced than a simple round-robin) and some notion of priority.
 * As many accessible physical devices as possible (because that's fun)
 * Multi-screen (i.e. the screen can be shared by multiple processes). The reason behind this is pretty simple : how would you better demonstrate your working multitasking system than by having multiple processes write on the display at the same time? :)
-* Minimalist but functionnal userspace-library, which enables the user to write simple CLI programs.
-* A small functionnal shell (how original).
+* Minimalist but functional user space-library, which enables the user to write simple CLI programs.
+* A small functional shell (how original).
 
-This can be all summed up by "Have a working usermode shell that can do some basic stuff while a clock is running 'real-time' at the top of the screen".
+This can be all summed up by "Have a working user mode shell that can do some basic stuff while a clock is running 'real-time' at the top of the screen".
 
 # Programming
 
@@ -93,9 +93,9 @@ One of the main reasons is that it is a straightforward scheduling algorithm. It
 
 >The VFS is kind of the central piece of our kernel. It’s an energy field created by all living user-programs. It surrounds them and penetrates them. It binds the OS together [^1].
 
-Like in a real UNIX-like kernel, every device, be it hardware or software, can be accessed by an user-program through the abstract high-level interface of the VFS. In our opinion, this is a good example of an occurence where Rust really shows its strength. Our VFS represents a really meaty chunk of code and contains of lot of layers of abstraction. 
+Like in a real UNIX-like kernel, every device, be it hardware or software, can be accessed by an user-program through the abstract high-level interface of the VFS. In our opinion, this is a good example of an occurrence where Rust really shows its strength. Our VFS represents a really meaty chunk of code and contains of lot of layers of abstraction. 
 
-The basic idea is the following : the VFS is an abstract tree whose branches are `String`s and whose leafs are various drivers. These drivers can be very different (we have a mouse driver, sound driver as well as a Tar driver, a RAM-disk driver, etc.) but every one of them implements the trait `Partition`, which presents a common abstract high-level interface, containing a few primitives (`read`, `write`, etc.). This is where we were really thankful of Rust's trait system, as we could unite a lot of drivers, which work completely differently under the hood (e.g. the driver for the Tar filesystem is over 1200-LOC long, contains multiple caches, a lot of data-structures and bytes handling all over the places, while the driver for the clock uses only some Port-based logic or the screen driver contains memory writes and buffer manipulations), in a single "simple" structure whithout worrying about any UB.
+The basic idea is the following : the VFS is an abstract tree whose branches are `String`s and whose leafs are various drivers. These drivers can be very different (we have a mouse driver, sound driver as well as a Tar driver, a RAM-disk driver, etc.) but every one of them implements the trait `Partition`, which presents a common abstract high-level interface, containing a few primitives (`read`, `write`, etc.). This is where we were really thankful of Rust's trait system, as we could unite a lot of drivers, which work completely differently under the hood (e.g. the driver for the Tar file system is over 1200-LOC long, contains multiple caches, a lot of data-structures and bytes handling all over the places, while the driver for the clock uses only some Port-based logic or the screen driver contains memory writes and buffer manipulations), in a single "simple" structure without worrying about any UB.
 
 So, when the VFS receives a query from a program (or from the kernel), it follows a path on its `Partition`-tree according to the `Path` contained in the `OpenFileTable` associated with the `FileDescriptor` given in argument to the query. If it eventually reaches a `Partition` (that is a driver), it simply forwards the query to that driver and returns its result. (if the path ends within the tree, the VFS handles the query itself. For example, if a program from the path `/`, it gets `proc, hardware, ustar`, i.e. the names of repertories in the root-folder).
 
@@ -108,9 +108,9 @@ Each node in the tree holds a hash-map (we use Rust's `BTreeMap`) which associat
 
 ## Program/kernel interaction
 
-A program cannot by itself interact with the user or with the underlying hardware, as all software and hardware ressources are managed by the kernel (our drivers are all part of the kernel space for simplicity sakes). Every interaction between a program and the kernel is done via either a forced context switch or a software interrupt, implementing a syscall.
+A program cannot by itself interact with the user or with the underlying hardware, as all software and hardware resources are managed by the kernel (our drivers are all part of the kernel space for simplicity sakes). Every interaction between a program and the kernel is done via either a forced context switch or a software interrupt, implementing a syscall.
 
-When a program requires a ressource from the kernel, it generates a syscall, whose number corresponds to a pre-defined list of possible syscalls
+When a program requires a resource from the kernel, it generates a syscall, whose number corresponds to a pre-defined list of possible syscalls
 
 ## User-space
 
@@ -132,7 +132,7 @@ The `librust` contains a few main modules that helps us build software for our t
 
 One of the most important module is the one containing all the very-low-level code responsible for all interactions with the kernel, through the syscalls. It only contains a few lines of inline-ASM and has been tested to ensure there as little risk of register/memory corruption.
 
-On top of this code are built a few abstraction layers for easy handling of files, I/O data, etc. We decided to not go as overkill as the std-lib regarding this abstraction, as we did not have a lot of time, and because ouf interactions are a lot simpler than most *Nix systems, so there is no need for such very-high-level abstraction.
+On top of this code are built a few abstraction layers for easy handling of files, I/O data, etc. We decided to not go as overkill as the std-lib regarding this abstraction, as we did not have a lot of time, and because our interactions are a lot simpler than most *Nix systems, so there is no need for such very-high-level abstraction.
 
 ##### Memory allocator
 
