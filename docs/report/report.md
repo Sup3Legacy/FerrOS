@@ -221,6 +221,8 @@ But one could argue : a file can only have a size of $100 \times 512$ bytes. Thi
 
 This mode, as well as the file type, is stored inside the header. A directory is stored in a pretty straightforward way : its data blocks contain tuples `(name, address)` of their children.
 
+Because our OS isn't self-hosted, all user-programs were written and compiled on our machines. In order to insert them into the Tar filesystem, we wrote a PYthon script that scrapes a `filesystem` directory (included in our repo), containing the directories and files of the Tar filesystem, and turns it into a disk image following oure Tar format. It has been quite a pain but we finally got it to work! It is super convenient.
+
 # Reliability
 
 This is sort of the elephant in the room. From the very beginning, we built FerrOS to be a proof of concept of a feature-rich OS that, the code of which remains understandable. The goal was not for it to be reliable in any way. This means that it should work fine as long as the user follows the guidelines but will panic (i.e. crash on purpose) on multiple occasions. The UsTar driver is a great example of that : each step of the UsTar pipeline has a lot of data checks that cause the OS to crash if something invalid gets detected. A real OS would obviously catch this error and returns it to the user program, possibly killing it.
