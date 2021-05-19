@@ -793,7 +793,6 @@ pub fn listen(id: usize) -> (usize, usize) {
         } else {
             let process = &mut ID_TABLE[id];
             if process.ppid == ppid {
-                crate::warningln!("State : {:?}", process.state);
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {

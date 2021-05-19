@@ -223,7 +223,6 @@ impl VirtualScreen {
         // Handle escape code
         let escaped_length = code.len();
         let terminator = code[escaped_length - 1];
-        debug!("Got escaped code : {:?}", code);
         assert_eq!(code[0] as u8, b'\x1b');
         assert!(char::is_alphabetic(terminator));
         match terminator {
