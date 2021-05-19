@@ -38,6 +38,8 @@ pub static FIRST_PROGRAM: &[u8] = include_bytes!("user_program/launcher");
 
 pub static LOL: [u8; 10] = [0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, 0xcd, 0x80, 0xc3];
 
+pub static mut VGA_BUFFER: u64 = 0xb8000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum QemuExitCode {

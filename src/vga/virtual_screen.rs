@@ -19,7 +19,7 @@ pub struct ColorCode(pub u8);
 /// # Fields
 /// * `code` - ASCII code of the character
 /// * `color` - color code of the character, 8-bit integer
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub struct CHAR {
     code: u8,
@@ -29,6 +29,11 @@ pub struct CHAR {
 impl CHAR {
     pub fn new(code: u8, color: ColorCode) -> Self {
         Self { code, color }
+    }
+}
+impl core::fmt::Debug for CHAR {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("C").field("c", &self.code).finish()
     }
 }
 
