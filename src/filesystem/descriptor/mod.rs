@@ -248,9 +248,10 @@ impl ProcessDescriptorTable {
         // the GLOBAL_FILE_TABLE into the first
         // unoccupied FileDescriptor field.
         // We then return the associated FileDescriptor
+        crate::debug!("{:?} {:?}", path, [path.to()]);
         let id = match super::open_file(&path, flags) {
-            Ok(i) => i,
-            Err(_) => return FileDescriptor::new(usize::MAX),
+            Some(i) => i,
+            None => return FileDescriptor::new(usize::MAX),
         };
         let open_file_table = OpenFileTable::new(path, flags, id);
         self.add_file_table(open_file_table)
@@ -348,8 +349,8 @@ pub fn open(filename: String, mode: OpenFlags) -> FileDescriptor {
             None => {
                 new_pfdt.index = i;
                 let id = match super::open_file(&Path::from(&filename), mode) {
-                    Ok(i) => i,
-                    Err(_) => return FileDescriptor::new(usize::MAX),
+                    Some(i) => i,
+                    None => return FileDescriptor::new(usize::MAX),
                 };
                 unsafe {
                     new_pfdt.files[i] = Some(GLOBAL_FILE_TABLE.insert(OpenFileTable::new(
