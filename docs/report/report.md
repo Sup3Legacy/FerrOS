@@ -145,6 +145,27 @@ This allocator is just a simple linked_list allocator. We improved it quite a lo
 - adding the automatic merging of contigous regions. Without it, a program could "run out" of heap space simply besauce of repeated allocations that fragmented the heap.
 - adding the automatic request of page allcoation. In case the allocator could not allocate a heap region because no big enough region was left, it would request, through a syscall, the kernel some additional pages that it would (depending of if the kernel responded positively or not) itnegrate into the heap.
 
+### User applications
+
+Of course, an operating system is not complete without its user suite. We, given the time constraint, cherry-picked the most fundamental and useful utilities one need. Here is a list of those implemented, and a short description.
+
+#### Utilities
+
+- `shell`, a command interpret, capable of some file descriptor manipulation (`|`, `>`, `>>`, `<`, `<<`, `&`)
+
+- `cat`, to read the content of a file or list the elements of a folder (replaces the traditional `ls`)
+- `hexdump`, to dump the byte sequence of a file
+- `echo` to redirect an input (originally `STD_IN`) to an output (originally `STD_OUT`)
+- `grep` to filter the content of the input (`STD_IN`) and print it on the output (`STD_OUT`) given a regexp
+- `top` to pretty-print the content of the `/proc` folder and output some info on the running processes.
+
+We also took some artistic liberty to implement some fun things to demonstrate what we can do.
+
+#### Flex
+
+- `neofetch`, to display some misc info on the OS (totally accurate)
+- `snake` a little snake game, implemented in 36 hours to distract the unwary developer from implementing even more syscalls.
+
 # Drivers
 
 In order to be able to interract with various hardware alemetns, we wrote a couple basic drivers.
