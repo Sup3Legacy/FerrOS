@@ -18,21 +18,14 @@ Noyau de type micro-monolithique™ :
 
 Features :
 
+::: incremental
 - User space séparé du noyau, ELF-loader
 - Ordonnancement préemptif par loterie
 - Multi-processus, multi-screen
 - VFS universel $\rightarrow$ accès à toutes les ressources depuis le userspace via une interface unifiée
 - Gestion de processus depuis le userspace : `fork`, `exec`, `dup`
 - Logiciels multimédia
-
-
-## Plan
-
-- Choix du langage, pros/cons (Paul)
-- Partie technique x86-64, bootloader, syscalls (Samuel)
-- Scheduler (Paul)
-- VFS, interfaces, librust (Constantin)
-- User-programs (peut-être aussi Rust?) (Gabriel)
+:::
 
 # Choix du langage
 
@@ -44,6 +37,7 @@ Features :
 
 -------
 
+::: incremental
 - Suite d'outils `cargo` très riche
   - `check`, `build`, `test`, `run`,...
   - `fmt`
@@ -56,6 +50,7 @@ Features :
 - Sécurité et fiabilité des structures déjà existantes, même en `#![no-std]`.
 - Les `SEGFAULT` sont très rares, il faut les parquer dans des `unsafe{...}`
 - Frustration avec le borrow-checker (mais c'est pour votre bien, promis)
+:::
 
 ---
 
@@ -147,7 +142,7 @@ Moins d'inline que ce qu'on aurais du avoir autrement grâce aux abstractions de
 
 Très peu d'assembleur dans notre code. Seulement:
 - Interruptions
-- Kernel space -> user space
+- Kernel space $\rightarrow$ user space
 
 ## Mémoire virtuelle
 
@@ -157,15 +152,15 @@ Tout est en mémoire virtuelle en mode 64bits
 
 ## bootloader
 
-- Repris un bootloader écrit en rust + asm
+- Repris un bootloader écrit en Rust + ASM
 - Tentative ratée
 - Ajout d'une surprise dans le code du bootloader
 
 ## Syscall
 
-- Vieux jeu -> via les interruptions
-- `80h` comme linux
-- Arguments = Conventions d'appel du C
+- Vieux jeu $\rightarrow$ via les interruptions
+- `80h` comme Linux
+- Arguments : conventions d'appel du C
 
 
 # Scheduler
@@ -202,18 +197,31 @@ Chaque driver est une structure implémentent le trait `Partition`:
 
 ```rust
 pub trait Partition {
-    fn open(&mut self, path: &Path, flags: OpenFlags) -> 
-        Option<usize>;
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> 
-        Result<Vec<u8>, IoError>;
-    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> 
-        isize;
-    fn flush(&self);
-    fn lseek(&self);
-    fn read_raw(&self);
-    fn close(&mut self, oft: &OpenFileTable) -> bool;
-    fn give_param(&mut self, oft: &OpenFileTable, 
-        param: usize) -> usize;
+  fn open(&mut self,
+    path: &Path,
+    flags: OpenFlags) -> 
+    Option<usize>;
+  fn read(&mut self,
+    oft: &OpenFileTable,
+    size: usize) -> 
+    Result<Vec<u8>, IoError>;
+  fn write(&mut self,
+    oft: &OpenFileTable,
+    buffer: &[u8]) -> 
+    isize;
+```
+
+----
+
+```rust
+  fn flush(&self);
+  fn lseek(&self);
+  fn read_raw(&self);
+  fn close(&mut self,
+    oft: &OpenFileTable) -> bool;
+  fn give_param(&mut self,
+    oft: &OpenFileTable, 
+    param: usize) -> usize;
 }
 ```
 
@@ -221,34 +229,34 @@ pub trait Partition {
 
 https://wiki.osdev.org/Creating_an_Operating_System
 
-- Stage 1: Beginning
-Everything except
-  -> Internal Kernel Debugger 
-  -> Multithreaded Kernel 
+- Étape 1:
+  Tout sauf :
+  - Internal Kernel Debugger 
+  - Multithreaded Kernel 
 
---- 
+---
 
 - Stage 2: User-space
 - [x] User-space
-- [x] Program loading
+- [x] Lancement de programmes
 - [x] System calls
 - [x] OS Specific Toolchain 
-- [x] Creating a -C- *Rust* Library
-- [x] Fork and Execute 
+- [x] Créer une bibliothèque ~~C~~ *Rust* 
+- [x] Fork et Execute 
 - [x] Shell
 
 --- 
 
 - Stage 3: Extending your Operating System 
-- [x] Time
+- [x] Temps
 - [ ] Threads
 - [ ] Symmetric Multiprocessing 
-- [x] Secondary Storage  
-- [x] Real Filesystems
-- [ ] Graphics
-- [ ] ? User Interface
-- [ ] Networking
-- [x] Sound
+- [x] Stockage secondaire  
+- [x] Vrai système de fichier
+- [ ] Interface graphique
+- [ ] Interface utilisateur
+- [ ] Mise en réseau
+- [x] Son
 - [ ] Universal Serial Bus
 
 
