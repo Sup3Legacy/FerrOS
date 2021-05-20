@@ -1,10 +1,10 @@
+LATEX = xelatex
+BIBTEX = bibtex
 PANDOC = pandoc
 PANDOC-TEMPLATE = template.latex
-PANDOC-FLAGS = --template $(PANDOC-TEMPLATE) --listings --pdf-engine=xelatex -V geometry:a4paper -V geometry:margin=2cm
-PANDOC-BEAMER-FLAGS = --template $(PANDOC-TEMPLATE) --listings --slide-level 2 --pdf-engine=xelatex
+PANDOC-FLAGS = --template $(PANDOC-TEMPLATE) --listings --pdf-engine=$(LATEX) -V geometry:a4paper -V geometry:margin=2cm
+PANDOC-BEAMER-FLAGS = --listings --slide-level 2 --pdf-engine=$(LATEX)
 
-XELATEX = xelatex
-BIBTEX = bibtex
 
 REPORT_SRC = report/report.md
 REPORT_PDF = report.pdf

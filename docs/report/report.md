@@ -91,6 +91,19 @@ Some other crates brought us some convenient structures and macros but can be co
 
 Here, we discuss the implementation we opted for our scheduler. As of now, it is a simple preemptive, lottery-based, single-core scheduler, though the concept could be adapted to the context of multi-core CPUs.
 
+```rust
+pub trait Partition {
+    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize>;
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError>;
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize;
+    fn flush(&self);
+    fn lseek(&self);
+    fn read_raw(&self);
+    fn close(&mut self, oft: &OpenFileTable) -> bool;
+    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize;
+}
+```
+
 ### When is the scheduler used?
 
 Whenever there is an interruption that pauses the execution of a process (clock, halt, normal end of a process, etc.), the OS safely saves all the context of the process (that is its registers, flags, and memory pages), asks the scheduler what to do, and then loads up the context of the selected process and gives it control back.
