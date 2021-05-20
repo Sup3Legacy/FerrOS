@@ -62,72 +62,67 @@ From 1000 to 250 lines.
 \tiny
 ```rust
 macro_rules! layout {
-    ( ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+  ( ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+    {
+      let mut l: [Effect; 128] = [Effect::Nothing; 128];
+      layout!(l ; $( $k $c ),* ; $( $special )*)
+    }
+  };
+  ( $l:expr ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+    {
+      $(
         {
-            let mut l: [Effect; 128] = [Effect::Nothing; 128];
-            layout!(l ; $( $k $c ),* ; $( $special )*)
+          $l[$k] = Effect::Value(KeyEvent::Character($c));
         }
-    };
-    ( $l:expr ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+      )*
+      layout!($l ; $( $special )*)
+    }
+  };
+  ( $l:expr ; $( $k:literal $sk:literal ),* ) => {
+    {
+      $(
         {
-            $(
-                {
-                    $l[$k] = Effect::Value(KeyEvent::Character($c));
-                }
-            )*
-            layout!($l ; $( $special )*)
+          $l[$k] = Effect::Value(KeyEvent::SpecialKey($sk));
         }
-    };
-    ( $l:expr ; $( $k:literal $sk:literal ),* ) => {
-        {
-            $(
-                {
-                    $l[$k] = Effect::Value(KeyEvent::SpecialKey($sk));
-                }
-            )*
-            $l
-        }
-    };
+      )*
+      $l
+    }
+  };
 }
 ```
 \normalsize
-
----
 
 # Parser combinators
 \tiny
 ```rust
 /// Alternative parser combinator. Tries the rightmost parser first.
 macro_rules! alt {
-    ($s: expr ; $p: ident) => {
-        $p($s)
-    };
+  ($s: expr ; $p: ident) => {
+    $p($s)
+  };
 
-    ($s: expr ; $p: ident | $( $tail: ident )|* ) => {
-        (alt! { $s ; $( $tail )|* }).or($p($s))
-    };
+  ($s: expr ; $p: ident | $( $tail: ident )|* ) => {
+    (alt! { $s ; $( $tail )|* }).or($p($s))
+  };
 }
 
 /// Parser combinator: uses the parsers from left to right.
 macro_rules! then {
-    ($s: expr ; $l: expr) => {
-        $l($s)
-    };
+  ($s: expr ; $l: expr) => {
+    $l($s)
+  };
 
-    ($s: expr ; $l: expr => $( $tail_p: expr)=>+ ) => {
-        $l($s).and_then(|(tail, _)| then! { tail ; $( $tail_p )=>+ })
-    };
+  ($s: expr ; $l: expr => $( $tail_p: expr)=>+ ) => {
+    $l($s).and_then(|(tail, _)| then! { tail ; $( $tail_p )=>+ })
+  };
 }
 ```
 \normalsize
-
----
 
 # Rust has good error messages except this one...
 
 ![Closures + Lifetimes parameters + Macros + Nightly = WTF!?](images/error.png)
 
----
 
 # Other features
 - Automatic documentation building
@@ -253,7 +248,7 @@ https://wiki.osdev.org/Creating_an_Operating_System
 - [x] Fork et Execute 
 - [x] Shell
 
---- 
+---
 
 - Stage 3: Extending your Operating System 
 - [x] Temps
