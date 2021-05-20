@@ -123,7 +123,18 @@ Intérêt du VFS : Unifier tout cela
 
 Chaque driver est une structure implémentent le trait `Partition`: 
 
-
+```rust
+pub trait Partition {
+    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize>;
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError>;
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize;
+    fn flush(&self);
+    fn lseek(&self);
+    fn read_raw(&self);
+    fn close(&mut self, oft: &OpenFileTable) -> bool;
+    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize;
+}
+```
 
 # Rust
 Bug type lifetime
@@ -135,8 +146,9 @@ build reproductible
 auto tests
 
 # Demonstration
-colors
-userspace
+
+- colors
+- userspace
 - shell
 - cat
 - grep
@@ -158,6 +170,8 @@ Everything except
   -> Internal Kernel Debugger 
   -> Multithreaded Kernel 
 
+--- 
+
 - Stage 2: User-space
 - [x] User-space
 - [x] Program loading
@@ -166,6 +180,8 @@ Everything except
 - [x] Creating a -C- *Rust* Library
 - [x] Fork and Execute 
 - [x] Shell
+
+---
 
 - Stage 3: Extending your Operating System 
 - [x] Time
