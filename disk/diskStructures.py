@@ -26,7 +26,7 @@ class Address:
         if i < 2:
             return (self.lba >> (8 * (1-i))) & 255
         else:
-            return ((self.index + 1) >> (8 * (3-i))) & 255
+            return ((self.index) >> (8 * (3-i))) & 255
         
 
 
