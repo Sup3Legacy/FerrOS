@@ -5,7 +5,7 @@ use hashbrown::hash_map::DefaultHashBuilder;
 use priority_queue::PriorityQueue;
 use x86_64::instructions::port::Port;
 
-use crate::{debug, println};
+use crate::println;
 
 /// Max number of sounds in a session.
 const MAX_SOUND: u64 = 8192;
@@ -89,12 +89,6 @@ impl SoundQueue {
     }
     /// Creates and enques a new sound.
     pub fn create_and_enqueue(&mut self, tone: u32, length: u64, begin: u64) {
-        debug!(
-            "Pushed sound : {}, {}, {}",
-            tone,
-            length,
-            begin + get_tick()
-        );
         self.0.push(
             SoundElement::new(tone, length, begin + get_tick()),
             SoundPriority::new(core::u64::MAX - (begin + get_tick())),
@@ -144,7 +138,6 @@ impl SoundQueue {
     }
     /// Changes the speaker's tone.
     fn play_sound(&self, element: SoundElement) {
-        println!("Gonna play sound");
         unsafe {
             let div: u32 = 1193180 / element.tone;
 

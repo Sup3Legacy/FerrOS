@@ -3,7 +3,7 @@
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::println;
+
 
 mod sound_queue;
 
@@ -22,7 +22,6 @@ pub fn handle() {
 ///
 /// This fucntion can be called directly by the kernel or indirectly by a program through the `VFS`
 pub fn add_sound(tone: u64, length: u64, begin: u64) {
-    println!("Received : {}, {}, {}", tone, length, begin);
     SOUND_QUEUE
         .lock()
         .create_and_enqueue(tone as u32, length, begin)
