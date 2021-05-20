@@ -11,6 +11,8 @@ header-includes:
 
 # Introduction
 
+![](images/FerrOS.png)
+
 ## Description de haut niveau
 
 Noyau de type micro-monolithique™ :
@@ -286,7 +288,7 @@ https://wiki.osdev.org/Creating_an_Operating_System
 
 ---
 
-![Architecture système](/home/pollux/cours/OS/FerrOS/docs/images/schema.jpg)
+![Architecture système](images/schema.jpg)
 
 # Demonstration
 auto tests
