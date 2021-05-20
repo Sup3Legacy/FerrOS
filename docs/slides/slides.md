@@ -284,8 +284,9 @@ https://wiki.osdev.org/Creating_an_Operating_System
 - [x] Son
 - [ ] Universal Serial Bus
 
-
 ---
+
+![Architecture système](/home/pollux/cours/OS/FerrOS/docs/images/schema.jpg)
 
 # Demonstration
 auto tests
