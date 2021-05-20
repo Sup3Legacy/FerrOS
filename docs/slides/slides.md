@@ -122,14 +122,16 @@ macro_rules! then {
 
 ---
 
-# Rust a de bons messages d'erreur sauf...
-![Closures + Macros + Lifetime parameters + Nightly = WTF?!](images/error.png)
+# Rust has good error messages except this one...
+
+![Closures + Lifetimes parameters + Macros + Nightly = WTF!?](images/error.png)
 
 ---
 
-doc
-build reproductible
-auto tests
+# Other features
+- Automatic documentation building
+- Reproducible builds with `Cargo.lock`
+- Conditional compilation: auto tests
 
 ---
 
