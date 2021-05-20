@@ -61,7 +61,35 @@ Features :
 
 # Partie technique
 
-blah
+## x86-64
+
+Moins d'inline que ce qu'on aurais du avoir autrement grâce aux abstractions de la librairie x86-64 de rust:
+
+- `Cr2::read(); Cr3::write(...)`
+- `Port::new()`
+
+Très peu d'assembleur dans notre code. Seulement:
+- Interruptions
+- Kernel space -> user space
+
+## Mémoire virtuelle
+
+Tout est en mémoire virtuelle en mode 64bits
+
+- Bitmap Allocator
+
+## bootloader
+
+- Repris un bootloader écrit en rust + asm
+- Tentative ratée
+- Ajout d'une surprise dans le code du bootloader
+
+## Syscall
+
+- Vieux jeu -> via les interruptions
+- `80h` comme linux
+- Arguments = Conventions d'appel du C
+
 
 # Scheduler
 
@@ -120,3 +148,33 @@ clock
 multiscreen
 VFS
 musique
+
+# Conclusion
+
+https://wiki.osdev.org/Creating_an_Operating_System
+
+- Stage 1: Beginning
+Everything except
+  -> Internal Kernel Debugger 
+  -> Multithreaded Kernel 
+
+- Stage 2: User-space
+- [x] User-space
+- [x] Program loading
+- [x] System calls
+- [x] OS Specific Toolchain 
+- [x] Creating a -C- *Rust* Library
+- [x] Fork and Execute 
+- [x] Shell
+
+- Stage 3: Extending your Operating System 
+- [x] Time
+- [ ] Threads
+- [ ] Symmetric Multiprocessing 
+- [x] Secondary Storage  
+- [x] Real Filesystems
+- [ ] Graphics
+- [ ] ? User Interface
+- [ ] Networking
+- [x] Sound
+- [ ] Universal Serial Bus
