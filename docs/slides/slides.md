@@ -184,12 +184,12 @@ Tout est en mémoire virtuelle en mode 64bits
 
 Plusieurs drivers (en kernel space) :
 
-- Écran
-- Clavier, souris
-- Horloge, buzzer
-- RAM-disk, pipe
-- Disque
-- Données logicielles (`/proc/`)
+> - Écran
+> - Clavier, souris
+> - Horloge, buzzer
+> - RAM-disk, pipe
+> - Disque
+> - Données logicielles (`/proc/`)
 
 Intérêt du VFS : Unifier tout cela
 
@@ -226,6 +226,20 @@ pub trait Partition {
     param: usize) -> usize;
 }
 ```
+
+## File descriptor
+
+Entre syscalls et VFS, logique de file descriptor.
+
+Les syscalls ne manipulent que des syscalls.
+
+File descriptor :
+
+- chemin du fichier
+- flags
+- offset
+- identifiant (utile pour l'écran)
+
 
 # Conclusion
 
