@@ -227,11 +227,15 @@ pub trait Partition {
 }
 ```
 
+---
+
+![VFS tree](images/VFS.png)
+
 ## File descriptor
 
 Entre syscalls et VFS, logique de file descriptor.
 
-Les syscalls ne manipulent que des syscalls.
+Les syscalls ne manipulent que des fd.
 
 File descriptor :
 
