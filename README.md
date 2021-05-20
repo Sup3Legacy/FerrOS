@@ -25,3 +25,8 @@ Then run these three commands in the root directory of the project:
 - Clean: `make clean`
 - Format: `make fmt`
 - Count the number of lines: `make count`
+
+## Accessing the report
+- It is accessible in `/docs`
+- Compile the files with `make`
+- Find them in `/docs/artifacts`
