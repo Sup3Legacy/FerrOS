@@ -88,7 +88,7 @@ class File(UstarFile):
         return perm(self.data)
 
     def mode(self):
-        if len(self) < SHORT_MODE_LIMIT * BLOCK_SIZE:
+        if len(self) <= SHORT_MODE_LIMIT * BLOCK_SIZE:
             return 0
         else:
             return 1
