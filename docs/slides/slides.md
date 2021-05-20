@@ -57,6 +57,81 @@ Features :
 - Les `SEGFAULT` sont très rares, il faut les parquer dans des `unsafe{...}`
 - Frustration avec le borrow-checker (mais c'est pour votre bien, promis)
 
+---
+
+# Macros for the keyboard layout
+From 1000 to 250 lines.
+
+```rust
+macro_rules! layout {
+    ( ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+        {
+            let mut l: [Effect; 128] = [Effect::Nothing; 128];
+            layout!(l ; $( $k $c ),* ; $( $special )*)
+        }
+    };
+    ( $l:expr ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
+        {
+            $(
+                {
+                    $l[$k] = Effect::Value(KeyEvent::Character($c));
+                }
+            )*
+            layout!($l ; $( $special )*)
+        }
+    };
+    ( $l:expr ; $( $k:literal $sk:literal ),* ) => {
+        {
+            $(
+                {
+                    $l[$k] = Effect::Value(KeyEvent::SpecialKey($sk));
+                }
+            )*
+            $l
+        }
+    };
+}
+```
+
+---
+
+# Parser combinators
+```rust
+/// Alternative parser combinator. Tries the rightmost parser first.
+macro_rules! alt {
+    ($s: expr ; $p: ident) => {
+        $p($s)
+    };
+
+    ($s: expr ; $p: ident | $( $tail: ident )|* ) => {
+        (alt! { $s ; $( $tail )|* }).or($p($s))
+    };
+}
+
+/// Parser combinator: uses the parsers from left to right.
+macro_rules! then {
+    ($s: expr ; $l: expr) => {
+        $l($s)
+    };
+
+    ($s: expr ; $l: expr => $( $tail_p: expr)=>+ ) => {
+        $l($s).and_then(|(tail, _)| then! { tail ; $( $tail_p )=>+ })
+    };
+}
+```
+
+---
+
+# Rust a de bons messages d'erreur sauf...
+![Closures + Macros + Lifetime parameters + Nightly = WTF?!](images/error.png)
+
+---
+
+doc
+build reproductible
+auto tests
+
+---
 
 
 # Partie technique
@@ -102,7 +177,7 @@ Tout est en mémoire virtuelle en mode 64bits
 - Le ticket choisi donne la priorité minimale à exécuter (s'il n'y en a pas, on choisit parmi les priorités supérieures).
 - Parmi les processus à priorité égale, on fait une bobine simple (round-robin).
 
-
+---
 
 # VFS
 
@@ -185,6 +260,24 @@ Everything except
 - [x] Fork and Execute 
 - [x] Shell
 
+=======
+---
+
+# Demonstration
+auto tests
+colors
+multiscreen
+clock
+userspace
+- shell (|, >, >>, <, <<, &)
+- cat (VFS)
+- hexdump
+- echo
+- grep
+- top
+- neofetch
+- snake
+- music
 ---
 
 - Stage 3: Extending your Operating System 
