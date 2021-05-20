@@ -217,31 +217,6 @@ pub trait Partition {
 }
 ```
 
-# Rust
-Bug type lifetime
-macro
-    keyboard macro
-    lisp combinators
-doc
-build reproductible
-auto tests
-
-# Demonstration
-
-- colors
-- userspace
-- shell
-- cat
-- grep
-- echo
-- hexdump
-launcher
-neofetch
-clock
-multiscreen
-VFS
-musique
-
 # Conclusion
 
 https://wiki.osdev.org/Creating_an_Operating_System
@@ -262,25 +237,7 @@ Everything except
 - [x] Fork and Execute 
 - [x] Shell
 
-=======
----
-
-# Demonstration
-auto tests
-colors
-multiscreen
-clock
-userspace
-- shell (|, >, >>, <, <<, &)
-- cat (VFS)
-- hexdump
-- echo
-- grep
-- top
-- neofetch
-- snake
-- music
----
+--- 
 
 - Stage 3: Extending your Operating System 
 - [x] Time
@@ -293,3 +250,24 @@ userspace
 - [ ] Networking
 - [x] Sound
 - [ ] Universal Serial Bus
+
+
+---
+
+# Demonstration
+auto tests
+colors
+multiscreen
+clock (multiscreen)
+userspace
+- shell (|, >, >>, <, <<, &)
+- cat (VFS)
+- hexdump
+- echo
+- grep
+- top
+- neofetch
+- snake
+- music
+
+---
