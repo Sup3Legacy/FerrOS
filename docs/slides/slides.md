@@ -59,7 +59,7 @@ Features :
 # Macros for the keyboard layout
 From 1000 to 250 lines.
 
-\small
+\tiny
 ```rust
 macro_rules! layout {
     ( ; $( $k:literal $c:literal ),* ; $( $special:tt )* ) => {
@@ -90,11 +90,12 @@ macro_rules! layout {
     };
 }
 ```
+\normalsize
 
 ---
 
 # Parser combinators
-\small
+\tiny
 ```rust
 /// Alternative parser combinator. Tries the rightmost parser first.
 macro_rules! alt {
@@ -118,6 +119,7 @@ macro_rules! then {
     };
 }
 ```
+\normalsize
 
 ---
 
