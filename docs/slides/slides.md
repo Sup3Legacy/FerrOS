@@ -125,14 +125,18 @@ Chaque driver est une structure implémentent le trait `Partition`:
 
 ```rust
 pub trait Partition {
-    fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize>;
-    fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError>;
-    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize;
+    fn open(&mut self, path: &Path, flags: OpenFlags) -> 
+        Option<usize>;
+    fn read(&mut self, oft: &OpenFileTable, size: usize) -> 
+        Result<Vec<u8>, IoError>;
+    fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> 
+        isize;
     fn flush(&self);
     fn lseek(&self);
     fn read_raw(&self);
     fn close(&mut self, oft: &OpenFileTable) -> bool;
-    fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize;
+    fn give_param(&mut self, oft: &OpenFileTable, 
+        param: usize) -> usize;
 }
 ```
 
