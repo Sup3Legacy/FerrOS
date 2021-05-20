@@ -22,7 +22,7 @@ impl Default for MouseDriver {
 
 impl Partition for MouseDriver {
     fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
-        if path.len() != 0 {
+        if !path.is_empty() {
             None
         } else {
             Some(0)

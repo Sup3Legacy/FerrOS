@@ -24,24 +24,18 @@ impl FiFoPartitionInner {
             match self.data.pop() {
                 Err(PopError) => {
                     if b {
-                        if data.len() == 0 {
-                            crate::warningln!("FiFo empty, now killing");
+                        if data.is_empty() {
                             return Err(IoError::Kill);
                         } else {
-                            crate::warningln!("FiFo gave end and is alone {}", data.len());
                             return Ok(data);
                         }
                     } else {
-                        if data.len() != 0 {
-                            crate::warningln!("FiFo gave end and not alone {}", data.len());
-                        }
                         return Ok(data);
                     }
                 }
                 Ok(d) => data.push(d),
             }
         }
-        crate::warningln!("FiFo not empty {}", data.len());
         Ok(data)
     }
 
@@ -89,7 +83,7 @@ impl Default for FiFoPartition {
 
 impl Partition for FiFoPartition {
     fn open(&mut self, path: &Path, _fs: OpenFlags) -> Option<usize> {
-        if path.len() != 0 {
+        if !path.is_empty() {
             return None;
         }
         for i in 0..self.data.len() {
@@ -103,7 +97,7 @@ impl Partition for FiFoPartition {
     }
 
     fn read(&mut self, oft: &OpenFileTable, size: usize) -> Result<Vec<u8>, IoError> {
-        if oft.get_path().len() != 0 {
+        if !oft.get_path().is_empty() {
             return Err(IoError::Kill);
         }
         match &mut self.data[oft.get_id()] {
@@ -113,7 +107,7 @@ impl Partition for FiFoPartition {
     }
 
     fn write(&mut self, oft: &OpenFileTable, buffer: &[u8]) -> isize {
-        if oft.get_path().len() != 0 {
+        if !oft.get_path().is_empty() {
             return 0;
         }
         match &mut self.data[oft.get_id()] {
@@ -139,7 +133,7 @@ impl Partition for FiFoPartition {
     }*/
 
     fn close(&mut self, oft: &OpenFileTable) -> bool {
-        if oft.get_path().len() != 0 {
+        if !oft.get_path().is_empty() {
             panic!("closed an unexisting file in fifo")
         }
 
@@ -152,7 +146,7 @@ impl Partition for FiFoPartition {
     }
 
     fn give_param(&mut self, oft: &OpenFileTable, param: usize) -> usize {
-        if oft.get_path().len() != 0 {
+        if !oft.get_path().is_empty() {
             panic!("give param to unexisting file")
         }
         match &mut self.data[oft.get_id()] {

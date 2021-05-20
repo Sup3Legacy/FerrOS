@@ -21,10 +21,11 @@ use crate::data_storage::{path::Path, queue::Queue, random};
 use crate::filesystem;
 use crate::filesystem::descriptor::{FileDesciptorError, FileDescriptor, ProcessDescriptorTable};
 use crate::filesystem::fsflags::OpenFlags;
-use crate::hardware;
 use crate::memory;
 use crate::{debug, errorln, println};
 use alloc::string::String;
+
+use core::cmp::min;
 
 /// Default allocated heap size (in number of pages)
 const DEFAULT_HEAP_SIZE: u64 = 2;
@@ -45,14 +46,6 @@ pub enum ProcessError {
     HeapError,
     InvalidExec,
     ReadError,
-}
-
-#[allow(improper_ctypes)]
-extern "C" {
-    fn launch_asm(first_process: fn(), initial_rsp: u64);
-
-    /// Old function definition
-    pub fn _leave_context(rsp: u64);
 }
 
 #[naked]
@@ -87,126 +80,12 @@ pub unsafe extern "C" fn leave_context_cr3(_cr3: u64, _rsp: u64) -> ! {
     )
 }
 
-#[naked]
-/// # Safety
-/// TODO
-pub unsafe extern "C" fn leave_context(_rsp: u64) {
-    asm!(
-        "mov rsp, rdi",
-        "pop r9",
-        "pop r8",
-        "pop r10",
-        "pop rdx",
-        "pop rsi",
-        "pop rdi",
-        "pop rax",
-        "pop rbx",
-        "pop rcx",
-        "pop rbp",
-        "pop r11",
-        "pop r12",
-        "pop r13",
-        "pop r14",
-        "pop r15",
-        "vmovaps ymm0, [rsp]",
-        "add rsp, 32",
-        //"sti",
-        "iretq",
-        options(noreturn,),
-    )
-}
-
-#[naked]
-/// # Safety
-/// TODO
-///
-/// Goes towards the userland with a stack- and an instruction-pointer
-pub unsafe extern "C" fn towards_user(_rsp: u64, _rip: u64) {
-    asm!(
-        // Ceci n'est pas exécuté
-        "mov rax, 0x0", // data segment
-        "mov ds, eax",
-        "mov es, eax",
-        "mov fs, eax",
-        "mov gs, eax",
-        "mov rsp, rdi",
-        "add rsp, 8",
-        "push 0x42",
-        "push rax",  // stack segment
-        "push rdi",  // stack pointer
-        "push 518",  // cpu flags
-        "push 0x08", // code segment
-        "push rsi",  // instruction pointer
-        "mov rax, 0",
-        "mov rbx, 0",
-        "mov rcx, 0",
-        "mov rdx, 0",
-        "mov rdi, 0",
-        "mov rsi, 0",
-        "mov rbp, 0",
-        "mov r8, 0",
-        "mov r9, 0",
-        "mov r10, 0",
-        "mov r11, 0",
-        "mov r12, 0",
-        "mov r13, 0",
-        "mov r14, 0",
-        "mov r15, 0",
-        "iretq",
-        options(noreturn,),
-    )
-}
-
-#[naked]
-/// # Safety
-/// TODO
-///
-/// Goes towards the userland with a stack- and an instruction-pointer.
-/// It is also given a heap.
-pub unsafe extern "C" fn towards_user_give_heap(
-    _heap_addr: u64,
-    _heap_size: u64,
-    _rsp: u64,
-    _rip: u64,
-) -> ! {
-    asm!(
-        // Ceci n'est pas exécuté
-        "mov rax, 0x0", // data segment
-        "mov ds, eax",
-        "mov es, eax",
-        "mov fs, eax",
-        "mov gs, eax",
-        "mov rsp, rdx",
-        "add rsp, 8",
-        "push 0x42",
-        "push rax",  // stack segment
-        "push rdx",  // stack pointer
-        "push 518",  // cpu flags
-        "push 0x08", // code segment
-        "push rcx",  // instruction pointer
-        "mov rax, 0",
-        "mov rbx, 0",
-        "mov rcx, 0",
-        "mov rdx, 0",
-        "mov rbp, 0",
-        "mov r8, 0",
-        "mov r9, 0",
-        "mov r10, 0",
-        "mov r11, 0",
-        "mov r12, 0",
-        "mov r13, 0",
-        "mov r14, 0",
-        "mov r15, 0",
-        "iretq",
-        options(noreturn,),
-    )
-}
-
 /// # Safety
 /// TODO
 ///
 /// Goes towards the userland with a stack- and an instruction-pointer.
 /// It is also given a heap and arguments.
+#[allow(clippy::empty_loop)]
 pub unsafe extern "C" fn towards_user_give_heap_args(
     heap_addr: u64,
     heap_size: u64,
@@ -299,80 +178,6 @@ pub unsafe fn allocate_additional_heap_pages(
     maxi
 }
 
-/// Function to launch the first process !
-/// # Safety
-/// TODO
-pub unsafe fn launch_first_process(
-    frame_allocator: &mut memory::BootInfoAllocator,
-    code_address: *const u8,
-    number_of_block: u64,
-    stack_size: u64,
-) -> ! {
-    ID_TABLE[0].state = State::Runnable;
-    if let Ok(level_4_table_addr) = frame_allocator.allocate_level_4_frame() {
-        // addresses telling where the code and the stack starts
-        let addr_code: u64 = 0x320000000000;
-        let addr_stack: u64 = 0x63fffffffff8;
-
-        // put the code blocks at the right place
-        for i in 0..number_of_block {
-            let data: *const [u64; 512] =
-                VirtAddr::from_ptr(code_address.add((i * 4096) as usize)).as_mut_ptr();
-            match frame_allocator.add_entry_to_table_with_data(
-                level_4_table_addr,
-                VirtAddr::new(addr_code + i * 4096),
-                PageTableFlags::USER_ACCESSIBLE | PageTableFlags::PRESENT,
-                &*data,
-            ) {
-                Ok(()) => (),
-                Err(memory::MemoryError(err)) => {
-                    errorln!(
-                        "Could not allocate the {}-th part of the code. Error : {:?}",
-                        i,
-                        err
-                    );
-                    hardware::power::shutdown();
-                }
-            }
-        }
-
-        // allocate every necessary blocks on the stack
-        for i in 0..stack_size {
-            match frame_allocator.add_entry_to_table(
-                level_4_table_addr,
-                VirtAddr::new(addr_stack - i * 0x1000),
-                PageTableFlags::USER_ACCESSIBLE
-                    | PageTableFlags::PRESENT
-                    | PageTableFlags::NO_EXECUTE
-                    | PageTableFlags::WRITABLE,
-                false,
-            ) {
-                Ok(()) => (),
-                Err(memory::MemoryError(err)) => {
-                    errorln!(
-                        "Could not allocate the {}-th part of the stack. Error : {:?}",
-                        i,
-                        err
-                    );
-                    hardware::power::shutdown();
-                }
-            }
-        }
-
-        let (_cr3, cr3f) = Cr3::read();
-        Cr3::write(level_4_table_addr, cr3f);
-        println!("good luck user ;) {} {}", addr_stack, addr_code);
-        println!("target : {:x}", towards_user as usize);
-        towards_user(addr_stack, addr_code); // good luck user ;)
-
-        // should not be reached
-        hardware::power::shutdown();
-    } else {
-        errorln!("couldn't allocate a level 4 table");
-        hardware::power::shutdown();
-    }
-}
-
 /// Converts flags
 pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
     let mut res = elf::MODIFY_WITH_EXEC | PageTableFlags::PRESENT;
@@ -408,7 +213,7 @@ pub fn page_table_flags_from_u64(flags: u64) -> PageTableFlags {
 }
 
 /// Flattens arguments into a pages. Strings are NULL-ended
-pub fn flatten_arguments(args: &Vec<String>) -> (u64, [u8; 0x1000]) {
+pub fn flatten_arguments(args: &[String]) -> (u64, [u8; 0x1000]) {
     let mut res = [0_u8; 0x1000];
     let mut index = 0;
     let mut args_number = 0;
@@ -444,13 +249,13 @@ pub fn flatten_arguments(args: &Vec<String>) -> (u64, [u8; 0x1000]) {
 /// PROG_OFFSET is set arbitrary and may need some fine-tuning.
 /// # Safety
 /// TODO
-#[allow(clippy::empty_loop)]
+#[allow(clippy::empty_loop, unreachable_code)]
 pub unsafe fn disassemble_and_launch(
     code: &[u8],
     frame_allocator: &mut memory::BootInfoAllocator,
     _number_of_block: u64,
     stack_size: u64,
-    args: &Vec<String>,
+    args: &[String],
     new_process: bool,
 ) -> Result<!, ProcessError> {
     // TODO maybe consider changing this
@@ -501,9 +306,8 @@ pub unsafe fn disassemble_and_launch(
         let file_size = program.file_size();
 
         maximum_address = max(maximum_address, address + size);
-        match program.get_type() {
-            Err(_) => continue,
-            Ok(_) => (),
+        if program.get_type().is_err() {
+            continue;
         };
         if address == 0 {
             continue;
@@ -810,6 +614,8 @@ impl Process {
         }
     }
 
+    /// # Safety
+    /// TODO
     pub unsafe fn died(&mut self, code: usize) {
         self.state = State::Zombie(code);
         for process in ID_TABLE.iter_mut() {
@@ -829,9 +635,8 @@ impl Process {
     }
 
     pub fn set_name(&mut self, name: &[u8]) {
-        for i in 0..core::cmp::min(name.len(), SIZE_NAME) {
-            self.name[i] = name[i];
-        }
+        self.name[..min(name.len(), SIZE_NAME)]
+            .clone_from_slice(&name[..min(name.len(), SIZE_NAME)]);
     }
 
     pub fn get_name(&self) -> Vec<u8> {
@@ -988,7 +793,6 @@ pub fn listen(id: usize) -> (usize, usize) {
         } else {
             let process = &mut ID_TABLE[id];
             if process.ppid == ppid {
-                crate::warningln!("State : {:?}", process.state);
                 if let State::Zombie(return_value) = process.state {
                     process.state = State::SlotAvailable;
                     if let Some(frame_allocator) = &mut memory::FRAME_ALLOCATOR {
@@ -1093,6 +897,8 @@ pub unsafe fn kill(target: usize) -> usize {
     }
 }
 
+/// # Safety
+/// TODO
 pub unsafe fn write_to_stdout(message: String) {
     if let Ok(res) = &mut ID_TABLE[CURRENT_PROCESS]
         .open_files

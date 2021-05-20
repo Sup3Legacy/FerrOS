@@ -32,11 +32,15 @@ impl Path {
     }
 
     pub fn len(&self) -> usize {
-        if self.0.len() == 0 {
+        if self.0.is_empty() {
             0
         } else {
             self.slice().len()
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Slices the `Path` and returns a `Vec<String>`

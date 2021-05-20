@@ -305,6 +305,8 @@ impl ProcessDescriptorTable {
         }
     }
 
+    /// # Safety
+    /// TODO
     pub unsafe fn close_fd(&mut self, fd: usize) -> Result<usize, FileDesciptorError> {
         if fd >= self.files.len() {
             return Err(FileDesciptorError());
@@ -319,13 +321,12 @@ impl ProcessDescriptorTable {
         }
     }
 
+    /// # Safety
+    /// TODO
     pub unsafe fn close(&mut self) {
         for i in 0..MAX_TOTAL_OPEN_FILES_BY_PROCESS {
-            match self.files[i] {
-                Some(fd) => {
-                    GLOBAL_FILE_TABLE.delete(fd);
-                }
-                _ => (),
+            if let Some(fd) = self.files[i] {
+                GLOBAL_FILE_TABLE.delete(fd);
             }
         }
     }

@@ -77,8 +77,7 @@ unsafe fn read_string_from_pointer(ptr: u64) -> String {
     if buf == ['/', '\x1f'] {
         buf.pop();
     }
-    let res = buf.into_iter().collect();
-    res
+    buf.into_iter().collect()
 }
 
 /// read. arg0 : unsigned int fd, arg1 : char *buf, size_t count
@@ -259,7 +258,6 @@ unsafe extern "C" fn syscall_5_fork(args: &mut RegistersMini, _isf: &mut Interru
     current.rsp = VirtAddr::from_ptr(args).as_u64();
     let next: u64 = process::fork().0;
     args.rax = next;
-    process::leave_context(current.rsp);
 }
 
 /// arg0 : address of file name
@@ -270,7 +268,7 @@ unsafe extern "C" fn syscall_6_exec(args: &mut RegistersMini, _isf: &mut Interru
     let args = &*(args.rdx as *mut Vec<String>);
     debug!("exec {}", path);
     debug!("args : {}", args.len());
-    if args.len() > 0 {
+    if !args.is_empty() {
         debug!("{}", args[0].len());
     }
     match process::elf::load_elf_for_exec(&path, args) {
@@ -389,7 +387,7 @@ unsafe extern "C" fn syscall_18_set_layer(
         .open_files
         .get_file_table(descriptor::FileDescriptor::new(1));
     if let Ok(oft) = oft_res {
-        let res = filesystem::modify_file(oft, (0 << 62) | layer);
+        let res = filesystem::modify_file(oft, layer);
         args.rax = res as u64;
     } else {
         args.rax = u64::MAX;
@@ -442,7 +440,6 @@ unsafe extern "C" fn syscall_21_memrequest(
 
 unsafe extern "C" fn syscall_22_listen(args: &mut RegistersMini, _isf: &mut InterruptStackFrame) {
     let (rax, rdi) = scheduler::process::listen(args.rdi as usize);
-    debug!("listened {} {} and expected {}", rax, rdi, args.rdi);
     args.rax = rax as u64;
     args.rdi = rdi as u64;
 }

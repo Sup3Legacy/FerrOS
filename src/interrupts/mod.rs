@@ -10,7 +10,6 @@ use x86_64::registers::control::{Cr2, Cr3};
 use x86_64::PrivilegeLevel;
 use x86_64::VirtAddr;
 
-use crate::hardware;
 use crate::scheduler::QUANTUM;
 
 pub mod idt;
@@ -316,6 +315,7 @@ extern "x86-interrupt" fn security_exception_handler(
 }
 
 // Should be entirely rewritten for multi-process handling
+#[allow(clippy::empty_loop, unreachable_code)]
 unsafe extern "C" fn timer_interrupt_handler(
     stack_frame: &mut InterruptStackFrame,
     registers: &mut Registers,
@@ -355,7 +355,7 @@ extern "x86-interrupt" fn page_fault_handler(
     let read_addr = Cr2::read();
     if read_addr.as_u64() == 0x42 && error_code == PageFaultErrorCode::INSTRUCTION_FETCH {
         unsafe {
-            unsafe { crate::errorln!("Process died normally. {}", process::CURRENT_PROCESS) };
+            crate::errorln!("Process died normally. {}", process::CURRENT_PROCESS);
             let new = process::process_died(COUNTER, 0); // TODO fetch return code
             COUNTER = 0;
             process::leave_context_cr3(new.cr3.as_u64() | new.cr3f.bits(), new.rsp);

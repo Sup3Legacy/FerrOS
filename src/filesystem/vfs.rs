@@ -11,9 +11,7 @@ use super::descriptor::OpenFileTable;
 use super::fsflags::OpenFlags;
 use super::partition::{IoError, Partition};
 
-use super::drivers::nopart::NoPart;
-
-use crate::{data_storage::path::Path, warningln};
+use crate::data_storage::path::Path;
 
 #[derive(Debug)]
 pub struct ErrVFS();
@@ -32,7 +30,6 @@ enum PartitionNode {
 impl Partition for VFS {
     fn open(&mut self, path: &Path, flags: OpenFlags) -> Option<usize> {
         let sliced = path.slice();
-        warningln!("O {:?} {:?} depth: {}", sliced, path, self.depth);
         match &mut self.subfiles {
             PartitionNode::Leaf(part) => {
                 let path2 = Path::from_sliced(&sliced[self.depth..]);
@@ -40,7 +37,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     Some(0)
                 } else {
@@ -62,7 +59,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     let mut v = Vec::new();
                     for key in map.keys().skip(oft.get_offset() / 28) {
@@ -97,7 +94,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     -1
                 } else {
@@ -135,7 +132,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     false
                 } else {
@@ -161,7 +158,7 @@ impl Partition for VFS {
             }
             PartitionNode::Node(map) => {
                 if self.depth == sliced.len()
-                    || (sliced.len() == self.depth + 1 && sliced[self.depth] == "")
+                    || (sliced.len() == self.depth + 1 && sliced[self.depth].is_empty())
                 {
                     usize::MAX
                 } else {
@@ -178,7 +175,6 @@ impl Partition for VFS {
 impl VFS {
     pub fn add_file(&mut self, path: Path, data: Box<dyn Partition>) -> Result<(), ErrVFS> {
         let sliced = path.slice();
-        warningln!("C {:?} {:?} depth: {}", sliced, path, self.depth);
         if self.depth == sliced.len() {
             match &self.subfiles {
                 PartitionNode::Leaf(_) => Err(ErrVFS()),
@@ -193,7 +189,7 @@ impl VFS {
             }
         } else {
             match &mut self.subfiles {
-                PartitionNode::Leaf(part) => Err(ErrVFS()),
+                PartitionNode::Leaf(_) => Err(ErrVFS()),
                 PartitionNode::Node(map) => match map.get_mut(&sliced[self.depth]) {
                     None => {
                         let mut next = VFS {

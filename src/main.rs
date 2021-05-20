@@ -163,7 +163,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
                 10,
                 &Vec::new(),
                 true,
-            );
+            )
+            .unwrap();
         }
     }
 

@@ -28,7 +28,7 @@ impl ScreenPartition {
 
 impl Partition for ScreenPartition {
     fn open(&mut self, path: &Path, _flags: OpenFlags) -> Option<usize> {
-        if path.len() != 0 {
+        if !path.is_empty() {
             return None;
         }
         unsafe {
