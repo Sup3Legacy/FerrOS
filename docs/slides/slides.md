@@ -5,6 +5,8 @@ abstract: FerrOS
 advanced-maths: true
 advanced-cs: true
 theme: metropolis
+header-includes:
+    - \usepackage{setspace}
 ---
 
 # Introduction
