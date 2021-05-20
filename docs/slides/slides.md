@@ -231,6 +231,10 @@ pub trait Partition {
 
 ![VFS tree](images/VFS.png)
 
+---
+
+Construction du système de fichier : script Python
+
 ## File descriptor
 
 Entre syscalls et VFS, logique de file descriptor.
