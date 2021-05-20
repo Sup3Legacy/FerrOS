@@ -147,6 +147,7 @@ Moins d'inline que ce qu'on aurais du avoir autrement grâce aux abstractions de
 - `Port::new()`
 
 Très peu d'assembleur dans notre code. Seulement:
+
 - Interruptions
 - Kernel space $\rightarrow$ user space
 
@@ -237,6 +238,7 @@ https://wiki.osdev.org/Creating_an_Operating_System
 
 - Étape 1:
   Tout sauf :
+
   - Internal Kernel Debugger 
   - Multithreaded Kernel 
 
@@ -274,6 +276,7 @@ colors
 multiscreen
 clock (multiscreen)
 userspace
+
 - shell (|, >, >>, <, <<, &)
 - cat (VFS)
 - hexdump
