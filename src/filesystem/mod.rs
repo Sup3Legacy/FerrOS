@@ -39,15 +39,19 @@ pub unsafe fn init_vfs() {
         let s1 = drivers::screen_partition::ScreenPartition::new();
         vfs.add_file(Path::from("/hard/screen"), Box::new(s1))
             .expect("could not create screen");
+
         let s2 = drivers::clock_driver::ClockDriver::new();
         vfs.add_file(Path::from("/hard/clock"), Box::new(s2))
             .expect("could not create clock driver.");
+
         let s3 = drivers::mouse_driver::MouseDriver::new();
         vfs.add_file(Path::from("/hard/mouse"), Box::new(s3))
             .expect("could not create mouse driver.");
+
         let s4 = drivers::sound::SoundDriver::new();
         vfs.add_file(Path::from("/hard/sound"), Box::new(s4))
             .expect("could not create sound driver.");
+
         let s5 = drivers::host_shell::HostShellPartition::new();
         vfs.add_file(Path::from("/hard/host"), Box::new(s5))
             .expect("could not create shell printer.");
