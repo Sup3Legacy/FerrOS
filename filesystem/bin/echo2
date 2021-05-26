@@ -1,2 +1,2 @@
 #!/usr/ferr_shell
-echo $1
+echo "$1"
