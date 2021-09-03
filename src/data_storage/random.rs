@@ -13,9 +13,9 @@ pub fn random_u8() -> u8 {
     unsafe {
         asm!(
             "shr {0}, 1",
-            "jc random_end",
+            "jc 2f",
             "xor {0}, 0xB8",
-            "random_end:",
+            "2:",
             inout(reg_byte) RAND_SEED
         );
         RAND_SEED
