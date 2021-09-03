@@ -461,11 +461,11 @@ unsafe extern "C" fn syscall_not_implemented(
 }
 
 /// dispatch function who gives control to the good syscall function
-pub extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut RegistersMini) {
+pub unsafe extern "C" fn syscall_dispatch(isf: &mut InterruptStackFrame, args: &mut RegistersMini) {
     if args.rax >= SYSCALL_NUMBER {
         panic!("no such syscall : {:?}", args);
     } else {
-        unsafe { SYSCALL_TABLE[args.rax as usize](args, isf) }
+        SYSCALL_TABLE[args.rax as usize](args, isf)
     }
 }
 

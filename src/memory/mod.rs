@@ -2,7 +2,6 @@
 use crate::println;
 use alloc::string::String;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-use core::cmp::{max, min};
 use x86_64::structures::paging::OffsetPageTable;
 use x86_64::structures::paging::{FrameAllocator, PhysFrame, Size4KiB};
 use x86_64::{
@@ -22,9 +21,6 @@ pub struct MemoryError(pub String);
 
 /// Memory address translation (virtual -> physical) now has to be done with `Translate::translate_addr`
 pub static mut PHYSICAL_OFFSET: u64 = 0;
-
-/// Maximum number of pages allowed. Can hold 256MiB of RAM, must be increased to have a higher capacity
-const MAX_PAGE_ALLOWED: usize = 65536;
 
 /// Number of allocatable tables
 static mut NUMBER_TABLES: u64 = 0;
@@ -121,9 +117,7 @@ pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static>
 /// Structure of the page allocator, holding the data of every page available.
 /// It can be improved in terms of place taken and performances
 pub struct BootInfoAllocator {
-    pages_available: [bool; MAX_PAGE_ALLOWED], // table of every pages with a bool. Should be changed to u8 to improve perfs
-    next: usize, // next table entry to check for free place to improve perfs
-    maxi: usize, //  maximal index in RAM to improve perfs
+    head: u64,
     level4_table: &'static PageTable, // level4_table : kernel's level 4 table
 }
 
@@ -133,49 +127,47 @@ impl BootInfoAllocator {
     /// Creates a new allocator from the RAM map given by the bootloader
     /// and the offset to the physical memory given also by the bootloader
     pub unsafe fn init(memory_map: &'static MemoryMap, physical_memory_offset: VirtAddr) {
-        let mut pages_available = [false; MAX_PAGE_ALLOWED];
         let regions = memory_map.iter();
         let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
         let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
         // transform to an iterator of frame start addresses
         let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
 
-        let mut maxi = 0;
-        let mut next = 0;
+        let mut head = 0;
 
         // Fill up the table with every addresses
-        for i in frame_addresses {
-            NUMBER_TABLES += 1;
-            pages_available[(i >> 12) as usize] = true;
-            maxi = max((i >> 12) as usize, maxi);
-            next = min((i >> 12) as usize, next);
+        for next in frame_addresses {
+            let v: *mut u64 = (next + PHYSICAL_OFFSET) as *mut u64;
+            *v = head;
+            head = next;
         }
         println!("Number of available tables in RAM : {}", NUMBER_TABLES); // just for show, should be removed
 
         FRAME_ALLOCATOR = Some(BootInfoAllocator {
-            pages_available,
-            next,
-            maxi,
+            head,
             level4_table: active_level_4_table(physical_memory_offset),
         });
     }
 
     pub fn state(&self) -> usize {
-        let mut total = 0;
-        for i in 0..MAX_PAGE_ALLOWED {
-            if self.pages_available[i] {
+        unsafe {
+            let mut h = self.head;
+            let mut total = 1;
+            loop {
+                let v: u64 = *((h + PHYSICAL_OFFSET) as *const u64);
+                if v == 0 {
+                    return total
+                }
                 total += 1;
+                h = v;
             }
         }
-        total
     }
 
     pub fn empty() -> Self {
         unsafe {
             Self {
-                pages_available: [false; MAX_PAGE_ALLOWED],
-                next: 0,
-                maxi: 0,
+                head: 0,
                 level4_table: &*VirtAddr::zero().as_ptr(),
             }
         }
@@ -183,23 +175,25 @@ impl BootInfoAllocator {
 
     /// Returns a new unallocated Frame and marks it as allocated.
     pub fn allocate_4k_frame(&mut self) -> Option<PhysAddr> {
-        for _i in 0..MAX_PAGE_ALLOWED {
-            // doesn't use a loop to handle the case where everything is already allocated
-            if self.pages_available[self.next] {
-                self.pages_available[self.next] = false;
-                self.next += 1; // thus next should be decreased before usage
-
-                let phys = PhysAddr::new(((self.next as u64) - 1) << 12);
-                return Some(phys);
+        unsafe {
+            let v: *const u64 = (self.head + PHYSICAL_OFFSET) as *const u64;
+            if *v == 0 {
+                return None
             } else {
-                self.next += 1;
-                if self.next > self.maxi {
-                    self.next = 0;
-                }
+                let head = self.head;
+                self.head = *v;
+                Some(PhysAddr::new(head))
             }
         }
-        warningln!("memory is full");
-        None
+    }
+
+    /// Can be used to deallocate a specific 4Ki frame
+    pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) {
+        unsafe {
+            let next = addr.as_u64();
+            *((next + PHYSICAL_OFFSET) as *mut u64) = self.head; 
+            self.head = next;
+        }
     }
 
     /// # No garbage collector you should think above deallocating !
@@ -574,7 +568,7 @@ impl BootInfoAllocator {
             }
         }
     }
-
+/*
     /// # Beware of giving a valid level 4 table
     /// Adds an entry to the level 4 table with the given flags at the given virtual address
     /// # Safety
@@ -716,7 +710,7 @@ impl BootInfoAllocator {
             table_1[p_1].set_addr(frame_1, flags);
             Ok(())
         }
-    }
+    }*/
 
     /// # Safety
     /// Function to duplicate an level 4 table into a new one.
@@ -1031,12 +1025,6 @@ impl BootInfoAllocator {
             }
         }
         flags_left
-    }
-
-    /// Can be used to deallocate a specific 4Ki frame
-    pub fn deallocate_4k_frame(&mut self, addr: PhysAddr) {
-        let table_index = addr.as_u64() >> 12;
-        self.pages_available[table_index as usize] = true;
     }
 }
 

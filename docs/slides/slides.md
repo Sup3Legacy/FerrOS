@@ -11,6 +11,8 @@ header-includes:
 
 # Introduction
 
+![](images/FerrOS.png)
+
 ## Description de haut niveau
 
 Noyau de type micro-monolithique™ :
@@ -231,6 +233,10 @@ pub trait Partition {
 
 ![VFS tree](images/VFS.png)
 
+---
+
+Construction du système de fichier : script Python
+
 ## File descriptor
 
 Entre syscalls et VFS, logique de file descriptor.
@@ -280,8 +286,9 @@ https://wiki.osdev.org/Creating_an_Operating_System
 - [x] Son
 - [ ] Universal Serial Bus
 
-
 ---
+
+![Architecture système](images/schema.jpg)
 
 # Demonstration
 auto tests
@@ -301,3 +308,7 @@ userspace
 - music
 
 ---
+
+# Des question pour notre super équipe de dev ?
+
+![](images/img.png)

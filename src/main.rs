@@ -74,9 +74,9 @@ pub unsafe extern "C" fn test_syscall() {
         "int 80h",
         "mov rax, 5", // syscall 5 == fork
         "int 80h",
-        "loop:", // the fathers loops
+        "2:", // the fathers loops
         "cmp rax, 0",
-        "jnz loop",
+        "jnz 2b",
         "mov rdi, rax",
         "mov rax, 9", // syscall 9 == shutdown
         "int 80h",

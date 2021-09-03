@@ -1013,7 +1013,24 @@ impl Partition for UsTar {
         path_name.push_str(&oft.get_path().to());
         let path = Path::from(&path_name);
         let file = match self.find_memfile(&path) {
-            Ok(f) => f,
+            Ok(f) => {
+                match f.header.file_type {
+                    Type::File => f,
+                    Type::Dir => {
+                        let mut new_data = Vec::new();
+                        for i in 0..(f.data.len()/32) {
+                            for j in 0..28 {
+                                new_data.push(f.data[i * 32 + j])
+                            }
+                            new_data.push(b'\n')
+                        }
+                        MemFile {
+                            header: f.header,
+                            data: new_data
+                        }
+                    }
+                }
+            },
             Err(_) => return Err(IoError::Continue),
         };
         let res = if size == usize::MAX {
