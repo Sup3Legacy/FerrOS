@@ -22,3 +22,5 @@ disk/__pycache__
 docs/artifacts/
 
 docs/slides/.~lock.VFS.odg#
+
+.vscode/

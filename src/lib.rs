@@ -14,6 +14,7 @@
 #![feature(slice_as_chunks)]
 #![feature(vec_into_raw_parts)]
 #![feature(never_type)]
+#![feature(asm_sym)]
 
 use core::panic::PanicInfo;
 extern crate vga as vga_video;

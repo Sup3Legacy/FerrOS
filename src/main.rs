@@ -11,6 +11,7 @@
 #![test_runner(ferr_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(const_mut_refs)]
+#![feature(asm_sym)]
 
 use alloc::vec;
 use alloc::vec::Vec;
